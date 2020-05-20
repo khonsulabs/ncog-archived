@@ -1,0 +1,90 @@
+name: Rust
+
+on:
+  push:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    # Service containers to run with `runner-job`
+    services:
+      # Label used to access the service container
+      postgres:
+        # Docker Hub image
+        image: postgres
+        # Provide the password for postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          # Maps tcp port 5432 on service container to the host
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v1
+      - name: Install Dependencies
+        run: |
+          sudo apt-get -yqq install libpq-dev
+          sudo npm install -g sass
+      - name: Install doctl
+        if: github.ref == 'refs/heads/master'
+        run: |
+          wget https://github.com/digitalocean/doctl/releases/download/v1.35.0/doctl-1.35.0-linux-amd64.tar.gz
+          tar -xzf doctl-1.35.0-linux-amd64.tar.gz
+          sudo mv doctl /usr/bin
+          sudo chown -R runner: ~/.config
+          doctl auth init -t ${{ secrets.DOAPIKEY }}
+      - name: Restore Cargo Cache
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.GAC_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.GAC_SECRET_KEY }}
+        run: |
+          aws s3 cp --region us-west-1 s3://khonsulabs-gac/ncog/cache-target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}.tar.bz2 . || true
+          tar -xjf cache-target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}.tar.bz2 || true
+      - name: Build
+        # sass sass/index.scss public/stylesheet.css
+        run: |
+          echo 'DATABASE_URL="postgres://postgres:postgres@localhost/postgres"' >> .env
+          cargo run --package migrations --release
+          cargo build --package server --release --verbose
+          cargo test --release
+      - name: Run tests
+        run: cargo test --release --verbose
+      - name: Configure production
+        run: echo "$DOTENVFILE" > .env
+        if: github.ref == 'refs/heads/master'
+        env:
+          DOTENVFILE: ${{ secrets.DOTENVFILE }}
+      - name: Publish to Registry
+        id: publish
+        if: github.ref == 'refs/heads/master'
+        uses: elgohr/Publish-Docker-Github-Action@2.14
+        with:
+          name: khonsulabs/ncog/ncog-webserver
+          username: ${{ secrets.GITHUBPACKAGES_USERNAME }}
+          password: ${{ secrets.GITHUBPACKAGES_TOKEN }}
+          registry: docker.pkg.github.com
+          snapshot: true
+      - name: "Deploy"
+        if: github.ref == 'refs/heads/master'
+        run: |
+          mkdir ~/.kube
+          echo "$KUBECONFIG_FILE" > ~/.kube/config
+          sed -i 's/latest/${{ steps.publish.outputs.snapshot-tag }}/g' kubernetes.yml
+          kubectl --namespace ncog apply -f kubernetes.yml
+        env:
+          KUBECONFIG_FILE: "${{ secrets.KUBECONFIG }}"
+      - name: Cache Cargo
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.GAC_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.GAC_SECRET_KEY }}
+        run: |
+          rm cache-*.tar.bz2 || true
+          tar -cjf cache-target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}.tar.bz2 target
+          aws s3 cp --region us-west-1 cache-target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}.tar.bz2 s3://khonsulabs-gac/ncog/
