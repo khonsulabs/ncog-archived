@@ -1,0 +1,35 @@
+<html>
+  <head>
+    <script
+      src="https://code.jquery.com/jquery-3.5.0.min.js"
+      integrity="sha256-xNzN2a4ltkB44Mc/Jz3pT4iU1cmeR0FkXs4pru/JxaQ="
+      crossorigin="anonymous"
+    ></script>
+  </head>
+  <body>
+    <p>Thank you for logging in.</p>
+    <script type="text/javascript">
+      $(function () {
+        var queryString = window.location.hash.slice(1);
+        var params = new URLSearchParams(queryString);
+        var accessToken = params.get("access_token");
+
+        // you can also get the state param if you're using it:
+        var state = params.get("state");
+
+        $.ajax({
+          type: "POST",
+          url: "{{ post_url }}",
+          data: {
+            state: state,
+            access_token: accessToken,
+          },
+          dataType: "json",
+          success: function (data) {
+            alert("Hello!");
+          },
+        });
+      });
+    </script>
+  </body>
+</html>

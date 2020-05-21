@@ -8,7 +8,23 @@ edition = "2018"
 
 [dependencies]
 tokio = {version = "0.2", features = ["full"]}
-dotenv = "*"
 warp = "0.2"
-lazy_static = "*"
 futures = "0.3"
+bincode = "1.2"
+serde = "1"
+serde_json="1"
+serde_derive="1"
+url = "2.1"
+dotenv="0.15"
+tera="1.3"
+lazy_static="1.4"
+crossbeam="0.7"
+uuid={version = "*", features=["v4"]}
+#migrations = {path = "../migrations"}
+anyhow="1"
+async-std="1"
+reqwest = {version = "0.10", features=["json"]}
+chrono = "0.4"
+rand = "0.7"
+migrations = {path = "../migrations"}
+shared = {path = "../shared"}
