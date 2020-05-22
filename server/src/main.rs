@@ -108,24 +108,46 @@ async fn login_itchio(installation_id: Uuid, access_token: String) -> Result<(),
 
     let pg = pg();
     let mut tx = pg.begin().await?;
-    let account = sqlx::query!(
-        "SELECT account_lookup($1, $2) as account_id",
-        response.user.id,
-        response.user.username
-    )
-    .fetch_one(&mut tx)
-    .await
-    .expect("Function should always return a value");
 
-    sqlx::query!(
-        "SELECT installation_login($1, $2, $3) as rows_changed",
-        installation_id,
-        account.account_id,
-        access_token,
+    // Create an account if it doesn't exist yet for this installation
+    let account_id = if let Some(account_id) = sqlx::query!(
+        "SELECT account_id FROM installations WHERE id = $1",
+        installation_id
     )
     .fetch_one(&mut tx)
-    .await?;
-    tx.commit().await?;
+    .await?
+    .account_id
+    {
+        account_id
+    } else {
+        let account_id = sqlx::query!("INSERT INTO accounts DEFAULT VALUES RETURNING id")
+            .fetch_one(&mut tx)
+            .await?
+            .id;
+        sqlx::query!(
+            "UPDATE installations SET account_id = $1 WHERE id = $2",
+            account_id,
+            installation_id
+        )
+        .execute(&mut tx)
+        .await?;
+        account_id
+    };
+
+    // Create an itchio profile
+    sqlx::query!("INSERT INTO itchio_profiles (id, account_id, username, url) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO UPDATE SET account_id = $2, username = $3, url = $4 ",
+        response.user.id,
+        account_id,
+        response.user.username,
+        response.user.url
+    ).execute(&mut tx).await?;
+
+    // Create an oauth_token
+    sqlx::query!("INSERT INTO oauth_tokens (account_id, service, access_token) VALUES ($1, $2, $3) ON CONFLICT (account_id, service) DO UPDATE SET access_token = $3",
+        account_id,
+        "itchio",
+        access_token
+    ).execute(&mut tx).await?;
 
     Ok(())
 }

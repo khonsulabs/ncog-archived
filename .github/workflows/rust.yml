@@ -49,10 +49,10 @@ jobs:
           tar -xjf cache-target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}.tar.bz2 || true
       - name: Build
         # sass sass/index.scss public/stylesheet.css
-        #cargo run --package migrations --release
         run: |
           echo 'DATABASE_URL="postgres://postgres:postgres@localhost/postgres"' >> .env
 
+          cargo run --package migrations --release
           cargo build --package server --release --verbose
           cargo test --release
       - name: Run tests

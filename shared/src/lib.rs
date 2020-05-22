@@ -57,11 +57,7 @@ pub enum ServerResponse {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct UserProfile {
     pub id: i64,
-    pub username: String,
-    pub map: i32,
-    pub x_offset: f32,
-    pub last_update_timestamp: Option<f64>,
-    pub horizontal_input: f32,
+    pub screenname: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

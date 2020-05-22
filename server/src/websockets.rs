@@ -124,23 +124,24 @@ impl ConnectedClients {
     }
 
     pub async fn world_updated(&self, update_timestamp: f64) -> Result<(), anyhow::Error> {
-        let world_update = ServerResponse::WorldUpdate {
-            timestamp: update_timestamp,
-            profiles: sqlx::query_as!(
-                UserProfile,
-                "SELECT id, username, map, x_offset, last_update_timestamp, horizontal_input from account_list_current($1)",
-                update_timestamp - 5.0
-            )
-            .fetch_all(&pg())
-            .await?,
-        };
+        todo!()
+        // let world_update = ServerResponse::WorldUpdate {
+        //     timestamp: update_timestamp,
+        //     profiles: sqlx::query_as!(
+        //         UserProfile,
+        //         "SELECT id, username, map, x_offset, last_update_timestamp, horizontal_input from account_list_current($1)",
+        //         update_timestamp - 5.0
+        //     )
+        //     .fetch_all(&pg())
+        //     .await?,
+        // };
 
-        let clients = self.clients.read().await;
-        for (_, client) in clients.iter() {
-            let client = client.read().await;
-            client.sender.send(world_update.clone()).unwrap_or_default();
-        }
-        Ok(())
+        // let clients = self.clients.read().await;
+        // for (_, client) in clients.iter() {
+        //     let client = client.read().await;
+        //     client.sender.send(world_update.clone()).unwrap_or_default();
+        // }
+        // Ok(())
     }
 
     pub async fn ping(&self) {
@@ -191,7 +192,7 @@ impl ConnectedAccounts {
 
         let profile = sqlx::query_as!(
             UserProfile,
-            "SELECT id, username, map, x_offset, last_update_timestamp, horizontal_input FROM installation_profile($1)",
+            "SELECT accounts.id, screenname FROM accounts INNER JOIN installations ON installations.account_id = accounts.id WHERE installations.id = $1",
             installation_id,
         )
         .fetch_one(&pg())
@@ -231,23 +232,24 @@ impl ConnectedAccount {
         timestamp: f64,
     ) -> Result<(), anyhow::Error> {
         // TODO THE AVERAGE VELOCITY CANNOT EXCEED THE MAXIMUM IN CODE
-        self.profile.x_offset = x_offset;
-        self.profile.horizontal_input = self
-            .inputs
-            .as_ref()
-            .map(|inputs| inputs.horizontal_movement)
-            .unwrap_or_default();
-        let _ = sqlx::query!(
-            "SELECT * FROM account_update_inputs($1, $2, $3, $4)",
-            self.profile.id,
-            self.profile.x_offset,
-            timestamp,
-            self.profile.horizontal_input
-        )
-        .fetch_one(&pg())
-        .await?;
+        // self.profile.x_offset = x_offset;
+        // self.profile.horizontal_input = self
+        //     .inputs
+        //     .as_ref()
+        //     .map(|inputs| inputs.horizontal_movement)
+        //     .unwrap_or_default();
+        // let _ = sqlx::query!(
+        //     "SELECT * FROM account_update_inputs($1, $2, $3, $4)",
+        //     self.profile.id,
+        //     self.profile.x_offset,
+        //     timestamp,
+        //     self.profile.horizontal_input
+        // )
+        // .fetch_one(&pg())
+        // .await?;
 
-        Ok(())
+        // Ok(())
+        todo!()
     }
 }
 
@@ -359,7 +361,7 @@ async fn handle_websocket_request(
             let pool = pg();
             let installation = sqlx::query_as!(
                 Installation,
-                "SELECT * FROM installation_lookup($1)",
+                "INSERT INTO installations (id) VALUES ($1) ON CONFLICT (id) DO NOTHING RETURNING id, account_id",
                 installation_id
             )
             .fetch_one(&pool)
@@ -372,10 +374,10 @@ async fn handle_websocket_request(
             if let Some(account_id) = installation.account_id {
                 let profile = sqlx::query_as!(
                         UserProfile,
-                        "SELECT id, username, map, x_offset, last_update_timestamp, horizontal_input FROM installation_profile($1)",
-                        installation.id,
+                        "SELECT accounts.id, screenname FROM accounts INNER JOIN installations ON installations.account_id = accounts.id WHERE installations.id = $1",
+                        installation_id,
                     )
-                    .fetch_one(&pool)
+                    .fetch_one(&pg())
                     .await?;
 
                 CONNECTED_CLIENTS
@@ -419,13 +421,13 @@ impl Drop for ConnectedClient {
 #[cfg(debug_assertions)]
 static REDIRECT_URI: &'static str = "http://localhost:7878/auth/itchio_callback";
 #[cfg(not(debug_assertions))]
-static REDIRECT_URI: &'static str = "https://cantina.khonsu.gg/auth/itchio_callback";
+static REDIRECT_URI: &'static str = "https://ncog.live/api/auth/itchio_callback";
 
 fn itchio_authorization_url(installation_id: Uuid) -> String {
     Url::parse_with_params(
         "https://itch.io/user/oauth",
         &[
-            ("client_id", env("OAUTH_CLIENT_ID")),
+            ("client_id", env("ITCHIO_CLIENT_ID")),
             ("scope", "profile:me".to_owned()),
             ("response_type", "token".to_owned()),
             ("redirect_uri", REDIRECT_URI.to_owned()),
