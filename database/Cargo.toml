@@ -1,5 +1,5 @@
 [package]
-name = "migrations"
+name = "database"
 version = "0.1.0"
 authors = ["Jonathan Johnson <jon@khonsualabs.com>"]
 edition = "2018"
@@ -20,6 +20,7 @@ lazy_static="1"
 futures = "0.3"
 uuid={version = "*", features=["v4", "serde"]}
 shared = {path = "../shared"}
+anyhow = "1"
 [dependencies.sqlx]
 version = "0.3"
 default-features = false

@@ -333,6 +333,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "database"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "dotenv",
+ "futures",
+ "lazy_static",
+ "shared",
+ "sqlx",
+ "sqlx-simple-migrator",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
 name = "deunicode"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -872,20 +887,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4fc2c02a7e374099d4ee95a193111f72d2110197fe200272371758f6c3643d8"
 dependencies = [
  "autocfg 1.0.0",
-]
-
-[[package]]
-name = "migrations"
-version = "0.1.0"
-dependencies = [
- "dotenv",
- "futures",
- "lazy_static",
- "shared",
- "sqlx",
- "sqlx-simple-migrator",
- "tokio",
- "uuid",
 ]
 
 [[package]]
@@ -1630,10 +1631,10 @@ dependencies = [
  "bincode",
  "chrono",
  "crossbeam",
+ "database",
  "dotenv",
  "futures",
  "lazy_static",
- "migrations",
  "rand 0.7.3",
  "reqwest",
  "serde",

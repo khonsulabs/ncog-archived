@@ -1,12 +1,10 @@
 use super::env;
 use async_std::sync::RwLock;
 use crossbeam::channel::{unbounded, Sender};
+use database::pg;
 use futures::{executor::block_on, SinkExt, StreamExt};
 use lazy_static::lazy_static;
-use migrations::{pg, sqlx};
-use shared::{
-    current_timestamp, Inputs, Installation, ServerRequest, ServerResponse, UserProfile, WALK_SPEED,
-};
+use shared::{current_timestamp, Inputs, ServerRequest, ServerResponse, UserProfile};
 use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
@@ -123,26 +121,26 @@ impl ConnectedClients {
         }
     }
 
-    pub async fn world_updated(&self, update_timestamp: f64) -> Result<(), anyhow::Error> {
-        todo!()
-        // let world_update = ServerResponse::WorldUpdate {
-        //     timestamp: update_timestamp,
-        //     profiles: sqlx::query_as!(
-        //         UserProfile,
-        //         "SELECT id, username, map, x_offset, last_update_timestamp, horizontal_input from account_list_current($1)",
-        //         update_timestamp - 5.0
-        //     )
-        //     .fetch_all(&pg())
-        //     .await?,
-        // };
+    // pub async fn world_updated(&self, update_timestamp: f64) -> Result<(), anyhow::Error> {
+    //     todo!()
+    //     // let world_update = ServerResponse::WorldUpdate {
+    //     //     timestamp: update_timestamp,
+    //     //     profiles: sqlx::query_as!(
+    //     //         UserProfile,
+    //     //         "SELECT id, username, map, x_offset, last_update_timestamp, horizontal_input from account_list_current($1)",
+    //     //         update_timestamp - 5.0
+    //     //     )
+    //     //     .fetch_all(&pg())
+    //     //     .await?,
+    //     // };
 
-        // let clients = self.clients.read().await;
-        // for (_, client) in clients.iter() {
-        //     let client = client.read().await;
-        //     client.sender.send(world_update.clone()).unwrap_or_default();
-        // }
-        // Ok(())
-    }
+    //     // let clients = self.clients.read().await;
+    //     // for (_, client) in clients.iter() {
+    //     //     let client = client.read().await;
+    //     //     client.sender.send(world_update.clone()).unwrap_or_default();
+    //     // }
+    //     // Ok(())
+    // }
 
     pub async fn ping(&self) {
         let clients = self.clients.read().await;
@@ -190,13 +188,7 @@ impl ConnectedAccounts {
     ) -> Result<Arc<RwLock<ConnectedAccount>>, anyhow::Error> {
         let mut accounts_by_id = self.accounts_by_id.write().await;
 
-        let profile = sqlx::query_as!(
-            UserProfile,
-            "SELECT accounts.id, screenname FROM accounts INNER JOIN installations ON installations.account_id = accounts.id WHERE installations.id = $1",
-            installation_id,
-        )
-        .fetch_one(&pg())
-        .await?;
+        let profile = database::get_profile(&pg(), installation_id).await?;
 
         Ok(accounts_by_id
             .entry(profile.id)
@@ -226,31 +218,31 @@ pub struct ConnectedAccount {
 }
 
 impl ConnectedAccount {
-    pub async fn set_x_offset(
-        &mut self,
-        x_offset: f32,
-        timestamp: f64,
-    ) -> Result<(), anyhow::Error> {
-        // TODO THE AVERAGE VELOCITY CANNOT EXCEED THE MAXIMUM IN CODE
-        // self.profile.x_offset = x_offset;
-        // self.profile.horizontal_input = self
-        //     .inputs
-        //     .as_ref()
-        //     .map(|inputs| inputs.horizontal_movement)
-        //     .unwrap_or_default();
-        // let _ = sqlx::query!(
-        //     "SELECT * FROM account_update_inputs($1, $2, $3, $4)",
-        //     self.profile.id,
-        //     self.profile.x_offset,
-        //     timestamp,
-        //     self.profile.horizontal_input
-        // )
-        // .fetch_one(&pg())
-        // .await?;
+    // pub async fn set_x_offset(
+    //     &mut self,
+    //     x_offset: f32,
+    //     timestamp: f64,
+    // ) -> Result<(), anyhow::Error> {
+    //     // TODO THE AVERAGE VELOCITY CANNOT EXCEED THE MAXIMUM IN CODE
+    //     // self.profile.x_offset = x_offset;
+    //     // self.profile.horizontal_input = self
+    //     //     .inputs
+    //     //     .as_ref()
+    //     //     .map(|inputs| inputs.horizontal_movement)
+    //     //     .unwrap_or_default();
+    //     // let _ = sqlx::query!(
+    //     //     "SELECT * FROM account_update_inputs($1, $2, $3, $4)",
+    //     //     self.profile.id,
+    //     //     self.profile.x_offset,
+    //     //     timestamp,
+    //     //     self.profile.horizontal_input
+    //     // )
+    //     // .fetch_one(&pg())
+    //     // .await?;
 
-        // Ok(())
-        todo!()
-    }
+    //     // Ok(())
+    //     todo!()
+    // }
 }
 
 pub async fn main(websocket: WebSocket) {
@@ -309,29 +301,29 @@ async fn handle_websocket_request(
     responder: Sender<ServerResponse>,
 ) -> Result<(), anyhow::Error> {
     match request {
-        ServerRequest::Update {
-            new_inputs,
-            x_offset,
-            timestamp,
-        } => {
-            let client = client_handle.read().await;
-            let corrected_server_timestamp = timestamp
-                + client
-                    .network_timing
-                    .average_server_timestamp_delta
-                    .unwrap_or_default();
-            let now = current_timestamp();
+        // ServerRequest::Update {
+        //     new_inputs,
+        //     x_offset,
+        //     timestamp,
+        // } => {
+        //     let client = client_handle.read().await;
+        //     let corrected_server_timestamp = timestamp
+        //         + client
+        //             .network_timing
+        //             .average_server_timestamp_delta
+        //             .unwrap_or_default();
+        //     let now = current_timestamp();
 
-            if let Some(account) = &client.account {
-                let mut account = account.write().await;
-                account.inputs = new_inputs;
-                let latency_corrected_x_offset =
-                    x_offset + WALK_SPEED * (now - corrected_server_timestamp) as f32;
-                account
-                    .set_x_offset(latency_corrected_x_offset, now)
-                    .await?;
-            }
-        }
+        //     if let Some(account) = &client.account {
+        //         let mut account = account.write().await;
+        //         account.inputs = new_inputs;
+        //         let latency_corrected_x_offset =
+        //             x_offset + WALK_SPEED * (now - corrected_server_timestamp) as f32;
+        //         account
+        //             .set_x_offset(latency_corrected_x_offset, now)
+        //             .await?;
+        //     }
+        // }
         ServerRequest::Authenticate {
             installation_id,
             version,
@@ -345,7 +337,7 @@ async fn handle_websocket_request(
                 return Ok(());
             }
 
-            let installation_id = Some(match installation_id {
+            let installation_id = match installation_id {
                 Some(installation_id) => installation_id,
                 None => {
                     let installation_id = Uuid::new_v4();
@@ -356,29 +348,16 @@ async fn handle_websocket_request(
                         .unwrap_or_default();
                     installation_id
                 }
-            });
+            };
 
-            let pool = pg();
-            let installation = sqlx::query_as!(
-                Installation,
-                "INSERT INTO installations (id) VALUES ($1) ON CONFLICT (id) DO NOTHING RETURNING id, account_id",
-                installation_id
-            )
-            .fetch_one(&pool)
-            .await?;
+            let installation = database::lookup_installation(&pg(), installation_id).await?;
 
             CONNECTED_CLIENTS
                 .connect(installation.id, &client_handle)
                 .await;
 
             if let Some(account_id) = installation.account_id {
-                let profile = sqlx::query_as!(
-                        UserProfile,
-                        "SELECT accounts.id, screenname FROM accounts INNER JOIN installations ON installations.account_id = accounts.id WHERE installations.id = $1",
-                        installation_id,
-                    )
-                    .fetch_one(&pg())
-                    .await?;
+                let profile = database::get_profile(&pg(), installation.id).await?;
 
                 CONNECTED_CLIENTS
                     .associate_account(installation.id, account_id)

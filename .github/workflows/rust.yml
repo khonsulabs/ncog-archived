@@ -52,7 +52,7 @@ jobs:
         run: |
           echo 'DATABASE_URL="postgres://postgres:postgres@localhost/postgres"' >> .env
 
-          cargo run --package migrations --release
+          cargo run --bin migrator --release
           cargo build --package server --release --verbose
           cargo test --release
       - name: Run tests

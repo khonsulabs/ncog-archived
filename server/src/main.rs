@@ -1,5 +1,5 @@
+use database::{pg, sqlx};
 use lazy_static::lazy_static;
-use migrations::{pg, sqlx};
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tera::Tera;
@@ -7,6 +7,7 @@ use uuid::Uuid;
 use warp::http::{header, StatusCode};
 use warp::Filter;
 
+mod db;
 mod pubsub;
 mod websockets;
 
@@ -23,7 +24,7 @@ lazy_static! {
 async fn main() {
     dotenv::dotenv().expect("Error initializing environment");
 
-    migrations::run_all()
+    database::migrations::run_all()
         .await
         .expect("Error running migrations");
 

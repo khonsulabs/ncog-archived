@@ -1,6 +1,6 @@
 [workspace]
 members = [
     "server",
-    "migrations",
+    "database",
     "shared"
 ]

@@ -11,11 +11,11 @@ pub enum ServerRequest {
         installation_id: Option<Uuid>,
     },
     AuthenticationUrl,
-    Update {
-        new_inputs: Option<Inputs>,
-        x_offset: f32,
-        timestamp: f64,
-    },
+    // Update {
+    //     new_inputs: Option<Inputs>,
+    //     x_offset: f32,
+    //     timestamp: f64,
+    // },
     Pong {
         original_timestamp: f64,
         timestamp: f64,

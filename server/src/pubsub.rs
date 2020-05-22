@@ -1,5 +1,5 @@
 use super::websockets::{CONNECTED_ACCOUNTS, CONNECTED_CLIENTS};
-use migrations::{pg, sqlx};
+use database::{pg, sqlx};
 use shared::ServerResponse;
 use sqlx::postgres::PgListener;
 use uuid::Uuid;
@@ -34,11 +34,11 @@ pub async fn pg_notify_loop() -> Result<(), anyhow::Error> {
                     },
                 )
                 .await;
-        } else if notification.channel() == "world_update" {
-            // The payload is the timestamp of when the world was updated
-            let timestamp = notification.payload().parse::<f64>()?;
+            // } else if notification.channel() == "world_update" {
+            //     // The payload is the timestamp of when the world was updated
+            //     let timestamp = notification.payload().parse::<f64>()?;
 
-            CONNECTED_CLIENTS.world_updated(timestamp).await?;
+            //     CONNECTED_CLIENTS.world_updated(timestamp).await?;
         }
     }
     panic!("Error on postgres listening");
