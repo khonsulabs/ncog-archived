@@ -1,9 +1,9 @@
-use super::env;
+use super::{database, env};
 use async_std::sync::RwLock;
 use crossbeam::channel::{unbounded, Sender};
-use database::pg;
 use futures::{executor::block_on, SinkExt, StreamExt};
 use lazy_static::lazy_static;
+use migrations::pg;
 use shared::{current_timestamp, Inputs, ServerRequest, ServerResponse, UserProfile};
 use std::{
     collections::{HashMap, HashSet},
@@ -339,37 +339,48 @@ async fn handle_websocket_request(
 
             let installation_id = match installation_id {
                 Some(installation_id) => installation_id,
-                None => {
-                    let installation_id = Uuid::new_v4();
-                    responder
-                        .send(ServerResponse::AdoptInstallationId {
-                            installation_id: installation_id,
-                        })
-                        .unwrap_or_default();
-                    installation_id
-                }
+                None => Uuid::new_v4(),
             };
 
+            println!("Looking up installation {:?}", installation_id);
             let installation = database::lookup_installation(&pg(), installation_id).await?;
 
+            println!("Recording connection");
             CONNECTED_CLIENTS
                 .connect(installation.id, &client_handle)
                 .await;
 
-            if let Some(account_id) = installation.account_id {
-                let profile = database::get_profile(&pg(), installation.id).await?;
+            println!("Looking up account");
+            let logged_in = if let Some(account_id) = installation.account_id {
+                if let Ok(profile) = database::get_profile(&pg(), installation.id).await {
+                    CONNECTED_CLIENTS
+                        .associate_account(installation.id, account_id)
+                        .await?;
+                    responder
+                        .send(ServerResponse::Authenticated { profile })
+                        .unwrap_or_default();
+                    true
+                } else {
+                    false
+                }
+            } else {
+                false
+            };
 
-                CONNECTED_CLIENTS
-                    .associate_account(installation.id, account_id)
-                    .await?;
+            if !logged_in {
+                // The user is not logged in, send the adopt installation ID as an indicator that we're not authenticated
                 responder
-                    .send(ServerResponse::Authenticated { profile })
+                    .send(ServerResponse::AdoptInstallationId {
+                        installation_id: installation.id,
+                    })
                     .unwrap_or_default();
             }
         }
         ServerRequest::AuthenticationUrl => {
             let client = client_handle.read().await;
+            println!("Sending auth url");
             if let Some(installation_id) = client.installation_id {
+                println!("Sending authentication url");
                 responder
                     .send(ServerResponse::AuthenticateAtUrl {
                         url: itchio_authorization_url(installation_id),
@@ -398,7 +409,7 @@ impl Drop for ConnectedClient {
 }
 
 #[cfg(debug_assertions)]
-static REDIRECT_URI: &'static str = "http://localhost:7878/auth/itchio_callback";
+static REDIRECT_URI: &'static str = "http://localhost:7878/api/auth/itchio_callback";
 #[cfg(not(debug_assertions))]
 static REDIRECT_URI: &'static str = "https://ncog.live/api/auth/itchio_callback";
 

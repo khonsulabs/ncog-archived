@@ -1,6 +1,8 @@
 [workspace]
 members = [
     "server",
-    "database",
-    "shared"
+    "migrations",
+    "shared",
+    "ncfg",
+    "ncog-client"
 ]

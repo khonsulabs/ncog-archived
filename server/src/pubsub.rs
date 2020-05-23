@@ -1,5 +1,5 @@
 use super::websockets::{CONNECTED_ACCOUNTS, CONNECTED_CLIENTS};
-use database::{pg, sqlx};
+use migrations::{pg, sqlx};
 use shared::ServerResponse;
 use sqlx::postgres::PgListener;
 use uuid::Uuid;

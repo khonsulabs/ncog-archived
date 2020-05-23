@@ -25,5 +25,5 @@ async-std="1"
 reqwest = {version = "0.10", features=["json"]}
 chrono = "0.4"
 rand = "0.7"
-database = {path = "../database"}
+migrations = {path = "../migrations"}
 shared = {path = "../shared"}

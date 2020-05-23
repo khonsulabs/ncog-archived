@@ -1,13 +1,14 @@
-use database::{pg, sqlx};
 use lazy_static::lazy_static;
+use migrations::{pg, sqlx};
 use serde_derive::{Deserialize, Serialize};
+use sqlx::prelude::*;
 use std::collections::HashMap;
 use tera::Tera;
 use uuid::Uuid;
 use warp::http::{header, StatusCode};
 use warp::Filter;
 
-mod db;
+mod database;
 mod pubsub;
 mod websockets;
 
@@ -24,7 +25,7 @@ lazy_static! {
 async fn main() {
     dotenv::dotenv().expect("Error initializing environment");
 
-    database::migrations::run_all()
+    migrations::run_all()
         .await
         .expect("Error running migrations");
 
@@ -42,16 +43,17 @@ async fn main() {
             receive_token(&body["state"], body["access_token"].clone())
         });
     let oauth = itchio_callback.or(receive_token);
-    let routes = websockets
-        .or(oauth)
-        .or(warp::any().map(|| warp::reply::with_status("Not Found", StatusCode::NOT_FOUND)));
+    let api = warp::path("api").and(websockets.or(oauth));
+    let routes =
+        api.or(warp::any().map(|| warp::reply::with_status("Not Found", StatusCode::NOT_FOUND)));
 
     warp::serve(routes).run(([0, 0, 0, 0], 7878)).await;
 }
 
 fn itchio_callback() -> impl warp::reply::Reply {
     let mut context = tera::Context::new();
-    context.insert("post_url", "http://localhost:7878/auth/receive_token");
+    // TODO make this switch to the proper URL On the server
+    context.insert("post_url", "http://localhost:7878/api/auth/receive_token");
 
     warp::reply::with_header(
         TEMPLATES.render("logged_in", &context).unwrap(),
@@ -108,48 +110,59 @@ async fn login_itchio(installation_id: Uuid, access_token: String) -> Result<(),
         .await?;
 
     let pg = pg();
-    let mut tx = pg.begin().await?;
-
-    // Create an account if it doesn't exist yet for this installation
-    let account_id = if let Some(account_id) = sqlx::query!(
-        "SELECT account_id FROM installations WHERE id = $1",
-        installation_id
-    )
-    .fetch_one(&mut tx)
-    .await?
-    .account_id
     {
-        account_id
-    } else {
-        let account_id = sqlx::query!("INSERT INTO accounts DEFAULT VALUES RETURNING id")
-            .fetch_one(&mut tx)
-            .await?
-            .id;
-        sqlx::query!(
-            "UPDATE installations SET account_id = $1 WHERE id = $2",
-            account_id,
+        let mut tx = pg.begin().await?;
+
+        // Create an account if it doesn't exist yet for this installation
+        let account_id = if let Some(account_id) = sqlx::query!(
+            "SELECT account_id FROM installations WHERE id = $1",
             installation_id
         )
-        .execute(&mut tx)
+        .fetch_one(&mut tx)
+        .await?
+        .account_id
+        {
+            account_id
+        } else {
+            let account_id = sqlx::query!("INSERT INTO accounts DEFAULT VALUES RETURNING id")
+                .fetch_one(&mut tx)
+                .await?
+                .id;
+            sqlx::query!(
+                "UPDATE installations SET account_id = $1 WHERE id = $2",
+                account_id,
+                installation_id
+            )
+            .execute(&mut tx)
+            .await?;
+            account_id
+        };
+
+        // Create an itchio profile
+        sqlx::query!("INSERT INTO itchio_profiles (id, account_id, username, url) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO UPDATE SET account_id = $2, username = $3, url = $4 ",
+            response.user.id,
+            account_id,
+            response.user.username,
+            response.user.url
+        ).execute(&mut tx).await?;
+
+        // Create an oauth_token
+        sqlx::query!("INSERT INTO oauth_tokens (account_id, service, access_token) VALUES ($1, $2, $3) ON CONFLICT (account_id, service) DO UPDATE SET access_token = $3",
+            account_id,
+            "itchio",
+            access_token
+        ).execute(&mut tx).await?;
+
+        tx.commit().await?;
+    }
+
+    let mut connection = pg.acquire().await?;
+    connection
+        .execute(&*format!(
+            "NOTIFY installation_login, '{}'",
+            installation_id
+        ))
         .await?;
-        account_id
-    };
-
-    // Create an itchio profile
-    sqlx::query!("INSERT INTO itchio_profiles (id, account_id, username, url) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO UPDATE SET account_id = $2, username = $3, url = $4 ",
-        response.user.id,
-        account_id,
-        response.user.username,
-        response.user.url
-    ).execute(&mut tx).await?;
-
-    // Create an oauth_token
-    sqlx::query!("INSERT INTO oauth_tokens (account_id, service, access_token) VALUES ($1, $2, $3) ON CONFLICT (account_id, service) DO UPDATE SET access_token = $3",
-        account_id,
-        "itchio",
-        access_token
-    ).execute(&mut tx).await?;
-
     Ok(())
 }
 
