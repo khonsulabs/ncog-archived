@@ -4,5 +4,7 @@ members = [
     "migrations",
     "shared",
     "ncfg",
-    "ncog-client"
+    "ncog-client",
+    "pure-yew",
+    "webapp"
 ]

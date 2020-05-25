@@ -3,10 +3,11 @@ use migrations::{pg, sqlx};
 use serde_derive::{Deserialize, Serialize};
 use sqlx::prelude::*;
 use std::collections::HashMap;
+use std::convert::Infallible;
 use tera::Tera;
 use uuid::Uuid;
 use warp::http::{header, StatusCode};
-use warp::Filter;
+use warp::{Filter, Rejection, Reply};
 
 mod database;
 mod pubsub;
@@ -31,6 +32,12 @@ async fn main() {
 
     tokio::spawn(pubsub::pg_notify_loop());
 
+    let healthcheck = warp::get()
+        .and(warp::path("__healthcheck"))
+        .and_then(healthcheck);
+
+    let spa = warp::get().and(warp::fs::dir("public").or(warp::fs::file("public/index.html")));
+
     let websockets = warp::path!("ws")
         .and(warp::path::end())
         .and(warp::ws())
@@ -44,10 +51,22 @@ async fn main() {
         });
     let oauth = itchio_callback.or(receive_token);
     let api = warp::path("api").and(websockets.or(oauth));
-    let routes =
-        api.or(warp::any().map(|| warp::reply::with_status("Not Found", StatusCode::NOT_FOUND)));
-
+    let routes = healthcheck
+        .or(api)
+        .or(spa)
+        .with(warp::reply::with::header(
+            "Access-Control-Allow-Origin",
+            "*",
+        ))
+        .with(warp::reply::with::header(
+            "Access-Control-Allow-Headers",
+            "Authorization, *",
+        ));
     warp::serve(routes).run(([0, 0, 0, 0], 7878)).await;
+}
+
+async fn healthcheck() -> Result<impl Reply, Infallible> {
+    Ok("ok")
 }
 
 fn itchio_callback() -> impl warp::reply::Reply {
