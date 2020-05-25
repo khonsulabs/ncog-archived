@@ -1,7 +1,5 @@
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}
+pub use include_dir;
+pub mod forms;
+pub mod localization;
+pub mod markdown;
+pub mod static_page;
