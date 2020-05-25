@@ -1,7 +1,7 @@
 use shared::{Installation, UserProfile};
 use uuid::Uuid;
 
-use migrations::{pg, sqlx};
+use migrations::sqlx;
 
 use sqlx::executor::RefExecutor;
 use sqlx::postgres::Postgres;
@@ -40,7 +40,8 @@ where
 
 struct RolePermissionStatement {
     pub id: i64,
-    pub role_id: i64,
+    pub role_id: Option<i64>,
+    pub service: Option<String>,
     pub action: Option<String>,
     pub resource_type: Option<String>,
     pub resource_id: Option<i64>,
@@ -50,9 +51,11 @@ struct RolePermissionStatement {
 impl RolePermissionStatement {
     pub fn score(&self) -> i32 {
         let mut score = 0i32;
-        score += self.resource_id.as_ref().map_or(0, |_| 1 << 3);
+        score += self.role_id.as_ref().map_or(0, |_| 1 << 5);
+        score += self.service.as_ref().map_or(0, |_| 1 << 4);
+        score += self.action.as_ref().map_or(0, |_| 1 << 3);
         score += self.resource_type.as_ref().map_or(0, |_| 1 << 2);
-        score += self.resource_type.as_ref().map_or(0, |_| 1 << 1);
+        score += self.resource_id.as_ref().map_or(0, |_| 1 << 1);
 
         score
     }
@@ -61,9 +64,10 @@ impl RolePermissionStatement {
 pub async fn check_permission<'e, E>(
     executor: E,
     account_id: i64,
+    service: &str,
+    resource_type: Option<&str>,
+    resource_id: Option<i64>,
     action: &str,
-    resource_type: &str,
-    resource_id: i64,
 ) -> Result<bool, sqlx::Error>
 where
     E: 'e + Send + RefExecutor<'e, Database = Postgres>,
@@ -71,19 +75,21 @@ where
     let mut best_match: Option<RolePermissionStatement> = None;
     for statement in sqlx::query_as!(
         RolePermissionStatement,
-        r#"SELECT role_permission_statements.id, roles.id as role_id, action, resource_type, resource_id, allow FROM role_permission_statements 
-            INNER JOIN roles ON role_permission_statements.role_id = roles.id 
-            INNER JOIN account_roles ON account_roles.role_id = roles.id
-            INNER JOIN accounts ON accounts.id = account_roles.account_id
+        r#"SELECT role_permission_statements.id, roles.id as role_id, service, action, resource_type, resource_id, allow FROM role_permission_statements 
+            LEFT OUTER JOIN roles ON role_permission_statements.role_id = roles.id 
+            LEFT OUTER JOIN account_roles ON account_roles.role_id = roles.id
+            LEFT OUTER JOIN accounts ON accounts.id = account_roles.account_id
             WHERE 
-                    accounts.id = $1 
-                AND (resource_type IS NULL OR resource_type = $2)
-                AND (resource_id IS NULL or resource_id = $3)
-                AND (action IS NULL OR action = $4)"#,
+                (accounts.id IS NULL OR accounts.id = $1)
+                AND (service IS NULL OR service = $2)
+                AND (resource_type IS NULL OR resource_type = $4)
+                AND (resource_id IS NULL or resource_id = $5)
+                AND (action IS NULL OR action = $3)"#,
         account_id,
+        service,
+        action,
         resource_type,
-        resource_id,
-        action
+        resource_id
     )
     .fetch_all(executor)
     .await?
@@ -99,5 +105,5 @@ where
             statement
         });
     }
-    Ok(false)
+    Ok(best_match.map_or(false, |stmt| stmt.allow))
 }

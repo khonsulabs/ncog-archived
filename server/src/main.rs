@@ -138,6 +138,10 @@ async fn login_itchio(installation_id: Uuid, access_token: String) -> Result<(),
             account_id
         };
 
+        if !database::check_permission(&mut tx, account_id, "ncog", None, None, "connect").await? {
+            anyhow::bail!("Permission denied to connect with this account");
+        }
+
         // Create an itchio profile
         sqlx::query!("INSERT INTO itchio_profiles (id, account_id, username, url) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO UPDATE SET account_id = $2, username = $3, url = $4 ",
             response.user.id,

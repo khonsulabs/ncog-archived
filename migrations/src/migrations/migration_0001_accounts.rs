@@ -16,8 +16,7 @@ pub fn migration() -> Migration {
         "#,
         )
         .with_up(&format!(
-            "INSERT INTO accounts (id) values ({})",
-            JONS_ACCOUNT_ID
+            "INSERT INTO accounts DEFAULT VALUES"
         ))
         .with_down(
             r#"
@@ -83,8 +82,7 @@ pub fn migration() -> Migration {
         "#,
         )
         .with_up(&format!(
-            "INSERT INTO roles (id, name) values ({}, 'Time Lord')",
-            TIMELORD_ROLE_ID
+            "INSERT INTO roles (name) values ('Time Lord')"
         ))
         .with_down(
             r#"
@@ -95,8 +93,9 @@ pub fn migration() -> Migration {
             r#"
         CREATE TABLE role_permission_statements (
             id BIGSERIAL PRIMARY KEY,
-            role_id BIGINT NOT NULL REFERENCES roles(id),
+            role_id BIGINT NULL REFERENCES roles(id),
             action TEXT NULL,
+            service TEXT NULL,
             resource_type TEXT NULL,
             resource_id BIGINT NULL,
             allow BOOL NOT NULL,
@@ -109,6 +108,9 @@ pub fn migration() -> Migration {
             "INSERT INTO role_permission_statements (role_id, allow) values ({}, true)",
             TIMELORD_ROLE_ID
         ))
+        .with_up(
+            "INSERT INTO role_permission_statements (service, action, allow) values ('ncog', 'connect', true)"
+        )
         .with_down(
             r#"
         DROP TABLE IF EXISTS role_permission_statements

@@ -353,6 +353,17 @@ async fn handle_websocket_request(
             println!("Looking up account");
             let logged_in = if let Some(account_id) = installation.account_id {
                 if let Ok(profile) = database::get_profile(&pg(), installation.id).await {
+                    if !database::check_permission(&pg(), account_id, "ncog", None, None, "connect")
+                        .await?
+                    {
+                        responder
+                            .send(ServerResponse::Error {
+                                message: Some("You have been banned from connecting.".to_owned()),
+                            })
+                            .unwrap_or_default();
+                        return Ok(());
+                    }
+
                     CONNECTED_CLIENTS
                         .associate_account(installation.id, account_id)
                         .await?;
