@@ -36,7 +36,7 @@ async fn main() {
         .and(warp::path("__healthcheck"))
         .and_then(healthcheck);
 
-    let spa = warp::get().and(warp::fs::dir("public").or(warp::fs::file("public/index.html")));
+    let spa = warp::get().and(warp::fs::dir("public/").or(warp::fs::file("public/index.html")));
 
     let websockets = warp::path!("ws")
         .and(warp::path::end())

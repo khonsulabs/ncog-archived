@@ -12,14 +12,6 @@ pub struct StringBundle {
 
 use include_dir::{Dir, DirEntry};
 
-impl Default for StringBundle {
-    fn default() -> Self {
-        StringBundle {
-            markdown: Arc::new(RwLock::new(HashMap::new())),
-        }
-    }
-}
-
 impl StringBundle {
     pub fn load(dir: &Dir) -> StringBundle {
         let mut markdown = HashMap::new();
