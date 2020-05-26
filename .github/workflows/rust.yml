@@ -32,6 +32,7 @@ jobs:
         run: |
           sudo apt-get -yqq install libpq-dev
           sudo npm install -g sass
+          cargo install cargo-make
       - name: Install doctl
         if: github.ref == 'refs/heads/master'
         run: |
