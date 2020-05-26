@@ -103,6 +103,15 @@ checksum = "a4c527152e37cf757a3f78aae5a06fbeefdb07ccc535c980a3208ee3060dd544"
 
 [[package]]
 name = "arrayvec"
+version = "0.4.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cd9fd44efafa8690358b7408d253adf110036b88f55672a933f01d616ad9b1b9"
+dependencies = [
+ "nodrop",
+]
+
+[[package]]
+name = "arrayvec"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cff77d8686867eceff3105329d4698d96c2391c176d5d03adc90c7389162b5b8"
@@ -283,7 +292,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d8fb2d74254a3a0b5cac33ac9f8ed0e44aa50378d9dbb2e5d83bd21ed1dc2c8a"
 dependencies = [
  "arrayref",
- "arrayvec",
+ "arrayvec 0.5.1",
  "constant_time_eq",
 ]
 
@@ -1078,7 +1087,7 @@ version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "05b6130b9a72129ebb5c91d3d75a142a7fa54dcc112603231582e3fdc0b84247"
 dependencies = [
- "arrayvec",
+ "arrayvec 0.5.1",
  "bitflags",
  "block",
  "cocoa",
@@ -1105,7 +1114,7 @@ version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f1b8d901941d1734d307dacd8e5f00c89ee8fb8e78b4dab3edd91248150b26b4"
 dependencies = [
- "arrayvec",
+ "arrayvec 0.5.1",
  "ash",
  "byteorder",
  "core-graphics",
@@ -1587,6 +1596,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "khonsuweb"
+version = "0.1.0"
+dependencies = [
+ "include_dir",
+ "pulldown-cmark",
+ "web-sys",
+ "yew",
+]
+
+[[package]]
 name = "kludgine"
 version = "0.1.0"
 source = "git+https://github.com/khonsulabs/kludgine.git#9d94dd0953b39f35396b65319ec0d2f7edc5511d"
@@ -1632,6 +1651,19 @@ name = "lazycell"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b294d6fa9ee409a054354afc4352b0b9ef7ca222c69b8812cbea9e7d2bf3783f"
+
+[[package]]
+name = "lexical-core"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d7043aa5c05dd34fb73b47acb8c3708eac428de4545ea3682ed2f11293ebd890"
+dependencies = [
+ "arrayvec 0.4.12",
+ "cfg-if",
+ "rustc_version",
+ "ryu",
+ "static_assertions",
+]
 
 [[package]]
 name = "libc"
@@ -2033,6 +2065,23 @@ dependencies = [
  "cfg-if",
  "libc",
  "void",
+]
+
+[[package]]
+name = "nodrop"
+version = "0.1.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72ef4a56884ca558e5ddb05a1d1e7e1bfd9a68d9ed024c21704cc98872dae1bb"
+
+[[package]]
+name = "nom"
+version = "5.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b471253da97532da4b61552249c521e01e736071f71c1a4f7ebbfbf0a06aad6"
+dependencies = [
+ "lexical-core",
+ "memchr",
+ "version_check 0.9.1",
 ]
 
 [[package]]
@@ -2480,16 +2529,6 @@ dependencies = [
  "getopts",
  "memchr",
  "unicase 2.6.0",
-]
-
-[[package]]
-name = "pure-yew"
-version = "0.1.0"
-dependencies = [
- "include_dir",
- "pulldown-cmark",
- "web-sys",
- "yew",
 ]
 
 [[package]]
@@ -3342,6 +3381,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "static_assertions"
+version = "0.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f3eb36b47e512f8f1c9e3d10c2c1965bc992bd9cdb024fa581e2194501c83d3"
+
+[[package]]
 name = "stb_truetype"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4083,8 +4128,13 @@ dependencies = [
 name = "webapp"
 version = "0.1.0"
 dependencies = [
+ "khonsuweb",
+ "lazy_static",
+ "serde",
+ "serde_derive",
  "wasm-bindgen",
  "yew",
+ "yew-router",
 ]
 
 [[package]]
@@ -4103,7 +4153,7 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "07e9c1ff587eddd68cdf2a78889c7a2128683161c72c67b94457cf498accaf7b"
 dependencies = [
- "arrayvec",
+ "arrayvec 0.5.1",
  "raw-window-handle",
  "wgpu-native",
  "zerocopy",
@@ -4115,7 +4165,7 @@ version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "26642308af1cc9a28a24c7fc5e5408d9689c8a0c01d7117aa83d5a1ed6e83438"
 dependencies = [
- "arrayvec",
+ "arrayvec 0.5.1",
  "bitflags",
  "copyless",
  "fxhash",
@@ -4348,6 +4398,48 @@ dependencies = [
  "proc-macro2 1.0.13",
  "quote 1.0.6",
  "syn 1.0.22",
+]
+
+[[package]]
+name = "yew-router"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c2d29986e07f8aab66507dd659f826062fb5ca434387cc44d4574a116ac52712"
+dependencies = [
+ "cfg-if",
+ "cfg-match",
+ "gloo",
+ "js-sys",
+ "log 0.4.8",
+ "nom",
+ "serde",
+ "serde_json",
+ "wasm-bindgen",
+ "web-sys",
+ "yew",
+ "yew-router-macro",
+ "yew-router-route-parser",
+]
+
+[[package]]
+name = "yew-router-macro"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2a8b72c6e6b40c5180e5b0fff9f5a9e67937f662c595cad87301fc480e50e347"
+dependencies = [
+ "proc-macro2 1.0.13",
+ "quote 1.0.6",
+ "syn 1.0.22",
+ "yew-router-route-parser",
+]
+
+[[package]]
+name = "yew-router-route-parser"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9662dbe5f703fa5458cba3a7a000faf232dc124214f9c33e06d05d50805fd9ca"
+dependencies = [
+ "nom",
 ]
 
 [[package]]

@@ -11,3 +11,8 @@ crate-type = ["cdylib"]
 [dependencies]
 wasm-bindgen = "0.2"
 yew = "*"
+yew-router="*"
+serde="*"
+serde_derive="*"
+khonsuweb = {path = "../khonsuweb"}
+lazy_static = "*"

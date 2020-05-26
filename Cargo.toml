@@ -5,6 +5,6 @@ members = [
     "shared",
     "ncfg",
     "ncog-client",
-    "pure-yew",
+    "khonsuweb",
     "webapp"
 ]

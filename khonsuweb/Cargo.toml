@@ -1,5 +1,5 @@
 [package]
-name = "pure-yew"
+name = "khonsuweb"
 version = "0.1.0"
 authors = ["Jonathan Johnson <jon@khonsulabs.com>"]
 edition = "2018"

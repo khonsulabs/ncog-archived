@@ -1,4 +1,6 @@
+#![recursion_limit = "8192"]
 use wasm_bindgen::prelude::*;
+mod strings;
 mod webapp;
 
 #[wasm_bindgen]
