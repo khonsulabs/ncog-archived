@@ -53,7 +53,9 @@ jobs:
 
           # Build the webapp
           cd webapp
-          sass sass/styles.scss static/styles.css
+          sass sass/styles.sass static/styles.css
+          sed -i s/CACHEBUSTER/`uuidgen`/g static/index.html
+          sed -i s/CACHEBUSTER/`uuidgen`/g main.js
           cargo make build -p release
           cd ..
 
