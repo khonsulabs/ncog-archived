@@ -6,6 +6,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container:
+      image: khonsulabs/build-rust:latest
+      options: "--security-opt seccomp=unconfined"
 
     # Service containers to run with `runner-job`
     services:
@@ -28,12 +31,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v1
-      - name: Install Dependencies
-        run: |
-          sudo apt-get -yqq install libpq-dev
-          sudo npm install -g sass
-          cargo install cargo-make
-          cargo install wasm-pack
       - name: Install doctl
         if: github.ref == 'refs/heads/master'
         run: |
