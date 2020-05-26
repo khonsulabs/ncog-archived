@@ -47,8 +47,10 @@ jobs:
           aws s3 cp --region us-west-1 s3://khonsulabs-gac/ncog/cache-target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}.tar.bz2 . || true
           tar -xjf cache-target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}.tar.bz2 || true
       - name: Build
+        env:
+          POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
         run: |
-          echo 'DATABASE_URL="postgres://postgres:postgres@localhost/postgres"' >> .env
+          echo "DATABASE_URL=postgres://postgres:postgres@postgres:$POSTGRES_PORT/postgres" >> .env
 
           # Build the webapp
           cd webapp
