@@ -63,7 +63,7 @@ impl Component for App {
                     <div class="columns is-centered">
                         <div class="column is-half">
                             <p class="notification is-danger">
-                                { "Cosmic Verge is extremely early in development. Nothing is set in stone. To join in on the discussion, head over to "}
+                                { "ncog.live is extremely early in development. Nothing is set in stone. To join in on the discussion, head over to "}
                                 <a href="https://community.khonsulabs.com/">{"the forums"}
                                 </a>{"."}
                             </p>
@@ -107,7 +107,7 @@ impl App {
             <nav class="navbar" role="navigation" aria-label="main navigation">
                 <div class="navbar-brand">
                 <a class="navbar-item" href="/">
-                    <h1 class="is-size-3 has-text-primary">{ "Cosmic Verge" }</h1>
+                    <h1 class="is-size-3 has-text-primary">{ "ncog.live" }</h1>
                 </a>
                 <a role="button" class="navbar-burger burger" aria-label="menu" aria-expanded="false" data-target="navbarMenu" onclick=toggle_navbar.clone()>
                     <span aria-hidden="true"></span>

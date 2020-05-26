@@ -7,7 +7,7 @@ use std::convert::Infallible;
 use tera::Tera;
 use uuid::Uuid;
 use warp::http::{header, StatusCode};
-use warp::{Filter, Rejection, Reply};
+use warp::{Filter, Reply};
 
 mod database;
 mod pubsub;
@@ -36,6 +36,10 @@ async fn main() {
         .and(warp::path("__healthcheck"))
         .and_then(healthcheck);
 
+    #[cfg(debug_assertions)]
+    let spa = warp::get()
+        .and(warp::fs::dir("../webapp/static/").or(warp::fs::file("../webapp/static/index.html")));
+    #[cfg(not(debug_assertions))]
     let spa = warp::get().and(warp::fs::dir("public/").or(warp::fs::file("public/index.html")));
 
     let websockets = warp::path!("ws")

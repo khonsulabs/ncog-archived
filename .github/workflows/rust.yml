@@ -48,11 +48,17 @@ jobs:
           aws s3 cp --region us-west-1 s3://khonsulabs-gac/ncog/cache-target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}.tar.bz2 . || true
           tar -xjf cache-target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}.tar.bz2 || true
       - name: Build
-        # sass sass/index.scss public/stylesheet.css
         run: |
           echo 'DATABASE_URL="postgres://postgres:postgres@localhost/postgres"' >> .env
 
+          # Build the webapp
+          cd webapp
+          sass sass/styles.scss static/styles.css
+          cargo make build -p release
+          cd ..
+
           cargo run --bin migrator --release
+
           cargo build --package server --release --verbose
           cargo test --release
       - name: Run tests

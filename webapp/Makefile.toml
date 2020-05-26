@@ -1,0 +1,26 @@
+[tasks.wasm-pack-development]
+condition = { profiles = [ "development" ] }
+command = "wasm-pack"
+args = ["build", "--target", "web", "-d", "static/pkg"]
+
+[tasks.wasm-pack-release]
+condition = { profiles = [ "release" ] }
+command = "wasm-pack"
+args = ["build", "--target", "web", "-d", "static/pkg", "--release"]
+
+[tasks.wasm-pack]
+run_task = { name = ["wasm-pack-release", "wasm-pack-development"], parallel = true}
+
+[tasks.rollup]
+# On windows, rollup is not a valid EXE, and so we must execute this as a script
+# instead of the command interface
+script = [
+    "rollup ./main.js --format iife --file ./static/pkg/bundle.js"
+]
+
+[tasks.sass]
+script = ["sass sass/styles.sass static/styles.css"]
+
+[tasks.build]
+clear = true # For this project we don't want the default build command
+run_task = { name = ["wasm-pack", "rollup", "sass"] }

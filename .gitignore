@@ -3,4 +3,5 @@
 .vscode/launch.json
 .vscode/tasks.json
 *.code-workspace
-pkg/
+webapp/static/pkg/
+webapp/static/styles.css*
