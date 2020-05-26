@@ -135,5 +135,4 @@ pub fn migration() -> Migration {
         DROP TABLE IF EXISTS account_roles
         "#,
         )
-        .debug()
 }
