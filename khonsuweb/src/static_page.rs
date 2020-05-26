@@ -22,7 +22,7 @@ impl Component for StaticPage {
     }
 
     fn update(&mut self, _msg: Self::Message) -> ShouldRender {
-        true
+        false
     }
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {

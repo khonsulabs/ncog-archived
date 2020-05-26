@@ -26,7 +26,7 @@ impl AppRoute {
     pub fn render(&self, set_title: Callback<String>) -> Html {
         match self {
             AppRoute::Index => {
-                html! {<StaticPage title="Welcome" content=localize("index.md") set_title=set_title.clone() />}
+                html! {<StaticPage title="Welcome" content=localize("markdown/index.md") set_title=set_title.clone() />}
             }
         }
     }
@@ -50,7 +50,7 @@ impl Component for App {
     }
 
     fn update(&mut self, _msg: Self::Message) -> ShouldRender {
-        true
+        false
     }
 
     fn view(&self) -> Html {
@@ -133,10 +133,6 @@ impl App {
             <footer class="footer">
                 <div class="content has-text-centered">
                     { localize("markdown/footer.md") }
-                    <br />
-                    <a href="https://www.patreon.com/bePatron?u=334520" class="patreon-link" alt="Become a Patron!"><img src="https://c5.patreon.com/external/logo/become_a_patron_button@2x.png" /></a>
-                    <br />
-                    <iframe style="margin-left: auto; margin-right: auto; max-width: 750px; width: 100%;" class="mj-w-res-iframe" frameborder="0" scrolling="no" marginheight="0" marginwidth="0" src="https://app.mailjet.com/widget/iframe/5dXP/qsA"></iframe>
                 </div>
             </footer>
         }
