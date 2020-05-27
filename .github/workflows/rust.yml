@@ -52,17 +52,11 @@ jobs:
         run: |
           echo "DATABASE_URL=postgres://postgres:postgres@postgres:$POSTGRES_PORT/postgres" >> .env
 
-          # Build the webapp
-          cd webapp
-          sass sass/styles.sass static/styles.css
-          sed -i s/CACHEBUSTER/`uuidgen`/g static/index.html
-          sed -i s/CACHEBUSTER/`uuidgen`/g main.js
-          cargo make build -p release
-          cd ..
-
           cargo run --bin migrator --release
 
-          cargo build --package server --release --verbose
+          sed -i s/CACHEBUSTER/`uuidgen`/g webapp/static/index.html
+          sed -i s/CACHEBUSTER/`uuidgen`/g webapp/main.js
+          cargo make build -p release
           cargo test --release
       - name: Run tests
         run: cargo test --release --verbose

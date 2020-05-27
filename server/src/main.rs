@@ -44,7 +44,7 @@ async fn main() {
 
     #[cfg(debug_assertions)]
     let spa = warp::get()
-        .and(warp::fs::dir("../webapp/static/").or(warp::fs::file("../webapp/static/index.html")));
+        .and(warp::fs::dir("webapp/static/").or(warp::fs::file("webapp/static/index.html")));
     #[cfg(not(debug_assertions))]
     let spa = warp::get().and(warp::fs::dir("public/").or(warp::fs::file("public/index.html")));
 

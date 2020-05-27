@@ -2,11 +2,11 @@
 
 ncog is the engine behind [ncog.link](https://ncog.link). It is [open source under the MIT License](/LICENSE). For more information about the service, please see the [vision page on ncog.link](https://ncog.link/about/vision).
 
+ncog is written in [rust](https://rust-lang.org). The webserver is written using [warp](https://lib.rs/warp). The webapp is a [wasm](https://webassembly.org/) application built with [yew](https://yew.rs/). The game client is written built with [Kludgine](../kludgine), a custom game engine.
+
 # Running the code yourself
 
-## server
-
-Requirements:
+## Initial Setup
 
 - Install [wasm-pack](https://github.com/rustwasm/wasm-pack): `cargo install wasm-pack`
 - Install [rollup](https://rollupjs.org/): `npm install -g rollup`
@@ -19,32 +19,24 @@ Requirements:
   DATABASE_URL=postgres://ncog_user:<PASSWORD>@host:port/ncog
   ITCHIO_CLIENT_ID=...
   ```
+- Run migrations: `cargo run --bin migrator`
 
-Building:
+## Building:
 
-- `cd webapp`
-- `sass sass/styles.sass static/styles.css`
-- ``
+- `cargo make build` (add `-p release` to make release builds)
 
-## schema brainstorming
+## Running
 
-Universes
-id
-name
-parent_universe_id
+### Server
 
-UniverseGlobals
-universe_id
-name
-value
+- `cargo run --package server`
 
-Entities
-id
-state
+The webserver is running at `localhost:7878`
 
-Avatars
-id
-universe_id
-account_id
-name
-entity_id
+### Client
+
+- `cargo run --package client`
+
+# Contributing
+
+This project is in its infancy. If you want to contribute, please reach out to [@ecton](https://github.com/ecton) before attempting any major pull requests or minor ones that change existing functionality (without first determining if it's a bug or by design).
