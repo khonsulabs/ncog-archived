@@ -27,6 +27,12 @@ ncog is written in [rust](https://rust-lang.org). The webserver is written using
 
 ## Running
 
+### Webapp
+
+There's no such thing as "running" this, but if you're actively developing it, you can start a watch command that the server will automatically serve (no auto-reloading):
+
+`cd webapp && cargo make watch`
+
 ### Server
 
 - `cargo run --package server`

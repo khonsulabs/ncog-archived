@@ -49,8 +49,21 @@ impl Component for App {
         false
     }
 
-    fn update(&mut self, _msg: Self::Message) -> ShouldRender {
-        false
+    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+        match msg {
+            Message::SetTitle(title) => {
+                if let Some(window) = web_sys::window() {
+                    if let Some(document) = window.document() {
+                        document.set_title(&title);
+                    }
+                }
+                false
+            }
+            Message::ToggleNavgar => {
+                self.show_nav = Some(!self.show_nav.unwrap_or(false));
+                true
+            }
+        }
     }
 
     fn view(&self) -> Html {

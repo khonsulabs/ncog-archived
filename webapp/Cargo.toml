@@ -16,3 +16,4 @@ serde="*"
 serde_derive="*"
 khonsuweb = {path = "../khonsuweb"}
 lazy_static = "*"
+web-sys = "0.3"

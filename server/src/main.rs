@@ -4,6 +4,7 @@ use serde_derive::{Deserialize, Serialize};
 use sqlx::prelude::*;
 use std::collections::HashMap;
 use std::convert::Infallible;
+use std::path::Path;
 use tera::Tera;
 use uuid::Uuid;
 use warp::http::{header, StatusCode};
@@ -32,6 +33,8 @@ const SERVER_URL: &'static str = "https://ncog.link";
 async fn main() {
     dotenv::dotenv().expect("Error initializing environment");
 
+    let base_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap_or(".".to_owned());
+    let base_dir = Path::new(&base_dir);
     migrations::run_all()
         .await
         .expect("Error running migrations");
@@ -43,8 +46,10 @@ async fn main() {
         .and_then(healthcheck);
 
     #[cfg(debug_assertions)]
-    let spa = warp::get()
-        .and(warp::fs::dir("webapp/static/").or(warp::fs::file("webapp/static/index.html")));
+    let spa = warp::get().and(
+        warp::fs::dir(base_dir.join("../webapp/static/"))
+            .or(warp::fs::file(base_dir.join("../webapp/static/index.html"))),
+    );
     #[cfg(not(debug_assertions))]
     let spa = warp::get().and(warp::fs::dir("public/").or(warp::fs::file("public/index.html")));
 
