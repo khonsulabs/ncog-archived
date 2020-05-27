@@ -36,8 +36,7 @@ jobs:
         run: |
           wget https://github.com/digitalocean/doctl/releases/download/v1.35.0/doctl-1.35.0-linux-amd64.tar.gz
           tar -xzf doctl-1.35.0-linux-amd64.tar.gz
-          sudo mv doctl /usr/bin
-          sudo chown -R runner: ~/.config
+          mv doctl /usr/bin
           doctl auth init -t ${{ secrets.DOAPIKEY }}
       - name: Restore Cargo Cache
         env:
