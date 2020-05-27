@@ -1,43 +1,32 @@
+# What is ncog?
+
+ncog is the engine behind [ncog.link](https://ncog.link). It is [open source under the MIT License](/LICENSE). For more information about the service, please see the [vision page on ncog.link](https://ncog.link/about/vision).
+
+# Running the code yourself
+
+## server
+
+Requirements:
+
+- Install [wasm-pack](https://github.com/rustwasm/wasm-pack): `cargo install wasm-pack`
+- Install [rollup](https://rollupjs.org/): `npm install -g rollup`
+- Install [sass](https://sass-lang.com/): `npm install -g sass`
+- Create a PostgreSQL 11+ database with a user to access it:
+  - `CREATE ROLE ncog_user LOGIN PASSWORD '...';`
+  - `CREATE DATABASE ncog OWNER ncog_user;`
+- Setup `.env` in the workspace root:
+  ```
+  DATABASE_URL=postgres://ncog_user:<PASSWORD>@host:port/ncog
+  ITCHIO_CLIENT_ID=...
+  ```
+
+Building:
+
+- `cd webapp`
+- `sass sass/styles.sass static/styles.css`
+- ``
+
 ## schema brainstorming
-
-Accounts
-id
-screenname NULL UNIQUE
-
-Installations
-id uuid
-account_id NULL
-
-OauthTokens
-id
-account_id
-service
-refresh_token
-access_token
-expires
-
-ItchioProfile
-id
-username
-url
-email
-oauth_token_id
-
-Roles
-id
-name
-universe_id
-
-PermissionStatement
-id
-role_id
-resource: ncog
-action
-allow/deny
-
-AccountRoles
-account_id
-role_id
 
 Universes
 id

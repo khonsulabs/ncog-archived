@@ -11,6 +11,7 @@ use warp::{Filter, Reply};
 
 mod database;
 mod pubsub;
+mod randomnames;
 mod websockets;
 
 lazy_static! {
@@ -21,6 +22,11 @@ lazy_static! {
         tera
     };
 }
+
+#[cfg(debug_assertions)]
+const SERVER_URL: &'static str = "http://localhost:7878";
+#[cfg(not(debug_assertions))]
+const SERVER_URL: &'static str = "https://ncog.link";
 
 #[tokio::main]
 async fn main() {
@@ -75,8 +81,10 @@ async fn healthcheck() -> Result<impl Reply, Infallible> {
 
 fn itchio_callback() -> impl warp::reply::Reply {
     let mut context = tera::Context::new();
-    // TODO make this switch to the proper URL On the server
-    context.insert("post_url", "http://localhost:7878/api/auth/receive_token");
+    context.insert(
+        "post_url",
+        &format!("{}/api/auth/receive_token", SERVER_URL),
+    );
 
     warp::reply::with_header(
         TEMPLATES.render("logged_in", &context).unwrap(),
