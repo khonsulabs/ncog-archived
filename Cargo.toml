@@ -1,4 +1,10 @@
 [workspace]
 members = [
     "server",
+    "migrations",
+    "shared",
+    "ncfg",
+    "ncog-client",
+    "khonsuweb",
+    "webapp"
 ]

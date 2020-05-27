@@ -6,6 +6,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container:
+      image: khonsulabs/build-rust:latest
+      options: "--security-opt seccomp=unconfined"
 
     # Service containers to run with `runner-job`
     services:
@@ -28,10 +31,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v1
-      - name: Install Dependencies
-        run: |
-          sudo apt-get -yqq install libpq-dev
-          sudo npm install -g sass
       - name: Install doctl
         if: github.ref == 'refs/heads/master'
         run: |
@@ -48,12 +47,16 @@ jobs:
           aws s3 cp --region us-west-1 s3://khonsulabs-gac/ncog/cache-target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}.tar.bz2 . || true
           tar -xjf cache-target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}.tar.bz2 || true
       - name: Build
-        # sass sass/index.scss public/stylesheet.css
-        #cargo run --package migrations --release
+        env:
+          POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
         run: |
-          echo 'DATABASE_URL="postgres://postgres:postgres@localhost/postgres"' >> .env
+          echo "DATABASE_URL=postgres://postgres:postgres@postgres:$POSTGRES_PORT/postgres" >> .env
 
-          cargo build --package server --release --verbose
+          cargo run --bin migrator --release
+
+          sed -i s/CACHEBUSTER/`uuidgen`/g webapp/static/index.html
+          sed -i s/CACHEBUSTER/`uuidgen`/g webapp/main.js
+          cargo make build -p release
           cargo test --release
       - name: Run tests
         run: cargo test --release --verbose

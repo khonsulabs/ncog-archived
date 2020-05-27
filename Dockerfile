@@ -4,7 +4,7 @@ RUN apt-get update \
     && apt-get install -y libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY target/release/server .env server/public/ ./
+COPY target/release/server .env webapp/static ./
 
 EXPOSE 7878/tcp
 

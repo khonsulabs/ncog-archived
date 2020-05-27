@@ -1,0 +1,24 @@
+[package]
+name = "ncog-client"
+version = "0.1.0"
+authors = ["Jonathan Johnson <jon@khonsulabs.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+yarws = "0.3"
+crossbeam = "0.7"
+atomicwrites = "0.2"
+kludgine = {git = "https://github.com/khonsulabs/kludgine.git"}
+uuid = "0.8"
+dirs="2"
+toml="0.5"
+serde = "1"
+serde_derive="1"
+bincode = "1.2"
+shared = {path = "../shared"}
+tokio = {version = "0.2", features=["full"]}
+webbrowser = "0.5"
+async-std="1"
+lazy_static="1"
