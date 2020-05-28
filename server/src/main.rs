@@ -51,7 +51,7 @@ async fn main() {
             .or(warp::fs::file(base_dir.join("../webapp/static/index.html"))),
     );
     #[cfg(not(debug_assertions))]
-    let spa = warp::get().and(warp::fs::dir("public/").or(warp::fs::file("public/index.html")));
+    let spa = warp::get().and(warp::fs::dir("static/").or(warp::fs::file("static/index.html")));
 
     let websockets = warp::path!("ws")
         .and(warp::path::end())

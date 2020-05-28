@@ -53,10 +53,13 @@ jobs:
 
           cargo run --bin migrator --release
 
-          sed -i s/CACHEBUSTER/`uuidgen`/g webapp/static/index.html
-          sed -i s/CACHEBUSTER/`uuidgen`/g webapp/main.js
+          cd webapp
+          sed -i s/CACHEBUSTER/`uuidgen`/g static/index.html
+          sed -i s/CACHEBUSTER/`uuidgen`/g main.js
           cargo make build -p release
+          cd ..
           cargo test --release
+          cargo build --package server --release
       - name: Run tests
         run: cargo test --release --verbose
       - name: Configure production
