@@ -81,7 +81,7 @@ jobs:
       - name: "Deploy"
         if: github.ref == 'refs/heads/master'
         run: |
-          curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl
+          curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.18.3/bin/linux/amd64/kubectl
           chmod +x ./kubectl
           mkdir ~/.kube
           echo "$KUBECONFIG_FILE" > ~/.kube/config
