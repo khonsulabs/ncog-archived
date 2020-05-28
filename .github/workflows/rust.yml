@@ -31,6 +31,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v1
+        with:
+          submodules: true
       - name: Install doctl
         if: github.ref == 'refs/heads/master'
         run: |
