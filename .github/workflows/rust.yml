@@ -59,7 +59,6 @@ jobs:
           sed -i s/CACHEBUSTER/`uuidgen`/g main.js
           cargo make build -p release
           cd ..
-          cargo test --release
           cargo build --package server --release
       - name: Run tests
         run: cargo test --release --verbose
@@ -86,7 +85,7 @@ jobs:
           mkdir ~/.kube
           echo "$KUBECONFIG_FILE" > ~/.kube/config
           sed -i 's/latest/${{ steps.publish.outputs.snapshot-tag }}/g' kubernetes.yml
-          ./kubectl --namespace ncog apply -f kubernetes.yml
+          ./kubectl --kubeconfig ~/.kube/config --namespace ncog apply -f kubernetes.yml
         env:
           KUBECONFIG_FILE: "${{ secrets.KUBECONFIG }}"
       - name: Cache Cargo
