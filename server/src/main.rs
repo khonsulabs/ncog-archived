@@ -29,6 +29,11 @@ const SERVER_URL: &'static str = "http://localhost:7878";
 #[cfg(not(debug_assertions))]
 const SERVER_URL: &'static str = "https://ncog.link";
 
+#[cfg(debug_assertions)]
+const STATIC_FOLDER_PATH: &'static str = "../webapp/static";
+#[cfg(not(debug_assertions))]
+const STATIC_FOLDER_PATH: &'static str = "static";
+
 #[tokio::main]
 async fn main() {
     dotenv::dotenv().expect("Error initializing environment");
@@ -45,11 +50,9 @@ async fn main() {
         .and(warp::path("__healthcheck"))
         .and_then(healthcheck);
 
-    #[cfg(debug_assertions)]
-    let spa = warp::get().and(
-        warp::fs::dir(base_dir.join("../webapp/static/"))
-            .or(warp::fs::file(base_dir.join("../webapp/static/index.html"))),
-    );
+    let static_path = base_dir.join(STATIC_FOLDER_PATH);
+    let index_path = static_path.join("index.html");
+    let spa = warp::get().and(warp::fs::dir(static_path).or(warp::fs::file(index_path)));
     #[cfg(not(debug_assertions))]
     let spa = warp::get().and(warp::fs::dir("static/").or(warp::fs::file("static/index.html")));
 
