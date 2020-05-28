@@ -19,6 +19,8 @@ pub enum Message {
 }
 #[derive(Switch, Clone, Debug, Serialize, Deserialize)]
 pub enum AppRoute {
+    #[to = "/_dev/styles"]
+    StylesTest,
     #[to = "/"]
     Index,
 }
@@ -28,6 +30,7 @@ impl AppRoute {
             AppRoute::Index => {
                 html! {<StaticPage title="Welcome" content=localize("markdown/index.md") set_title=set_title.clone() />}
             }
+            AppRoute::StylesTest => style_test(),
         }
     }
 }
@@ -149,5 +152,45 @@ impl App {
                 </div>
             </footer>
         }
+    }
+}
+
+fn style_test() -> Html {
+    html! {
+        <div>
+            <h1>{"Heading 1"}<a href="#">{"Heading Link"}</a></h1>
+            <h2>{"Heading 2"}<a href="#">{"Heading Link"}</a></h2>
+            <h3>{"Heading 3"}<a href="#">{"Heading Link"}</a></h3>
+            <h4>{"Heading 4"}<a href="#">{"Heading Link"}</a></h4>
+            <h5>{"Heading 5"}<a href="#">{"Heading Link"}</a></h5>
+            <h6>{"Heading 6"}<a href="#">{"Heading Link"}</a></h6>
+            <h1>{"Buttons - Normal"}</h1>
+            <a href="#" class="button" >{"Plain"}</a>
+            <a href="#" class="button is-text" >{"Text"}</a>
+            <a href="#" class="button is-primary" >{"Primary"}</a>
+            <a href="#" class="button is-link" >{"Link"}</a>
+            <a href="#" class="button is-info" >{"Info"}</a>
+            <a href="#" class="button is-success" >{"Success"}</a>
+            <a href="#" class="button is-warning" >{"Warning"}</a>
+            <a href="#" class="button is-danger" >{"Danger"}</a>
+            <h1>{"Buttons - Light"}</h1>
+            <a href="#" class="button  is-light" >{"Plain"}</a>
+            <a href="#" class="button is-text is-light" >{"Text"}</a>
+            <a href="#" class="button is-primary is-light" >{"Primary"}</a>
+            <a href="#" class="button is-link is-light" >{"Link"}</a>
+            <a href="#" class="button is-info is-light" >{"Info"}</a>
+            <a href="#" class="button is-success is-light" >{"Success"}</a>
+            <a href="#" class="button is-warning is-light" >{"Warning"}</a>
+            <a href="#" class="button is-danger is-light" >{"Danger"}</a>
+            <h1>{"Buttons - Inverted"}</h1>
+            <a href="#" class="button is-inverted" >{"Plain"}</a>
+            <a href="#" class="button is-text is-inverted" >{"Text"}</a>
+            <a href="#" class="button is-primary is-inverted" >{"Primary"}</a>
+            <a href="#" class="button is-link is-inverted" >{"Link"}</a>
+            <a href="#" class="button is-info is-inverted" >{"Info"}</a>
+            <a href="#" class="button is-success is-inverted" >{"Success"}</a>
+            <a href="#" class="button is-warning is-inverted" >{"Warning"}</a>
+            <a href="#" class="button is-danger is-inverted" >{"Danger"}</a>
+        </div>
     }
 }

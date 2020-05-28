@@ -1,44 +1,25 @@
 @charset "utf-8"
 
-// Sensible color names
+// Custom colors
+$coral:    #FF6F61
+$seafoam: #2AB573
 
-$cv-background-darkest: hsl(207, 97, 4)
-$cv-background-darker: hsl(207, 97, 7)
-$cv-background-dark: hsl(207, 97, 10)
-$cv-background-light: hsl(207, 97, 90)
-$cv-background-lighter: hsl(207, 97, 93)
-$cv-background-lightest: hsl(207, 97, 97)
+$primary:    $coral
+$link: $seafoam
 
-$cv-text-lighter: hsl(100, 1, 100)
-$cv-text-light: hsl(100, 1, 95)
-$cv-text: hsl(100, 1, 90)
-$cv-text-dark: hsl(100, 1, 83)
-$cv-text-darker: hsl(100, 1, 70)
-$cv-text-darkest: hsl(100, 1, 55)
+@import "bulma/utilities/initial-variables"
 
-// Bulma expected names
-$black:        $cv-background-lightest
-$black-bis:    $cv-background-lighter
-$black-ter:    $cv-background-light
+$scheme-main: $black
+$scheme-main-bis: $black-bis
+$scheme-main-ter: $black-ter
+$scheme-invert: $white
+$scheme-invert-bis: $white-bis
+$scheme-invert-ter: $white-ter
 
-$grey-darker:  $cv-text-lighter
-$grey-dark:    $cv-text-light
-$grey:         $cv-text
-$grey-light:   $cv-text-dark
-$grey-lighter: $cv-text-darker
-$grey-lightest: $cv-text-darkest
+$background: $black-ter
 
-$white-ter:    $cv-background-dark
-$white-bis:    $cv-background-darker
-$white:        $cv-background-darkest
-
-$red:          hsl(353, 87, 91)  // Danger
-$yellow:       hsl(35,  89, 91) // Warning
-$cyan:         hsl(164, 82,  82) // Info
-$green:        hsl(120, 87,  91) // Success
-$turquoise:    hsl(174, 77,  77) // Primary
-$blue:         hsl(207, 97,  80) // Link
-$purple:       hsl(207, 70, 80) // Link-visited
+$text: $grey-light
+$text-strong: $grey-lighter
 
 /*! bulma.io v0.8.0 | MIT License | github.com/jgthms/bulma */
 @import "bulma/utilities/_all"
@@ -57,7 +38,7 @@ $purple:       hsl(207, 70, 80) // Link-visited
     h5,
     h6
         font-family: cholla-slab, serif
-        color: $turquoise
+        color: $primary
 
 .patreon-link
     img
