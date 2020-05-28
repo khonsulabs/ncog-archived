@@ -38,6 +38,7 @@ jobs:
           tar -xzf doctl-1.35.0-linux-amd64.tar.gz
           mv doctl /usr/bin
           doctl auth init -t ${{ secrets.DOAPIKEY }}
+
       - name: Restore Cargo Cache
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.GAC_ACCESS_KEY_ID }}
@@ -80,10 +81,12 @@ jobs:
       - name: "Deploy"
         if: github.ref == 'refs/heads/master'
         run: |
+          curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl
+          chmod +x ./kubectl
           mkdir ~/.kube
           echo "$KUBECONFIG_FILE" > ~/.kube/config
           sed -i 's/latest/${{ steps.publish.outputs.snapshot-tag }}/g' kubernetes.yml
-          kubectl --namespace ncog apply -f kubernetes.yml
+          ./kubectl --namespace ncog apply -f kubernetes.yml
         env:
           KUBECONFIG_FILE: "${{ secrets.KUBECONFIG }}"
       - name: Cache Cargo
