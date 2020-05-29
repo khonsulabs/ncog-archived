@@ -2,6 +2,9 @@ use chrono::Utc;
 use serde_derive::{Deserialize, Serialize};
 use uuid::Uuid;
 
+pub mod websockets;
+use websockets::WsBatchResponse;
+
 pub const PROTOCOL_VERSION: &'static str = "0.0.1";
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -52,6 +55,15 @@ pub enum ServerResponse {
         average_roundtrip: f64,
         average_server_timestamp_delta: f64,
     },
+}
+
+impl ServerResponse {
+    pub fn into_ws_response(self, request_id: i64) -> WsBatchResponse {
+        WsBatchResponse {
+            request_id,
+            results: vec![self],
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

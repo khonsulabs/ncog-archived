@@ -1,21 +1,22 @@
-use crate::strings::prelude::*;
+use crate::{
+    api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
+    strings::prelude::*,
+};
 use khonsuweb::static_page::StaticPage;
 use serde_derive::{Deserialize, Serialize};
 use yew::prelude::*;
-use yew_router::{
-    agent::{RouteAgentDispatcher, RouteRequest},
-    prelude::*,
-};
+use yew_router::prelude::*;
 pub struct App {
     link: ComponentLink<Self>,
-    router: RouteAgentDispatcher,
     show_nav: Option<bool>,
+    api: ApiBridge,
 }
 
 #[derive(Debug)]
 pub enum Message {
     SetTitle(String),
     ToggleNavgar,
+    WsMessage(AgentResponse),
 }
 #[derive(Switch, Clone, Debug, Serialize, Deserialize)]
 pub enum AppRoute {
@@ -40,11 +41,12 @@ impl Component for App {
     type Properties = ();
 
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let router = RouteAgentDispatcher::default();
+        let callback = link.callback(|message| Message::WsMessage(message));
+        let api = ApiAgent::bridge(callback);
         App {
             link,
-            router,
             show_nav: None,
+            api,
         }
     }
 
@@ -65,6 +67,13 @@ impl Component for App {
             Message::ToggleNavgar => {
                 self.show_nav = Some(!self.show_nav.unwrap_or(false));
                 true
+            }
+            Message::WsMessage(message) => {
+                web_sys::console::info_1(&wasm_bindgen::JsValue::from_str(&format!(
+                    "Received response: {:?}",
+                    message
+                )));
+                false
             }
         }
     }
@@ -94,6 +103,13 @@ impl Component for App {
 
                 { self.footer() }
             </div>
+        }
+    }
+
+    fn rendered(&mut self, first_render: bool) {
+        if first_render {
+            self.api.send(AgentMessage::RegisterBroadcastHandler);
+            self.api.send(AgentMessage::Initialize);
         }
     }
 }

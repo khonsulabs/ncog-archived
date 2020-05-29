@@ -4,7 +4,11 @@ use crossbeam::channel::{unbounded, Sender};
 use futures::{executor::block_on, SinkExt, StreamExt};
 use lazy_static::lazy_static;
 use migrations::pg;
-use shared::{current_timestamp, Inputs, ServerRequest, ServerResponse, UserProfile};
+use shared::{
+    current_timestamp,
+    websockets::{WsBatchResponse, WsRequest},
+    Inputs, ServerRequest, ServerResponse, UserProfile,
+};
 use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
@@ -117,12 +121,15 @@ impl ConnectedClients {
         let clients = self.clients.read().await;
         if let Some(client) = clients.get(&installation_id) {
             let client = client.read().await;
-            client.sender.send(message).unwrap_or_default();
+            client
+                .sender
+                .send(message.into_ws_response(-1))
+                .unwrap_or_default();
         }
     }
 
     // pub async fn world_updated(&self, update_timestamp: f64) -> Result<(), anyhow::Error> {
-    //     todo!()
+    //     todo!()s
     //     // let world_update = ServerResponse::WorldUpdate {
     //     //     timestamp: update_timestamp,
     //     //     profiles: sqlx::query_as!(
@@ -149,14 +156,20 @@ impl ConnectedClients {
             let client = client.read().await;
             client
                 .sender
-                .send(ServerResponse::Ping {
-                    timestamp,
-                    average_roundtrip: client.network_timing.average_roundtrip.unwrap_or_default(),
-                    average_server_timestamp_delta: client
-                        .network_timing
-                        .average_server_timestamp_delta
-                        .unwrap_or_default(),
-                })
+                .send(
+                    ServerResponse::Ping {
+                        timestamp,
+                        average_roundtrip: client
+                            .network_timing
+                            .average_roundtrip
+                            .unwrap_or_default(),
+                        average_server_timestamp_delta: client
+                            .network_timing
+                            .average_server_timestamp_delta
+                            .unwrap_or_default(),
+                    }
+                    .into_ws_response(-1),
+                )
                 .unwrap_or_default();
         }
     }
@@ -164,7 +177,7 @@ impl ConnectedClients {
 
 pub struct ConnectedClient {
     installation_id: Option<Uuid>,
-    sender: Sender<ServerResponse>,
+    sender: Sender<WsBatchResponse>,
     account: Option<Arc<RwLock<ConnectedAccount>>>,
     network_timing: NetworkTiming,
 }
@@ -273,15 +286,19 @@ pub async fn main(websocket: WebSocket) {
     }));
     while let Some(result) = rx.next().await {
         match result {
-            Ok(message) => match bincode::deserialize::<ServerRequest>(message.as_bytes()) {
+            Ok(message) => match bincode::deserialize::<WsRequest>(message.as_bytes()) {
                 Ok(request) => {
+                    let request_id = request.id;
                     if let Err(err) =
                         handle_websocket_request(&client, request, sender.clone()).await
                     {
                         sender
-                            .send(ServerResponse::Error {
-                                message: Some(err.to_string()),
-                            })
+                            .send(
+                                ServerResponse::Error {
+                                    message: Some(err.to_string()),
+                                }
+                                .into_ws_response(request_id),
+                            )
                             .unwrap_or_default();
                     }
                 }
@@ -297,10 +314,10 @@ pub async fn main(websocket: WebSocket) {
 
 async fn handle_websocket_request(
     client_handle: &Arc<RwLock<ConnectedClient>>,
-    request: ServerRequest,
-    responder: Sender<ServerResponse>,
+    request: WsRequest,
+    responder: Sender<WsBatchResponse>,
 ) -> Result<(), anyhow::Error> {
-    match request {
+    match request.request {
         // ServerRequest::Update {
         //     new_inputs,
         //     x_offset,
@@ -330,9 +347,12 @@ async fn handle_websocket_request(
         } => {
             if &version != shared::PROTOCOL_VERSION {
                 responder
-                    .send(ServerResponse::Error {
-                        message: Some("An update is available".to_owned()),
-                    })
+                    .send(
+                        ServerResponse::Error {
+                            message: Some("An update is available".to_owned()),
+                        }
+                        .into_ws_response(request.id),
+                    )
                     .unwrap_or_default();
                 return Ok(());
             }
@@ -357,9 +377,14 @@ async fn handle_websocket_request(
                         .await?
                     {
                         responder
-                            .send(ServerResponse::Error {
-                                message: Some("You have been banned from connecting.".to_owned()),
-                            })
+                            .send(
+                                ServerResponse::Error {
+                                    message: Some(
+                                        "You have been banned from connecting.".to_owned(),
+                                    ),
+                                }
+                                .into_ws_response(request.id),
+                            )
                             .unwrap_or_default();
                         return Ok(());
                     }
@@ -368,7 +393,9 @@ async fn handle_websocket_request(
                         .associate_account(installation.id, account_id)
                         .await?;
                     responder
-                        .send(ServerResponse::Authenticated { profile })
+                        .send(
+                            ServerResponse::Authenticated { profile }.into_ws_response(request.id),
+                        )
                         .unwrap_or_default();
                     true
                 } else {
@@ -381,9 +408,12 @@ async fn handle_websocket_request(
             if !logged_in {
                 // The user is not logged in, send the adopt installation ID as an indicator that we're not authenticated
                 responder
-                    .send(ServerResponse::AdoptInstallationId {
-                        installation_id: installation.id,
-                    })
+                    .send(
+                        ServerResponse::AdoptInstallationId {
+                            installation_id: installation.id,
+                        }
+                        .into_ws_response(request.id),
+                    )
                     .unwrap_or_default();
             }
         }
@@ -393,9 +423,12 @@ async fn handle_websocket_request(
             if let Some(installation_id) = client.installation_id {
                 println!("Sending authentication url");
                 responder
-                    .send(ServerResponse::AuthenticateAtUrl {
-                        url: itchio_authorization_url(installation_id),
-                    })
+                    .send(
+                        ServerResponse::AuthenticateAtUrl {
+                            url: itchio_authorization_url(installation_id),
+                        }
+                        .into_ws_response(request.id),
+                    )
                     .unwrap_or_default();
             }
         }
