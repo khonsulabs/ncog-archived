@@ -41,6 +41,7 @@ pub struct ApiAgent {
     ready_for_messages: bool,
     storage: StorageService,
     return_path: Option<String>,
+    auth_state: AuthState,
 }
 
 pub type ApiBridge = Box<dyn Bridge<ApiAgent>>;
@@ -85,6 +86,7 @@ impl Agent for ApiAgent {
             ready_for_messages: false,
             storage,
             return_path,
+            auth_state,
         }
     }
 
@@ -232,6 +234,13 @@ impl ApiAgent {
             }
         }
     }
+
+    fn save_login_state(&mut self) {
+        self.storage.store(
+            "login_state",
+            Json(&self.auth_state.encrypted_login_information()),
+        );
+    }
 }
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct PendingAuthorizationState {
@@ -277,6 +286,33 @@ enum AuthState {
     PendingAuthentication(PendingAuthorizationState),
     Authenticated(AuthenticatedState),
 }
+impl AuthState {
+    fn encrypted_login_information(&self) -> EncryptedLoginInformation {
+        use aead::{generic_array::GenericArray, Aead, NewAead};
+        use aes_gcm::Aes256Gcm;
+
+        let key = encryption_key();
+        let key = GenericArray::from_exact_iter(key.bytes().into_iter()).unwrap();
+        let aead = Aes256Gcm::new(key);
+
+        let nonce = GenericArray::from_slice(b"unique nonce"); // TODO 96-bits; unique per message
+        let payload = serde_json::to_string(&self).expect("Error serializing login state");
+        let payload = payload.into_bytes();
+        let payload: &[u8] = &payload;
+        let ciphertext = aead.encrypt(nonce, payload).expect("encryption failure!");
+
+        EncryptedLoginInformation {
+            iv: base64::encode_config(nonce, base64::URL_SAFE_NO_PAD),
+            encrypted: base64::encode_config(&ciphertext, base64::URL_SAFE_NO_PAD),
+        }
+    }
+}
+
+fn encryption_key() -> String {
+    std::option_env!("NCOG_CLIENT_ENCRYPTION_KEY")
+        .unwrap_or("pcnhAlQq9VNmOp325GFU8JtR8vuD1wIj")
+        .to_owned()
+}
 
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
 struct EncryptedLoginInformation {
@@ -294,9 +330,7 @@ impl EncryptedLoginInformation {
                     use aead::{generic_array::GenericArray, Aead, NewAead};
                     use aes_gcm::Aes256Gcm;
 
-                    let key = std::option_env!("NCOG_CLIENT_ENCRYPTION_KEY")
-                        .unwrap_or("pcnhAlQq9VNmOp325GFU8JtR8vuD1wIj")
-                        .to_owned();
+                    let key = encryption_key();
                     let key = GenericArray::from_exact_iter(key.bytes().into_iter())
                         .expect("Invalid encryption key");
                     let aead = Aes256Gcm::new(key);

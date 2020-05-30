@@ -5,7 +5,7 @@ use crate::{
 use khonsuweb::static_page::StaticPage;
 use serde_derive::{Deserialize, Serialize};
 use yew::prelude::*;
-use yew_router::prelude::*;
+use yew_router::{prelude::*, switch::Permissive};
 pub struct App {
     link: ComponentLink<Self>,
     show_nav: Option<bool>,
@@ -18,12 +18,16 @@ pub enum Message {
     ToggleNavgar,
     WsMessage(AgentResponse),
 }
-#[derive(Switch, Clone, Debug, Serialize, Deserialize)]
+#[derive(Switch, Clone, Debug)]
 pub enum AppRoute {
     #[to = "/_dev/styles"]
     StylesTest,
-    #[to = "/"]
+    #[to = "/login!"]
+    LogIn,
+    #[to = "/!"]
     Index,
+    #[to = "/"]
+    NotFound,
 }
 impl AppRoute {
     pub fn render(&self, set_title: Callback<String>) -> Html {
@@ -31,7 +35,11 @@ impl AppRoute {
             AppRoute::Index => {
                 html! {<StaticPage title="Welcome" content=localize("markdown/index.md") set_title=set_title.clone() />}
             }
+            AppRoute::NotFound => {
+                html! {<StaticPage title="Not Found" content=localize("markdown/not_found.md") set_title=set_title.clone() />}
+            }
             AppRoute::StylesTest => style_test(),
+            AppRoute::LogIn => login(),
         }
     }
 }
@@ -138,9 +146,7 @@ impl App {
         html! {
             <nav class="navbar" role="navigation" aria-label="main navigation">
                 <div class="navbar-brand">
-                <a class="navbar-item" href="/">
-                    <h1 class="is-size-3 has-text-primary">{ "ncog.link" }</h1>
-                </a>
+                <RouterAnchor<AppRoute> route=AppRoute::Index classes="navbar-item" ><h1 class="is-size-3 has-text-primary">{ "ncog.link" }</h1></RouterAnchor<AppRoute>>
                 <a role="button" class="navbar-burger burger" aria-label="menu" aria-expanded="false" data-target="navbarMenu" onclick=toggle_navbar.clone()>
                     <span aria-hidden="true"></span>
                     <span aria-hidden="true"></span>
@@ -209,4 +215,8 @@ fn style_test() -> Html {
             <a href="#" class="button is-danger is-inverted" >{"Danger"}</a>
         </div>
     }
+}
+
+fn login() -> Html {
+    html!(<p>{"Hello Login"}</p>)
 }

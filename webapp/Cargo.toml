@@ -25,7 +25,7 @@ bincode = "1"
 aes-gcm = "0.5"
 aead="0.2"
 base64="0.12"
-rand = {version = "0.7", features=["stdweb"]}
+rand = {version = "0.7", features=["wasm-bindgen"]}
 sha2 = "0.8"
 
 [dependencies.chrono]
