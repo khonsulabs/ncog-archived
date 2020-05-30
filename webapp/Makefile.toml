@@ -1,7 +1,7 @@
 [tasks.wasm-pack-development]
 condition = { profiles = [ "development" ] }
 command = "wasm-pack"
-args = ["build", "--target", "web", "-d", "static/pkg"]
+args = ["build", "--target", "web", "--dev", "-d", "static/pkg"]
 
 [tasks.wasm-pack-release]
 condition = { profiles = [ "release" ] }

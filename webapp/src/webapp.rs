@@ -1,5 +1,6 @@
 use crate::{
     api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
+    login::Login,
     strings::prelude::*,
 };
 use khonsuweb::static_page::StaticPage;
@@ -10,6 +11,7 @@ pub struct App {
     link: ComponentLink<Self>,
     show_nav: Option<bool>,
     api: ApiBridge,
+    logged_in: bool,
 }
 
 #[derive(Debug)]
@@ -17,6 +19,7 @@ pub enum Message {
     SetTitle(String),
     ToggleNavgar,
     WsMessage(AgentResponse),
+    LogOut,
 }
 #[derive(Switch, Clone, Debug)]
 pub enum AppRoute {
@@ -39,7 +42,7 @@ impl AppRoute {
                 html! {<StaticPage title="Not Found" content=localize("markdown/not_found.md") set_title=set_title.clone() />}
             }
             AppRoute::StylesTest => style_test(),
-            AppRoute::LogIn => login(),
+            AppRoute::LogIn => html! {<Login />},
         }
     }
 }
@@ -55,6 +58,7 @@ impl Component for App {
             link,
             show_nav: None,
             api,
+            logged_in: false,
         }
     }
 
@@ -83,6 +87,7 @@ impl Component for App {
                 )));
                 false
             }
+            Message::LogOut => todo!(),
         }
     }
 
@@ -157,10 +162,9 @@ impl App {
                     <div class="navbar-start">
                         <RouterAnchor<AppRoute> route=AppRoute::Index classes="navbar-item" >{ "Home" } </RouterAnchor<AppRoute>>
                     </div>
-                    // <div class="navbar-end">
-                    //     { player_name }
-                    //     { self.login_button() }
-                    // </div>
+                    <div class="navbar-end">
+                        { self.login_button() }
+                    </div>
                 </div>
             </nav>
         }
@@ -173,6 +177,26 @@ impl App {
                     { localize("markdown/footer.md") }
                 </div>
             </footer>
+        }
+    }
+
+    fn login_button(&self) -> Html {
+        if self.logged_in {
+            html! {
+                <div class="navbar-item">
+                    <button class="button" onclick=self.link.callback(|_| Message::LogOut)>
+                        <strong>{ "Log Out" }</strong>
+                    </button>
+                </div>
+            }
+        } else {
+            html! {
+                <div class="navbar-item">
+                    <RouterButton<AppRoute> route=AppRoute::LogIn classes="button is-primary" >
+                        <strong>{ "Sign up/Log in" }</strong>
+                    </RouterButton<AppRoute>>
+                </div>
+            }
         }
     }
 }
@@ -215,8 +239,4 @@ fn style_test() -> Html {
             <a href="#" class="button is-danger is-inverted" >{"Danger"}</a>
         </div>
     }
-}
-
-fn login() -> Html {
-    html!(<p>{"Hello Login"}</p>)
 }

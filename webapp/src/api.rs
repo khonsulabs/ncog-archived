@@ -356,3 +356,8 @@ pub fn base64_sha256(input: &str) -> String {
     let result = hasher.result();
     base64::encode_config(result.as_slice(), base64::URL_SAFE_NO_PAD)
 }
+
+#[derive(Debug)]
+pub enum OAuthProvider {
+    ItchIO,
+}
