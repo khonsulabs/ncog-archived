@@ -7,7 +7,7 @@ use migrations::pg;
 use shared::{
     current_timestamp,
     websockets::{WsBatchResponse, WsRequest},
-    Inputs, ServerRequest, ServerResponse, UserProfile,
+    Inputs, OAuthProvider, ServerRequest, ServerResponse, UserProfile,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -50,29 +50,37 @@ lazy_static! {
 }
 
 pub struct ConnectedClients {
-    clients: Arc<RwLock<HashMap<Uuid, Arc<RwLock<ConnectedClient>>>>>,
-    installations_by_account: Arc<RwLock<HashMap<i64, HashSet<Uuid>>>>,
-    account_by_installation: Arc<RwLock<HashMap<Uuid, i64>>>,
+    data: Arc<RwLock<ConnectedClientData>>,
+}
+
+pub struct ConnectedClientData {
+    clients: HashMap<Uuid, Arc<RwLock<ConnectedClient>>>,
+    installations_by_account: HashMap<i64, HashSet<Uuid>>,
+    account_by_installation: HashMap<Uuid, i64>,
 }
 
 impl Default for ConnectedClients {
     fn default() -> Self {
         Self {
-            clients: Arc::new(RwLock::new(HashMap::new())),
-            installations_by_account: Arc::new(RwLock::new(HashMap::new())),
-            account_by_installation: Arc::new(RwLock::new(HashMap::new())),
+            data: Arc::new(RwLock::new(ConnectedClientData {
+                clients: HashMap::new(),
+                installations_by_account: HashMap::new(),
+                account_by_installation: HashMap::new(),
+            })),
         }
     }
 }
 
 impl ConnectedClients {
     pub async fn connect(&self, installation_id: Uuid, client: &Arc<RwLock<ConnectedClient>>) {
+        println!("connect:locking");
+        let mut data = self.data.write().await;
+        data.clients.insert(installation_id, client.clone());
         {
             let mut client = client.write().await;
             client.installation_id = Some(installation_id);
         }
-        let mut clients = self.clients.write().await;
-        clients.insert(installation_id, client.clone());
+        println!("connect:exiting");
     }
 
     pub async fn associate_account(
@@ -80,52 +88,59 @@ impl ConnectedClients {
         installation_id: Uuid,
         account_id: i64,
     ) -> Result<(), anyhow::Error> {
-        let mut installations_by_account = self.installations_by_account.write().await;
-        let mut account_by_installation = self.account_by_installation.write().await;
-        let mut clients = self.clients.write().await;
-        if let Some(client) = clients.get_mut(&installation_id) {
+        println!("associat_account:locking");
+        let mut data = self.data.write().await;
+        if let Some(client) = data.clients.get_mut(&installation_id) {
             let mut client = client.write().await;
             client.account = Some(CONNECTED_ACCOUNTS.connect(installation_id).await?);
         }
 
-        account_by_installation.insert(installation_id, account_id);
-        let installations = installations_by_account
+        data.account_by_installation
+            .insert(installation_id, account_id);
+        let installations = data
+            .installations_by_account
             .entry(account_id)
             .or_insert_with(|| HashSet::new());
         installations.insert(installation_id);
+        println!("associate_account:returning");
         Ok(())
     }
 
     pub async fn disconnect(&self, installation_id: Uuid) {
-        let mut installations_by_account = self.installations_by_account.write().await;
-        let account_by_installation = self.account_by_installation.read().await;
-        let mut clients = self.clients.write().await;
+        println!("disconnect:locking");
+        let mut data = self.data.write().await;
+        println!("disconnect:locked6");
 
-        clients.remove(&installation_id);
-        if let Some(account_id) = account_by_installation.get(&installation_id) {
-            let remove_account =
-                if let Some(installations) = installations_by_account.get_mut(account_id) {
-                    installations.remove(&installation_id);
-                    installations.len() == 0
-                } else {
-                    false
-                };
-            if remove_account {
-                installations_by_account.remove(account_id);
-                CONNECTED_ACCOUNTS.fully_disconnected(*account_id).await;
-            }
+        data.clients.remove(&installation_id);
+        let account_id = match data.account_by_installation.get(&installation_id) {
+            Some(account_id) => *account_id,
+            None => return,
+        };
+
+        let remove_account =
+            if let Some(installations) = data.installations_by_account.get_mut(&account_id) {
+                installations.remove(&installation_id);
+                installations.len() == 0
+            } else {
+                false
+            };
+        if remove_account {
+            data.installations_by_account.remove(&account_id);
+            CONNECTED_ACCOUNTS.fully_disconnected(account_id).await;
         }
     }
 
     pub async fn send_to_installation_id(&self, installation_id: Uuid, message: ServerResponse) {
-        let clients = self.clients.read().await;
-        if let Some(client) = clients.get(&installation_id) {
+        println!("send_to_installation_id:locking");
+        let data = self.data.read().await;
+        if let Some(client) = data.clients.get(&installation_id) {
             let client = client.read().await;
             client
                 .sender
                 .send(message.into_ws_response(-1))
                 .unwrap_or_default();
         }
+        println!("send_to_installation_id:exiting");
     }
 
     // pub async fn world_updated(&self, update_timestamp: f64) -> Result<(), anyhow::Error> {
@@ -150,9 +165,10 @@ impl ConnectedClients {
     // }
 
     pub async fn ping(&self) {
-        let clients = self.clients.read().await;
+        println!("ping:locking");
+        let data = self.data.read().await;
         let timestamp = current_timestamp();
-        for client in clients.values() {
+        for client in data.clients.values() {
             let client = client.read().await;
             client
                 .sender
@@ -172,6 +188,7 @@ impl ConnectedClients {
                 )
                 .unwrap_or_default();
         }
+        println!("ping:exiting");
     }
 }
 
@@ -215,6 +232,7 @@ impl ConnectedAccounts {
     }
 
     pub async fn fully_disconnected(&self, account_id: i64) {
+        println!("Fully disconnected.");
         let mut accounts_by_id = self.accounts_by_id.write().await;
         accounts_by_id.remove(&account_id);
     }
@@ -258,7 +276,18 @@ impl ConnectedAccount {
     // }
 }
 
+pub async fn initialize() {
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(Duration::from_millis(100));
+        loop {
+            interval.tick().await;
+            CONNECTED_CLIENTS.ping().await;
+        }
+    });
+}
+
 pub async fn main(websocket: WebSocket) {
+    println!("Websocket main");
     let (mut tx, mut rx) = websocket.split();
     let (sender, transmission_receiver) = unbounded();
 
@@ -270,14 +299,6 @@ pub async fn main(websocket: WebSocket) {
         }
     });
 
-    tokio::spawn(async move {
-        let mut interval = tokio::time::interval(Duration::from_millis(100));
-        loop {
-            interval.tick().await;
-            CONNECTED_CLIENTS.ping().await;
-        }
-    });
-
     let client = Arc::new(RwLock::new(ConnectedClient {
         account: None,
         installation_id: None,
@@ -285,6 +306,7 @@ pub async fn main(websocket: WebSocket) {
         sender: sender.clone(),
     }));
     while let Some(result) = rx.next().await {
+        println!("Received message from websocket");
         match result {
             Ok(message) => match bincode::deserialize::<WsRequest>(message.as_bytes()) {
                 Ok(request) => {
@@ -302,13 +324,25 @@ pub async fn main(websocket: WebSocket) {
                             .unwrap_or_default();
                     }
                 }
-                Err(err) => println!("Bincode error: {}", err),
+                Err(err) => {
+                    println!("Bincode error: {}", err);
+                    return;
+                }
             },
             Err(err) => {
                 println!("Error on websocket: {}", err);
                 return;
             }
         }
+    }
+
+    let installation_id = {
+        let client_data = client.read().await;
+        client_data.installation_id
+    };
+
+    if let Some(installation_id) = installation_id {
+        CONNECTED_CLIENTS.disconnect(installation_id).await;
     }
 }
 
@@ -417,21 +451,23 @@ async fn handle_websocket_request(
                     .unwrap_or_default();
             }
         }
-        ServerRequest::AuthenticationUrl => {
-            let client = client_handle.read().await;
-            println!("Sending auth url");
-            if let Some(installation_id) = client.installation_id {
-                println!("Sending authentication url");
-                responder
-                    .send(
-                        ServerResponse::AuthenticateAtUrl {
-                            url: itchio_authorization_url(installation_id),
-                        }
-                        .into_ws_response(request.id),
-                    )
-                    .unwrap_or_default();
+        ServerRequest::AuthenticationUrl(provider) => match provider {
+            OAuthProvider::ItchIO => {
+                let client = client_handle.read().await;
+                println!("Sending auth url");
+                if let Some(installation_id) = client.installation_id {
+                    println!("Sending authentication url");
+                    responder
+                        .send(
+                            ServerResponse::AuthenticateAtUrl {
+                                url: itchio_authorization_url(installation_id),
+                            }
+                            .into_ws_response(request.id),
+                        )
+                        .unwrap_or_default();
+                }
             }
-        }
+        },
         ServerRequest::Pong {
             original_timestamp,
             timestamp,
@@ -442,14 +478,6 @@ async fn handle_websocket_request(
     }
 
     Ok(())
-}
-
-impl Drop for ConnectedClient {
-    fn drop(&mut self) {
-        if let Some(installation_id) = self.installation_id {
-            block_on(CONNECTED_CLIENTS.disconnect(installation_id));
-        }
-    }
 }
 
 #[cfg(debug_assertions)]

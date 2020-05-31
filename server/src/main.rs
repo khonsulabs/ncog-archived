@@ -44,6 +44,8 @@ async fn main() {
         .await
         .expect("Error running migrations");
 
+    websockets::initialize().await;
+
     tokio::spawn(pubsub::pg_notify_loop());
 
     let healthcheck = warp::get()

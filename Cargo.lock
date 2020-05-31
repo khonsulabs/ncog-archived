@@ -4156,6 +4156,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a91c2916119c17a8e316507afaaa2dd94b47646048014bbdf6bef098c1bb58ad"
 
 [[package]]
+name = "wasm-logger"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "074649a66bb306c8f2068c9016395fa65d8e08d2affcbf95acf3c24c3ab19718"
+dependencies = [
+ "log 0.4.8",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
 name = "wayland-client"
 version = "0.23.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4235,8 +4246,10 @@ dependencies = [
  "base64 0.12.1",
  "bincode",
  "chrono",
+ "js-sys",
  "khonsuweb",
  "lazy_static",
+ "log 0.4.8",
  "rand 0.7.3",
  "serde",
  "serde_derive",
@@ -4244,7 +4257,9 @@ dependencies = [
  "sha2",
  "shared",
  "thiserror",
+ "uuid",
  "wasm-bindgen",
+ "wasm-logger",
  "web-sys",
  "yew",
  "yew-router",

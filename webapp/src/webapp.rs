@@ -4,9 +4,8 @@ use crate::{
     strings::prelude::*,
 };
 use khonsuweb::static_page::StaticPage;
-use serde_derive::{Deserialize, Serialize};
 use yew::prelude::*;
-use yew_router::{prelude::*, switch::Permissive};
+use yew_router::prelude::*;
 pub struct App {
     link: ComponentLink<Self>,
     show_nav: Option<bool>,
@@ -81,13 +80,10 @@ impl Component for App {
                 true
             }
             Message::WsMessage(message) => {
-                web_sys::console::info_1(&wasm_bindgen::JsValue::from_str(&format!(
-                    "Received response: {:?}",
-                    message
-                )));
+                info!("Received response: {:?}", message);
                 false
             }
-            Message::LogOut => todo!(),
+            Message::LogOut => todo!("Logout"),
         }
     }
 

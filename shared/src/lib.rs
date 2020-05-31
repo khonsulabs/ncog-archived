@@ -13,7 +13,7 @@ pub enum ServerRequest {
         version: String,
         installation_id: Option<Uuid>,
     },
-    AuthenticationUrl,
+    AuthenticationUrl(OAuthProvider),
     // Update {
     //     new_inputs: Option<Inputs>,
     //     x_offset: f32,
@@ -23,6 +23,11 @@ pub enum ServerRequest {
         original_timestamp: f64,
         timestamp: f64,
     },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum OAuthProvider {
+    ItchIO,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

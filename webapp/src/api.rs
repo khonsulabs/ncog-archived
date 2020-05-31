@@ -1,11 +1,12 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
 use shared::{
     websockets::{WsBatchResponse, WsRequest, WsResponse},
-    ServerRequest,
+    ServerRequest, ServerResponse, UserProfile,
 };
 use std::collections::{HashMap, HashSet};
 use thiserror::Error;
+use uuid::Uuid;
 use yew::format::Json;
 use yew::services::{
     storage::{Area, StorageService},
@@ -100,6 +101,13 @@ impl Agent for ApiAgent {
             Message::Connected => {
                 self.reconnect_sleep_ms = DEFAULT_RECONNECT_TIMEOUT;
                 self.ready_for_messages = true;
+                self.ws_send(
+                    ServerRequest::Authenticate {
+                        version: shared::PROTOCOL_VERSION.to_owned(),
+                        installation_id: self.installation_id(),
+                    },
+                    None,
+                );
                 for entry in self.broadcasts.iter() {
                     self.link.respond(*entry, AgentResponse::Connected);
                 }
@@ -107,6 +115,7 @@ impl Agent for ApiAgent {
             Message::Message(ws_response) => {
                 let request_id = ws_response.request_id;
                 for individual_result in ws_response.results.iter() {
+                    self.handle_ws_message(&individual_result);
                     let individual_result = AgentResponse::Response(WsResponse {
                         request_id,
                         result: individual_result.clone(),
@@ -144,7 +153,7 @@ impl Agent for ApiAgent {
                 }
             }
             AgentMessage::Request(req) => {
-                self.ws_send(req, who);
+                self.ws_send(req, Some(who));
             }
             AgentMessage::Reset => {
                 self.update(Message::Reset);
@@ -222,11 +231,13 @@ impl ApiAgent {
         "wss://ncog.link/api/ws"
     }
 
-    fn ws_send(&mut self, request: ServerRequest, who: HandlerId) {
+    fn ws_send(&mut self, request: ServerRequest, who: Option<HandlerId>) {
         self.ws_request_id += 1;
         if self.ready_for_messages {
             if let Some(websocket) = self.web_socket_task.as_mut() {
-                self.callbacks.insert(self.ws_request_id, who);
+                if let Some(who) = who {
+                    self.callbacks.insert(self.ws_request_id, who);
+                }
                 websocket.send_binary(Bincode(&WsRequest {
                     id: self.ws_request_id,
                     request,
@@ -241,51 +252,73 @@ impl ApiAgent {
             Json(&self.auth_state.encrypted_login_information()),
         );
     }
-}
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct PendingAuthorizationState {
-    pub code_verifier: String,
-    pub state: String,
+
+    fn installation_id(&self) -> Option<Uuid> {
+        match &self.auth_state {
+            AuthState::PreviouslyAuthenticated(uuid) => Some(*uuid),
+            AuthState::Authenticated(state) => Some(state.installation_id),
+            AuthState::Unauthenticated => None,
+        }
+    }
+
+    fn handle_ws_message(&mut self, response: &ServerResponse) {
+        web_sys::console::info_1(&wasm_bindgen::JsValue::from_str(&format!(
+            "Received response: {:?}",
+            response
+        )));
+        match response {
+            ServerResponse::AdoptInstallationId { installation_id } => {
+                self.auth_state = match &self.auth_state {
+                    AuthState::Unauthenticated | AuthState::PreviouslyAuthenticated(_) => {
+                        AuthState::PreviouslyAuthenticated(*installation_id)
+                    }
+                    AuthState::Authenticated(_) => unreachable!(
+                        "Adopted an installation id even though we were already authenticated"
+                    ),
+                };
+                self.save_login_state();
+            }
+            ServerResponse::AuthenticateAtUrl { url } => {
+                let window = web_sys::window().expect("Need a window");
+                window
+                    .location()
+                    .set_href(url)
+                    .expect("Error setting location for redirect");
+            }
+            ServerResponse::Error { message } => error!("Error from server: {:?}", message),
+            ServerResponse::Ping { timestamp, .. } => self.ws_send(
+                ServerRequest::Pong {
+                    original_timestamp: *timestamp,
+                    timestamp: wasm_utc_now().timestamp_millis() as f64 / 1_000_000.0,
+                },
+                None,
+            ),
+            ServerResponse::Authenticated { profile } => {
+                self.auth_state = AuthState::Authenticated(AuthenticatedState {
+                    installation_id: self
+                        .installation_id()
+                        .expect("Somehow authenticated without an installation_id"),
+                    profile: profile.clone(),
+                });
+                self.save_login_state();
+            }
+            _ => {}
+        }
+    }
 }
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct AuthenticatedState {
-    pub access_token: String,
-    pub refresh_token: Option<String>,
-    pub token_type: String,
-    pub expires_at: DateTime<Utc>,
-}
-
-use rand::Rng;
-use std::iter;
-impl PendingAuthorizationState {
-    pub fn random() -> Self {
-        let mut rng = rand::rngs::OsRng;
-        PendingAuthorizationState {
-            state: iter::repeat(())
-                .map(|()| rng.sample(rand::distributions::Alphanumeric))
-                .take(32)
-                .collect(),
-            code_verifier: base64::encode_config(
-                &iter::repeat(())
-                    .map(|()| rng.sample(rand::distributions::Alphanumeric))
-                    .take(32)
-                    .collect::<String>(),
-                base64::URL_SAFE_NO_PAD,
-            ),
-        }
-    }
-    pub fn code_challenge(&self) -> String {
-        base64_sha256(&self.code_verifier)
-    }
+    pub installation_id: Uuid,
+    pub profile: UserProfile,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 enum AuthState {
     Unauthenticated,
-    PreviouslyAuthenticated,
-    PendingAuthentication(PendingAuthorizationState),
+    PreviouslyAuthenticated(Uuid),
     Authenticated(AuthenticatedState),
 }
+
 impl AuthState {
     fn encrypted_login_information(&self) -> EncryptedLoginInformation {
         use aead::{generic_array::GenericArray, Aead, NewAead};
@@ -349,15 +382,10 @@ impl EncryptedLoginInformation {
     }
 }
 
-pub fn base64_sha256(input: &str) -> String {
-    use sha2::{Digest, Sha256};
-    let mut hasher = Sha256::new();
-    hasher.input(input);
-    let result = hasher.result();
-    base64::encode_config(result.as_slice(), base64::URL_SAFE_NO_PAD)
-}
-
-#[derive(Debug)]
-pub enum OAuthProvider {
-    ItchIO,
+pub fn wasm_utc_now() -> DateTime<Utc> {
+    let timestamp = js_sys::Date::new_0().get_time();
+    let secs = timestamp.floor();
+    let nanoes = (timestamp - secs) * 1_000_000_000f64;
+    let naivetime = NaiveDateTime::from_timestamp(secs as i64, nanoes as u32);
+    DateTime::from_utc(naivetime, Utc)
 }

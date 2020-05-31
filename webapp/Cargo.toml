@@ -19,6 +19,7 @@ khonsuweb = {path = "../khonsuweb"}
 shared = {path = "../shared"}
 lazy_static = "1"
 web-sys = "0.3"
+js-sys = "0.3"
 thiserror = "1"
 anyhow = "1"
 bincode = "1"
@@ -27,6 +28,9 @@ aead="0.2"
 base64="0.12"
 rand = {version = "0.7", features=["wasm-bindgen"]}
 sha2 = "0.8"
+uuid = "0.8"
+wasm-logger = "0.2"
+log = "0.4"
 
 [dependencies.chrono]
 version="*"

@@ -1,8 +1,10 @@
-use crate::api::OAuthProvider;
+use crate::api::{AgentMessage, ApiAgent, ApiBridge};
+use shared::{OAuthProvider, ServerRequest};
 use yew::prelude::*;
 
 pub struct Login {
     link: ComponentLink<Self>,
+    api: ApiBridge,
 }
 pub enum Message {
     LogInWith(OAuthProvider),
@@ -12,12 +14,19 @@ impl Component for Login {
     type Message = Message;
     type Properties = ();
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        Self { link }
+        let api = ApiAgent::bridge(Callback::noop());
+        Self { link, api }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
-            Message::LogInWith(provider) => todo!(),
+            Message::LogInWith(provider) => {
+                self.api
+                    .send(AgentMessage::Request(ServerRequest::AuthenticationUrl(
+                        provider,
+                    )));
+                false
+            }
         }
     }
 
