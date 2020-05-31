@@ -1,16 +1,18 @@
 use crate::{
     api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
+    loggedin::LoggedIn,
     login::Login,
     strings::prelude::*,
 };
 use khonsuweb::static_page::StaticPage;
+use shared::{ServerResponse, UserProfile};
 use yew::prelude::*;
 use yew_router::prelude::*;
 pub struct App {
     link: ComponentLink<Self>,
     show_nav: Option<bool>,
     api: ApiBridge,
-    logged_in: bool,
+    profile: Option<UserProfile>,
 }
 
 #[derive(Debug)]
@@ -26,6 +28,8 @@ pub enum AppRoute {
     StylesTest,
     #[to = "/login!"]
     LogIn,
+    #[to = "/auth/callback/{service}"]
+    LoggedIn(String),
     #[to = "/!"]
     Index,
     #[to = "/"]
@@ -42,6 +46,7 @@ impl AppRoute {
             }
             AppRoute::StylesTest => style_test(),
             AppRoute::LogIn => html! {<Login />},
+            AppRoute::LoggedIn(service) => html! {<LoggedIn service=service.clone() />},
         }
     }
 }
@@ -57,7 +62,7 @@ impl Component for App {
             link,
             show_nav: None,
             api,
-            logged_in: false,
+            profile: None,
         }
     }
 
@@ -79,11 +84,23 @@ impl Component for App {
                 self.show_nav = Some(!self.show_nav.unwrap_or(false));
                 true
             }
-            Message::WsMessage(message) => {
-                info!("Received response: {:?}", message);
+            Message::WsMessage(message) => match message {
+                AgentResponse::Connected | AgentResponse::Disconnected => {
+                    self.profile = None;
+                    true
+                }
+                AgentResponse::Response(response) => match response.result {
+                    ServerResponse::Authenticated { profile } => {
+                        self.profile = Some(profile);
+                        true
+                    }
+                    _ => false,
+                },
+            },
+            Message::LogOut => {
+                self.api.send(AgentMessage::LogOut);
                 false
             }
-            Message::LogOut => todo!("Logout"),
         }
     }
 
@@ -177,9 +194,10 @@ impl App {
     }
 
     fn login_button(&self) -> Html {
-        if self.logged_in {
+        if let Some(profile) = &self.profile {
             html! {
                 <div class="navbar-item">
+                    { profile.screenname.clone().unwrap_or_default() }
                     <button class="button" onclick=self.link.callback(|_| Message::LogOut)>
                         <strong>{ "Log Out" }</strong>
                     </button>

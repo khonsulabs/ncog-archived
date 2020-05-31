@@ -8,12 +8,17 @@ use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 use uuid::Uuid;
 use yew::format::Json;
+use yew::prelude::*;
 use yew::services::{
     storage::{Area, StorageService},
     timeout::{TimeoutService, TimeoutTask},
     websocket::{WebSocketService, WebSocketStatus, WebSocketTask},
 };
 use yew::worker::*;
+use yew_router::{
+    agent::{RouteAgentBridge, RouteRequest},
+    route::Route,
+};
 
 pub enum Message {
     Initialize,
@@ -41,7 +46,6 @@ pub struct ApiAgent {
     broadcasts: HashSet<HandlerId>,
     ready_for_messages: bool,
     storage: StorageService,
-    return_path: Option<String>,
     auth_state: AuthState,
 }
 
@@ -55,6 +59,7 @@ pub enum AgentMessage {
     Reset,
     RegisterBroadcastHandler,
     UnregisterBroadcastHandler,
+    LogOut,
 }
 
 impl Agent for ApiAgent {
@@ -65,15 +70,11 @@ impl Agent for ApiAgent {
 
     // Create an instance with a link to the agent.
     fn create(link: AgentLink<Self>) -> Self {
-        let mut storage =
-            StorageService::new(Area::Session).expect("Error accessing storage service");
+        let storage = StorageService::new(Area::Local).expect("Error accessing storage service");
         let Json(login_state) = storage.restore("login_state");
         let auth_state = login_state
             .unwrap_or(EncryptedLoginInformation::default())
             .auth_state();
-        let Json(return_path) = storage.restore("return_path");
-        let return_path = return_path.unwrap_or(None);
-        storage.remove("return_path");
         Self {
             link,
             web_socket_service: WebSocketService::new(),
@@ -86,7 +87,6 @@ impl Agent for ApiAgent {
             broadcasts: HashSet::new(),
             ready_for_messages: false,
             storage,
-            return_path,
             auth_state,
         }
     }
@@ -163,6 +163,11 @@ impl Agent for ApiAgent {
             }
             AgentMessage::UnregisterBroadcastHandler => {
                 self.broadcasts.remove(&who);
+            }
+            AgentMessage::LogOut => {
+                self.auth_state = AuthState::Unauthenticated;
+                self.save_login_state();
+                self.update(Message::Reset);
             }
         }
     }
@@ -262,10 +267,7 @@ impl ApiAgent {
     }
 
     fn handle_ws_message(&mut self, response: &ServerResponse) {
-        web_sys::console::info_1(&wasm_bindgen::JsValue::from_str(&format!(
-            "Received response: {:?}",
-            response
-        )));
+        trace!("Received response: {:?}", response);
         match response {
             ServerResponse::AdoptInstallationId { installation_id } => {
                 self.auth_state = match &self.auth_state {
@@ -301,6 +303,15 @@ impl ApiAgent {
                     profile: profile.clone(),
                 });
                 self.save_login_state();
+
+                let window = web_sys::window().expect("Need a window");
+                if let Ok(path) = window.location().pathname() {
+                    info!("{}", path);
+                    if path.contains("/auth/callback/") || path.contains("/login") {
+                        let mut agent = RouteAgentBridge::new(Callback::noop());
+                        agent.send(RouteRequest::ReplaceRoute(Route::new_no_state("/")));
+                    }
+                }
             }
             _ => {}
         }

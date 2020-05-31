@@ -1,14 +1,16 @@
-use super::{database, env};
+use super::{database, env, SERVER_URL};
 use async_std::sync::RwLock;
 use crossbeam::channel::{unbounded, Sender};
-use futures::{executor::block_on, SinkExt, StreamExt};
+use futures::{SinkExt, StreamExt};
 use lazy_static::lazy_static;
-use migrations::pg;
+use migrations::{pg, sqlx};
+use serde_derive::{Deserialize, Serialize};
 use shared::{
     current_timestamp,
     websockets::{WsBatchResponse, WsRequest},
     Inputs, OAuthProvider, ServerRequest, ServerResponse, UserProfile,
 };
+use sqlx::prelude::*;
 use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
@@ -73,14 +75,12 @@ impl Default for ConnectedClients {
 
 impl ConnectedClients {
     pub async fn connect(&self, installation_id: Uuid, client: &Arc<RwLock<ConnectedClient>>) {
-        println!("connect:locking");
         let mut data = self.data.write().await;
         data.clients.insert(installation_id, client.clone());
         {
             let mut client = client.write().await;
             client.installation_id = Some(installation_id);
         }
-        println!("connect:exiting");
     }
 
     pub async fn associate_account(
@@ -88,7 +88,6 @@ impl ConnectedClients {
         installation_id: Uuid,
         account_id: i64,
     ) -> Result<(), anyhow::Error> {
-        println!("associat_account:locking");
         let mut data = self.data.write().await;
         if let Some(client) = data.clients.get_mut(&installation_id) {
             let mut client = client.write().await;
@@ -102,14 +101,11 @@ impl ConnectedClients {
             .entry(account_id)
             .or_insert_with(|| HashSet::new());
         installations.insert(installation_id);
-        println!("associate_account:returning");
         Ok(())
     }
 
     pub async fn disconnect(&self, installation_id: Uuid) {
-        println!("disconnect:locking");
         let mut data = self.data.write().await;
-        println!("disconnect:locked6");
 
         data.clients.remove(&installation_id);
         let account_id = match data.account_by_installation.get(&installation_id) {
@@ -131,7 +127,6 @@ impl ConnectedClients {
     }
 
     pub async fn send_to_installation_id(&self, installation_id: Uuid, message: ServerResponse) {
-        println!("send_to_installation_id:locking");
         let data = self.data.read().await;
         if let Some(client) = data.clients.get(&installation_id) {
             let client = client.read().await;
@@ -140,7 +135,6 @@ impl ConnectedClients {
                 .send(message.into_ws_response(-1))
                 .unwrap_or_default();
         }
-        println!("send_to_installation_id:exiting");
     }
 
     // pub async fn world_updated(&self, update_timestamp: f64) -> Result<(), anyhow::Error> {
@@ -165,7 +159,6 @@ impl ConnectedClients {
     // }
 
     pub async fn ping(&self) {
-        println!("ping:locking");
         let data = self.data.read().await;
         let timestamp = current_timestamp();
         for client in data.clients.values() {
@@ -188,7 +181,6 @@ impl ConnectedClients {
                 )
                 .unwrap_or_default();
         }
-        println!("ping:exiting");
     }
 }
 
@@ -232,15 +224,14 @@ impl ConnectedAccounts {
     }
 
     pub async fn fully_disconnected(&self, account_id: i64) {
-        println!("Fully disconnected.");
         let mut accounts_by_id = self.accounts_by_id.write().await;
         accounts_by_id.remove(&account_id);
     }
 
-    pub async fn all(&self) -> Vec<Arc<RwLock<ConnectedAccount>>> {
-        let accounts_by_id = self.accounts_by_id.read().await;
-        accounts_by_id.values().map(|v| v.clone()).collect()
-    }
+    // pub async fn all(&self) -> Vec<Arc<RwLock<ConnectedAccount>>> {
+    //     let accounts_by_id = self.accounts_by_id.read().await;
+    //     accounts_by_id.values().map(|v| v.clone()).collect()
+    // }
 }
 
 pub struct ConnectedAccount {
@@ -287,7 +278,6 @@ pub async fn initialize() {
 }
 
 pub async fn main(websocket: WebSocket) {
-    println!("Websocket main");
     let (mut tx, mut rx) = websocket.split();
     let (sender, transmission_receiver) = unbounded();
 
@@ -306,7 +296,6 @@ pub async fn main(websocket: WebSocket) {
         sender: sender.clone(),
     }));
     while let Some(result) = rx.next().await {
-        println!("Received message from websocket");
         match result {
             Ok(message) => match bincode::deserialize::<WsRequest>(message.as_bytes()) {
                 Ok(request) => {
@@ -375,6 +364,32 @@ async fn handle_websocket_request(
         //             .await?;
         //     }
         // }
+        ServerRequest::ReceiveItchIOAuth {
+            access_token,
+            state,
+        } => {
+            let installation_id = match Uuid::parse_str(&state) {
+                Ok(uuid) => uuid,
+                Err(_) => {
+                    println!("Invalid UUID in state");
+                    todo!("Report error back to client");
+                }
+            };
+            if let Err(err) = login_itchio(installation_id, &access_token).await {
+                println!(
+                    "Error logging into itch.io: {}, {}",
+                    installation_id, access_token
+                );
+                responder
+                    .send(ServerResponse::Error {
+                        message: Some(
+                            "An error occurred while talking to itch.io. Please try again later."
+                                .to_owned(),
+                        ),
+                    }.into_ws_response(request.id))
+                    .unwrap_or_default();
+            }
+        }
         ServerRequest::Authenticate {
             installation_id,
             version,
@@ -480,11 +495,6 @@ async fn handle_websocket_request(
     Ok(())
 }
 
-#[cfg(debug_assertions)]
-static REDIRECT_URI: &'static str = "http://localhost:7878/api/auth/itchio_callback";
-#[cfg(not(debug_assertions))]
-static REDIRECT_URI: &'static str = "https://ncog.live/api/auth/itchio_callback";
-
 fn itchio_authorization_url(installation_id: Uuid) -> String {
     Url::parse_with_params(
         "https://itch.io/user/oauth",
@@ -492,10 +502,105 @@ fn itchio_authorization_url(installation_id: Uuid) -> String {
             ("client_id", env("ITCHIO_CLIENT_ID")),
             ("scope", "profile:me".to_owned()),
             ("response_type", "token".to_owned()),
-            ("redirect_uri", REDIRECT_URI.to_owned()),
+            (
+                "redirect_uri",
+                format!("{}/auth/callback/itchio", SERVER_URL),
+            ),
             ("state", installation_id.to_string()),
         ],
     )
     .unwrap()
     .to_string()
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct ItchioProfile {
+    pub cover_url: Option<String>,
+    pub display_name: Option<String>,
+    pub username: String,
+    pub id: i64,
+    pub developer: bool,
+    pub gamer: bool,
+    pub press_user: bool,
+    pub url: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct ItchioProfileResponse {
+    pub user: ItchioProfile,
+}
+
+async fn login_itchio(installation_id: Uuid, access_token: &String) -> Result<(), anyhow::Error> {
+    // Call itch.io API to get the user information
+    let client = reqwest::Client::new();
+    let response: ItchioProfileResponse = client
+        .get("https://itch.io/api/1/key/me")
+        .header(
+            reqwest::header::AUTHORIZATION,
+            format!("Bearer {}", access_token),
+        )
+        .send()
+        .await?
+        .json()
+        .await?;
+
+    let pg = pg();
+    {
+        let mut tx = pg.begin().await?;
+
+        // Create an account if it doesn't exist yet for this installation
+        let account_id = if let Some(account_id) = sqlx::query!(
+            "SELECT account_id FROM installations WHERE id = $1",
+            installation_id
+        )
+        .fetch_one(&mut tx)
+        .await?
+        .account_id
+        {
+            account_id
+        } else {
+            let account_id = sqlx::query!("INSERT INTO accounts DEFAULT VALUES RETURNING id")
+                .fetch_one(&mut tx)
+                .await?
+                .id;
+            sqlx::query!(
+                "UPDATE installations SET account_id = $1 WHERE id = $2",
+                account_id,
+                installation_id
+            )
+            .execute(&mut tx)
+            .await?;
+            account_id
+        };
+
+        if !database::check_permission(&mut tx, account_id, "ncog", None, None, "connect").await? {
+            anyhow::bail!("Permission denied to connect with this account");
+        }
+
+        // Create an itchio profile
+        sqlx::query!("INSERT INTO itchio_profiles (id, account_id, username, url) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO UPDATE SET account_id = $2, username = $3, url = $4 ",
+            response.user.id,
+            account_id,
+            response.user.username,
+            response.user.url
+        ).execute(&mut tx).await?;
+
+        // Create an oauth_token
+        sqlx::query!("INSERT INTO oauth_tokens (account_id, service, access_token) VALUES ($1, $2, $3) ON CONFLICT (account_id, service) DO UPDATE SET access_token = $3",
+            account_id,
+            "itchio",
+            access_token
+        ).execute(&mut tx).await?;
+
+        tx.commit().await?;
+    }
+
+    let mut connection = pg.acquire().await?;
+    connection
+        .execute(&*format!(
+            "NOTIFY installation_login, '{}'",
+            installation_id
+        ))
+        .await?;
+    Ok(())
 }

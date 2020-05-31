@@ -18,7 +18,7 @@ serde_json="1"
 khonsuweb = {path = "../khonsuweb"}
 shared = {path = "../shared"}
 lazy_static = "1"
-web-sys = "0.3"
+web-sys = { version = "0.3", features = ["UrlSearchParams"]}
 js-sys = "0.3"
 thiserror = "1"
 anyhow = "1"

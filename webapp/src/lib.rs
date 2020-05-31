@@ -1,6 +1,7 @@
 #![recursion_limit = "8192"]
 use wasm_bindgen::prelude::*;
 mod api;
+mod loggedin;
 mod login;
 mod strings;
 mod webapp;

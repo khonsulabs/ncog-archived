@@ -13,6 +13,10 @@ pub enum ServerRequest {
         version: String,
         installation_id: Option<Uuid>,
     },
+    ReceiveItchIOAuth {
+        access_token: String,
+        state: String,
+    },
     AuthenticationUrl(OAuthProvider),
     // Update {
     //     new_inputs: Option<Inputs>,
