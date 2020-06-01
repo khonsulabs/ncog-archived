@@ -377,8 +377,8 @@ async fn handle_websocket_request(
             };
             if let Err(err) = login_itchio(installation_id, &access_token).await {
                 println!(
-                    "Error logging into itch.io: {}, {}",
-                    installation_id, access_token
+                    "Error logging into itch.io; {}, {}: {}",
+                    installation_id, access_token, err
                 );
                 responder
                     .send(ServerResponse::Error {
