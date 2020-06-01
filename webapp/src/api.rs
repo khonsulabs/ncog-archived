@@ -354,13 +354,13 @@ impl AuthState {
 }
 
 #[cfg(not(debug_assertions))]
-fn encryption_key() -> String {
+fn encryption_key() -> &'static str {
     std::env!("NCOG_CLIENT_ENCRYPTION_KEY")
 }
 
 #[cfg(debug_assertions)]
-fn encryption_key() -> String {
-    "pcnhAlQq9VNmOp325GFU8JtR8vuD1wIj".to_owned()
+fn encryption_key() -> &'static str {
+    "pcnhAlQq9VNmOp325GFU8JtR8vuD1wIj"
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
