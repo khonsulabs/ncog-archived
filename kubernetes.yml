@@ -30,6 +30,7 @@ metadata:
     service.beta.kubernetes.io/do-loadbalancer-algorithm: "round_robin"
     service.beta.kubernetes.io/do-loadbalancer-tls-ports: "443"
     service.beta.kubernetes.io/do-loadbalancer-certificate-id: "ec3e04f8-0359-4610-b117-eb6fcd7237f9"
+    service.beta.kubernetes.io/do-loadbalancer-healthcheck-path: "/__healthcheck"
 spec:
   type: LoadBalancer
   selector:
