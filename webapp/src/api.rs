@@ -1,4 +1,5 @@
 use chrono::{DateTime, NaiveDateTime, Utc};
+use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 use shared::{
     websockets::{WsBatchResponse, WsRequest, WsResponse},
@@ -339,8 +340,12 @@ impl AuthState {
         let key = GenericArray::from_exact_iter(key.bytes().into_iter()).unwrap();
         let aead = Aes256Gcm::new(key);
 
-        let key = encryption_key();
-        let nonce = GenericArray::from_slice(key.as_bytes());
+        let mut rng = thread_rng();
+        let key = std::iter::repeat(())
+            .map(|()| rng.gen())
+            .take(12)
+            .collect::<Vec<_>>();
+        let nonce = GenericArray::from_slice(&key);
         let payload = serde_json::to_string(&self).expect("Error serializing login state");
         let payload = payload.into_bytes();
         let payload: &[u8] = &payload;
