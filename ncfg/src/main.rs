@@ -1,6 +1,6 @@
 use gumdrop::Options;
 use ncog_client::{LoginState, Network, NetworkEvent};
-use shared::ServerRequest;
+use shared::{OAuthProvider, ServerRequest};
 
 #[derive(Debug, Options)]
 struct NcfgOptions {
@@ -52,7 +52,7 @@ async fn authenticate() -> Result<(), anyhow::Error> {
                 }
                 LoginState::Connected => {
                     println!("Connection established.");
-                    Network::request(ServerRequest::AuthenticationUrl).await;
+                    Network::request(ServerRequest::AuthenticationUrl(OAuthProvider::ItchIO)).await;
                 }
                 LoginState::Authenticated { profile } => {
                     println!("Sucessfully logged in: {:?}", profile);

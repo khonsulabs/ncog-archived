@@ -2,6 +2,9 @@ use chrono::Utc;
 use serde_derive::{Deserialize, Serialize};
 use uuid::Uuid;
 
+pub mod websockets;
+use websockets::WsBatchResponse;
+
 pub const PROTOCOL_VERSION: &'static str = "0.0.1";
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -10,7 +13,11 @@ pub enum ServerRequest {
         version: String,
         installation_id: Option<Uuid>,
     },
-    AuthenticationUrl,
+    ReceiveItchIOAuth {
+        access_token: String,
+        state: String,
+    },
+    AuthenticationUrl(OAuthProvider),
     // Update {
     //     new_inputs: Option<Inputs>,
     //     x_offset: f32,
@@ -20,6 +27,11 @@ pub enum ServerRequest {
         original_timestamp: f64,
         timestamp: f64,
     },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum OAuthProvider {
+    ItchIO,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -52,6 +64,15 @@ pub enum ServerResponse {
         average_roundtrip: f64,
         average_server_timestamp_delta: f64,
     },
+}
+
+impl ServerResponse {
+    pub fn into_ws_response(self, request_id: i64) -> WsBatchResponse {
+        WsBatchResponse {
+            request_id,
+            results: vec![self],
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

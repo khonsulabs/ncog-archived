@@ -1,28 +1,39 @@
-use crate::strings::prelude::*;
-use khonsuweb::static_page::StaticPage;
-use serde_derive::{Deserialize, Serialize};
-use yew::prelude::*;
-use yew_router::{
-    agent::{RouteAgentDispatcher, RouteRequest},
-    prelude::*,
+use crate::{
+    api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
+    loggedin::LoggedIn,
+    login::Login,
+    strings::prelude::*,
 };
+use khonsuweb::static_page::StaticPage;
+use shared::{ServerResponse, UserProfile};
+use yew::prelude::*;
+use yew_router::prelude::*;
 pub struct App {
     link: ComponentLink<Self>,
-    router: RouteAgentDispatcher,
     show_nav: Option<bool>,
+    api: ApiBridge,
+    profile: Option<UserProfile>,
 }
 
 #[derive(Debug)]
 pub enum Message {
     SetTitle(String),
     ToggleNavgar,
+    WsMessage(AgentResponse),
+    LogOut,
 }
-#[derive(Switch, Clone, Debug, Serialize, Deserialize)]
+#[derive(Switch, Clone, Debug)]
 pub enum AppRoute {
     #[to = "/_dev/styles"]
     StylesTest,
-    #[to = "/"]
+    #[to = "/login!"]
+    LogIn,
+    #[to = "/auth/callback/{service}"]
+    LoggedIn(String),
+    #[to = "/!"]
     Index,
+    #[to = "/"]
+    NotFound,
 }
 impl AppRoute {
     pub fn render(&self, set_title: Callback<String>) -> Html {
@@ -30,7 +41,12 @@ impl AppRoute {
             AppRoute::Index => {
                 html! {<StaticPage title="Welcome" content=localize("markdown/index.md") set_title=set_title.clone() />}
             }
+            AppRoute::NotFound => {
+                html! {<StaticPage title="Not Found" content=localize("markdown/not_found.md") set_title=set_title.clone() />}
+            }
             AppRoute::StylesTest => style_test(),
+            AppRoute::LogIn => html! {<Login />},
+            AppRoute::LoggedIn(service) => html! {<LoggedIn service=service.clone() />},
         }
     }
 }
@@ -40,11 +56,13 @@ impl Component for App {
     type Properties = ();
 
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let router = RouteAgentDispatcher::default();
+        let callback = link.callback(|message| Message::WsMessage(message));
+        let api = ApiAgent::bridge(callback);
         App {
             link,
-            router,
             show_nav: None,
+            api,
+            profile: None,
         }
     }
 
@@ -65,6 +83,23 @@ impl Component for App {
             Message::ToggleNavgar => {
                 self.show_nav = Some(!self.show_nav.unwrap_or(false));
                 true
+            }
+            Message::WsMessage(message) => match message {
+                AgentResponse::Connected | AgentResponse::Disconnected => {
+                    self.profile = None;
+                    true
+                }
+                AgentResponse::Response(response) => match response.result {
+                    ServerResponse::Authenticated { profile } => {
+                        self.profile = Some(profile);
+                        true
+                    }
+                    _ => false,
+                },
+            },
+            Message::LogOut => {
+                self.api.send(AgentMessage::LogOut);
+                false
             }
         }
     }
@@ -96,6 +131,13 @@ impl Component for App {
             </div>
         }
     }
+
+    fn rendered(&mut self, first_render: bool) {
+        if first_render {
+            self.api.send(AgentMessage::RegisterBroadcastHandler);
+            self.api.send(AgentMessage::Initialize);
+        }
+    }
 }
 
 impl App {
@@ -122,9 +164,7 @@ impl App {
         html! {
             <nav class="navbar" role="navigation" aria-label="main navigation">
                 <div class="navbar-brand">
-                <a class="navbar-item" href="/">
-                    <h1 class="is-size-3 has-text-primary">{ "ncog.link" }</h1>
-                </a>
+                <RouterAnchor<AppRoute> route=AppRoute::Index classes="navbar-item" ><h1 class="is-size-3 has-text-primary">{ "ncog.link" }</h1></RouterAnchor<AppRoute>>
                 <a role="button" class="navbar-burger burger" aria-label="menu" aria-expanded="false" data-target="navbarMenu" onclick=toggle_navbar.clone()>
                     <span aria-hidden="true"></span>
                     <span aria-hidden="true"></span>
@@ -135,10 +175,9 @@ impl App {
                     <div class="navbar-start">
                         <RouterAnchor<AppRoute> route=AppRoute::Index classes="navbar-item" >{ "Home" } </RouterAnchor<AppRoute>>
                     </div>
-                    // <div class="navbar-end">
-                    //     { player_name }
-                    //     { self.login_button() }
-                    // </div>
+                    <div class="navbar-end">
+                        { self.login_button() }
+                    </div>
                 </div>
             </nav>
         }
@@ -151,6 +190,27 @@ impl App {
                     { localize("markdown/footer.md") }
                 </div>
             </footer>
+        }
+    }
+
+    fn login_button(&self) -> Html {
+        if let Some(profile) = &self.profile {
+            html! {
+                <div class="navbar-item">
+                    { profile.screenname.clone().unwrap_or_default() }
+                    <button class="button" onclick=self.link.callback(|_| Message::LogOut)>
+                        <strong>{ "Log Out" }</strong>
+                    </button>
+                </div>
+            }
+        } else {
+            html! {
+                <div class="navbar-item">
+                    <RouterButton<AppRoute> route=AppRoute::LogIn classes="button is-primary" >
+                        <strong>{ "Sign up/Log in" }</strong>
+                    </RouterButton<AppRoute>>
+                </div>
+            }
         }
     }
 }
