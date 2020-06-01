@@ -65,6 +65,8 @@ jobs:
           cargo build --package server --release
       - name: Run tests
         run: cargo test --release --verbose
+        env:
+          NCOG_CLIENT_ENCRYPTION_KEY: ${{ secrets.NCOG_CLIENT_ENCRYPTION_KEY }}
       - name: Configure production
         run: echo "$DOTENVFILE" > .env
         if: github.ref == 'refs/heads/master'
