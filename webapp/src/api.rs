@@ -353,10 +353,14 @@ impl AuthState {
     }
 }
 
+#[cfg(not(debug_assertions))]
 fn encryption_key() -> String {
-    std::option_env!("NCOG_CLIENT_ENCRYPTION_KEY")
-        .unwrap_or("pcnhAlQq9VNmOp325GFU8JtR8vuD1wIj")
-        .to_owned()
+    std::env!("NCOG_CLIENT_ENCRYPTION_KEY")
+}
+
+#[cfg(debug_assertions)]
+fn encryption_key() -> String {
+    "pcnhAlQq9VNmOp325GFU8JtR8vuD1wIj".to_owned()
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
