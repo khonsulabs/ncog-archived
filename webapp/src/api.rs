@@ -339,7 +339,8 @@ impl AuthState {
         let key = GenericArray::from_exact_iter(key.bytes().into_iter()).unwrap();
         let aead = Aes256Gcm::new(key);
 
-        let nonce = GenericArray::from_slice(b"unique nonce"); // TODO 96-bits; unique per message
+        let key = encryption_key();
+        let nonce = GenericArray::from_slice(key.as_bytes());
         let payload = serde_json::to_string(&self).expect("Error serializing login state");
         let payload = payload.into_bytes();
         let payload: &[u8] = &payload;

@@ -62,6 +62,8 @@ jobs:
           cargo make build -p release
           cd ..
           cargo build --package server --release
+        env:
+          NCOG_CLIENT_ENCRYPTION_KEY: ${{ secrets.NCOG_CLIENT_ENCRYPTION_KEY }}
       - name: Run tests
         run: cargo test --release --verbose
       - name: Configure production
