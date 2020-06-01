@@ -27,3 +27,16 @@ chrono = "0.4"
 rand = "0.7"
 migrations = {path = "../migrations"}
 shared = {path = "../shared"}
+
+
+[dependencies.slog]
+version = "2"
+features = ["nested-values"]
+[dependencies.slog-async]
+version = "2"
+features = ["nested-values"]
+[dependencies.slog-scope]
+version = "4"
+[dependencies.slog-json]
+version = "2"
+features = ["nested-values"]

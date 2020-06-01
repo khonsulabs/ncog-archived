@@ -11,7 +11,7 @@ pub async fn pg_notify_loop() -> Result<(), anyhow::Error> {
         .listen_all(vec!["installation_login", "world_update"])
         .await?;
     while let Ok(notification) = listener.recv().await {
-        println!(
+        info!(
             "Got notification: {} {}",
             notification.channel(),
             notification.payload()

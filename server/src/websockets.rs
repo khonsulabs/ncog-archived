@@ -314,12 +314,12 @@ pub async fn main(websocket: WebSocket) {
                     }
                 }
                 Err(err) => {
-                    println!("Bincode error: {}", err);
+                    error!("Bincode error: {}", err);
                     return;
                 }
             },
             Err(err) => {
-                println!("Error on websocket: {}", err);
+                error!("Error on websocket: {}", err);
                 return;
             }
         }
@@ -371,12 +371,12 @@ async fn handle_websocket_request(
             let installation_id = match Uuid::parse_str(&state) {
                 Ok(uuid) => uuid,
                 Err(_) => {
-                    println!("Invalid UUID in state");
+                    error!("Invalid UUID in state");
                     todo!("Report error back to client");
                 }
             };
             if let Err(err) = login_itchio(installation_id, &access_token).await {
-                println!(
+                error!(
                     "Error logging into itch.io; {}, {}: {}",
                     installation_id, access_token, err
                 );
@@ -411,15 +411,15 @@ async fn handle_websocket_request(
                 None => Uuid::new_v4(),
             };
 
-            println!("Looking up installation {:?}", installation_id);
+            trace!("Looking up installation {:?}", installation_id);
             let installation = database::lookup_installation(&pg(), installation_id).await?;
 
-            println!("Recording connection");
+            trace!("Recording connection");
             CONNECTED_CLIENTS
                 .connect(installation.id, &client_handle)
                 .await;
 
-            println!("Looking up account");
+            trace!("Looking up account");
             let logged_in = if let Some(account_id) = installation.account_id {
                 if let Ok(profile) = database::get_profile(&pg(), installation.id).await {
                     if !database::check_permission(&pg(), account_id, "ncog", None, None, "connect")
@@ -469,9 +469,7 @@ async fn handle_websocket_request(
         ServerRequest::AuthenticationUrl(provider) => match provider {
             OAuthProvider::ItchIO => {
                 let client = client_handle.read().await;
-                println!("Sending auth url");
                 if let Some(installation_id) = client.installation_id {
-                    println!("Sending authentication url");
                     responder
                         .send(
                             ServerResponse::AuthenticateAtUrl {
