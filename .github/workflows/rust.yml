@@ -67,7 +67,13 @@ jobs:
       #   run: cargo test --release --verbose
       #   env:
       #     NCOG_CLIENT_ENCRYPTION_KEY: ${{ secrets.NCOG_CLIENT_ENCRYPTION_KEY }}
+      - name: Configure Production
+        # if: github.ref == 'refs/heads/master'
+        env:
+          DOTENVFILE: ${{ secrets.DOTENVFILE }}
+        run: echo "$DOTENVFILE" > .env
       - uses: kciter/aws-ecr-action@v1
+        # if: github.ref == 'refs/heads/master'
         with:
           access_key_id: ${{ secrets.ECR_ACCESS_KEY_ID }}
           secret_access_key: ${{ secrets.ECR_SECRET_KEY }}
@@ -75,27 +81,14 @@ jobs:
           repo: khonsulabs/ncog
           region: us-east-1
           tags: latest,sha-${{ github.sha }}
-      - name: Publish to Registry
-        id: publish
-        if: github.ref == 'refs/heads/master'
-        uses: elgohr/Publish-Docker-Github-Action@2.14
-        with:
-          name: khonsulabs/ncog
-          username: ${{ secrets.GITHUBPACKAGES_USERNAME }}
-          password: ${{ secrets.GITHUBPACKAGES_TOKEN }}
-          registry: docker.pkg.github.com
-          snapshot: true
-      - name: "Deploy"
-        if: github.ref == 'refs/heads/master'
-        run: |
-          curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl
-          chmod +x ./kubectl
-          mkdir ~/.kube
-          echo "$KUBECONFIG_FILE" > ~/.kube/config
-          sed -i 's/latest/${{ steps.publish.outputs.snapshot-tag }}/g' kubernetes.yml
-          ./kubectl --namespace ncog apply -f kubernetes.yml
+      - name: Update Cloudformation
+        # if: github.ref == 'refs/heads/master'
         env:
-          KUBECONFIG_FILE: "${{ secrets.KUBECONFIG }}"
+          AWS_ACCESS_KEY_ID: ${{ secrets.ECR_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.ECR_SECRET_KEY }}
+          AWS_DEFAULT_REGION: us-east-1
+        run: |
+          aws cloudformation update-stack --stack-name ncog --use-previous-template --parameters ParameterKey=VpcId,UsePreviousValue=true ParameterKey=PrivateSubnetIds,UsePreviousValue=true ParameterKey=PublicSubnetIds,UsePreviousValue=true ParamterKey=DeployedTag,ParameterValue=sha-${{ github.sha }}
       # - name: Cache Cargo
       #   env:
       #     AWS_ACCESS_KEY_ID: ${{ secrets.GAC_ACCESS_KEY_ID }}

@@ -24,13 +24,16 @@ const STATIC_FOLDER_PATH: &'static str = "static";
 async fn main() {
     dotenv::dotenv().expect("Error initializing environment");
     let _log_guard = initialize_logging();
+    info!("server starting up");
 
     let base_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap_or(".".to_owned());
     let base_dir = Path::new(&base_dir);
+    info!("Running migrations");
     migrations::run_all()
         .await
         .expect("Error running migrations");
 
+    info!("Done running migrations");
     websockets::initialize().await;
 
     tokio::spawn(pubsub::pg_notify_loop());
