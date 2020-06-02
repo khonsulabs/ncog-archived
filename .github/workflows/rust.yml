@@ -40,12 +40,6 @@ jobs:
           tar -xzf doctl-1.35.0-linux-amd64.tar.gz
           mv doctl /usr/bin
           doctl auth init -t ${{ secrets.DOAPIKEY }}
-      - name: Authorize ECS
-        run: |
-          aws ecr get-login --region us-east-1 | docker login --username AWS --password-stdin 312192918111.dkr.ecr.us-east-1.amazonaws.com
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.ECR_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.ECR_SECRET_KEY }}
 
       # - name: Restore Cargo Cache
       #   env:
@@ -69,15 +63,18 @@ jobs:
           cargo make build -p release
           cd ..
           cargo build --package server --release
-      - name: Run tests
-        run: cargo test --release --verbose
-        env:
-          NCOG_CLIENT_ENCRYPTION_KEY: ${{ secrets.NCOG_CLIENT_ENCRYPTION_KEY }}
-      - name: Configure production
-        run: echo "$DOTENVFILE" > .env
-        if: github.ref == 'refs/heads/master'
-        env:
-          DOTENVFILE: ${{ secrets.DOTENVFILE }}
+      # - name: Run tests
+      #   run: cargo test --release --verbose
+      #   env:
+      #     NCOG_CLIENT_ENCRYPTION_KEY: ${{ secrets.NCOG_CLIENT_ENCRYPTION_KEY }}
+      - uses: kciter/aws-ecr-action@v1
+        with:
+          access_key_id: ${{ secrets.ECR_ACCESS_KEY_ID }}
+          secret_access_key: ${{ secrets.ECR_SECRET_KEY }}
+          account_id: 312192918111
+          repo: khonsulabs/ncog
+          region: us-east-1
+          tags: latest,sha:${{ github.sha }}
       - name: Publish to Registry
         id: publish
         if: github.ref == 'refs/heads/master'
