@@ -40,6 +40,12 @@ jobs:
           tar -xzf doctl-1.35.0-linux-amd64.tar.gz
           mv doctl /usr/bin
           doctl auth init -t ${{ secrets.DOAPIKEY }}
+      - name: Authorize ECS
+        run: |
+          aws ecr get-login --region us-east-1 | docker login --username AWS --password-stdin 312192918111.dkr.ecr.us-east-1.amazonaws.com
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.ECR_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.ECR_SECRET_KEY }}
 
       # - name: Restore Cargo Cache
       #   env:
@@ -77,7 +83,7 @@ jobs:
         if: github.ref == 'refs/heads/master'
         uses: elgohr/Publish-Docker-Github-Action@2.14
         with:
-          name: khonsulabs/ncog/ncog-webserver
+          name: khonsulabs/ncog
           username: ${{ secrets.GITHUBPACKAGES_USERNAME }}
           password: ${{ secrets.GITHUBPACKAGES_TOKEN }}
           registry: docker.pkg.github.com
