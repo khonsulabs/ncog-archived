@@ -74,7 +74,7 @@ jobs:
           account_id: 312192918111
           repo: khonsulabs/ncog
           region: us-east-1
-          tags: latest,sha:${{ github.sha }}
+          tags: latest,sha-${{ github.sha }}
       - name: Publish to Registry
         id: publish
         if: github.ref == 'refs/heads/master'
