@@ -174,6 +174,7 @@ impl Agent for ApiAgent {
             }
             AgentMessage::LogOut => {
                 self.auth_state = AuthState::Unauthenticated;
+                self.storage_enabled = false;
                 self.save_login_state();
                 self.update(Message::Reset);
             }
