@@ -1,6 +1,5 @@
 use super::{database, env, SERVER_URL};
 use async_std::sync::RwLock;
-use crossbeam::channel::{unbounded, Sender};
 use futures::{SinkExt, StreamExt};
 use lazy_static::lazy_static;
 use migrations::{pg, sqlx};
@@ -16,6 +15,7 @@ use std::{
     sync::Arc,
     time::Duration,
 };
+use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use url::Url;
 use uuid::Uuid;
 use warp::filters::ws::{Message, WebSocket};
@@ -186,7 +186,7 @@ impl ConnectedClients {
 
 pub struct ConnectedClient {
     installation_id: Option<Uuid>,
-    sender: Sender<WsBatchResponse>,
+    sender: UnboundedSender<WsBatchResponse>,
     account: Option<Arc<RwLock<ConnectedAccount>>>,
     network_timing: NetworkTiming,
 }
@@ -279,10 +279,10 @@ pub async fn initialize() {
 
 pub async fn main(websocket: WebSocket) {
     let (mut tx, mut rx) = websocket.split();
-    let (sender, transmission_receiver) = unbounded();
+    let (sender, mut transmission_receiver) = unbounded_channel();
 
     tokio::spawn(async move {
-        while let Ok(response) = transmission_receiver.recv() {
+        while let Some(response) = transmission_receiver.recv().await {
             tx.send(Message::binary(bincode::serialize(&response).unwrap()))
                 .await
                 .unwrap_or_default()
@@ -338,7 +338,7 @@ pub async fn main(websocket: WebSocket) {
 async fn handle_websocket_request(
     client_handle: &Arc<RwLock<ConnectedClient>>,
     request: WsRequest,
-    responder: Sender<WsBatchResponse>,
+    responder: UnboundedSender<WsBatchResponse>,
 ) -> Result<(), anyhow::Error> {
     match request.request {
         // ServerRequest::Update {
