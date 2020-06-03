@@ -41,6 +41,7 @@ jobs:
       #   run: |
       #     aws s3 cp --region us-west-1 s3://khonsulabs-gac/ncog/cache-target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}.tar.bz2 . || true
       #     tar -xjf cache-target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}.tar.bz2 || true
+
       - name: Build
         env:
           POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
@@ -56,15 +57,18 @@ jobs:
           cargo make build -p release
           cd ..
           cargo build --package server --release
+
       - name: Run tests
         run: cargo test --release --verbose
         env:
           NCOG_CLIENT_ENCRYPTION_KEY: ${{ secrets.NCOG_CLIENT_ENCRYPTION_KEY }}
+
       - name: Configure Production
         if: github.ref == 'refs/heads/master'
         env:
           DOTENVFILE: ${{ secrets.DOTENVFILE }}
         run: echo "$DOTENVFILE" > .env
+
       - uses: kciter/aws-ecr-action@v1
         if: github.ref == 'refs/heads/master'
         with:
@@ -74,6 +78,7 @@ jobs:
           repo: khonsulabs/ncog
           region: us-east-1
           tags: latest,sha-${{ github.sha }}
+
       - name: Update Cloudformation
         if: github.ref == 'refs/heads/master'
         env:
