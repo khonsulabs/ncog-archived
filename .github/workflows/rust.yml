@@ -88,6 +88,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.ECR_SECRET_KEY }}
           AWS_DEFAULT_REGION: us-east-1
         run: |
+          aws cloudformation wait stack-update-complete --stack-name ncog
           aws cloudformation update-stack --stack-name ncog --use-previous-template --capabilities CAPABILITY_NAMED_IAM --parameters ParameterKey=VpcId,UsePreviousValue=true ParameterKey=PrivateSubnetIds,UsePreviousValue=true ParameterKey=PublicSubnetIds,UsePreviousValue=true ParameterKey=DeployedTag,ParameterValue=sha-${{ github.sha }}
       # - name: Cache Cargo
       #   env:
