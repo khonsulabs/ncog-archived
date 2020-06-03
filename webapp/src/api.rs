@@ -33,6 +33,7 @@ pub enum AgentResponse {
     Connected,
     Disconnected,
     Response(WsResponse),
+    StorageStatus(bool),
 }
 
 pub struct ApiAgent {
@@ -48,6 +49,7 @@ pub struct ApiAgent {
     ready_for_messages: bool,
     storage: StorageService,
     auth_state: AuthState,
+    storage_enabled: bool,
 }
 
 pub type ApiBridge = Box<dyn Bridge<ApiAgent>>;
@@ -61,6 +63,9 @@ pub enum AgentMessage {
     RegisterBroadcastHandler,
     UnregisterBroadcastHandler,
     LogOut,
+    QueryStorageStatus,
+    EnableStorage,
+    DisableStorage,
 }
 
 impl Agent for ApiAgent {
@@ -76,6 +81,7 @@ impl Agent for ApiAgent {
         let auth_state = login_state
             .unwrap_or(EncryptedLoginInformation::default())
             .auth_state();
+        let storage_enabled = auth_state != AuthState::Unauthenticated;
         Self {
             link,
             web_socket_service: WebSocketService::new(),
@@ -89,6 +95,7 @@ impl Agent for ApiAgent {
             ready_for_messages: false,
             storage,
             auth_state,
+            storage_enabled,
         }
     }
 
@@ -169,6 +176,22 @@ impl Agent for ApiAgent {
                 self.auth_state = AuthState::Unauthenticated;
                 self.save_login_state();
                 self.update(Message::Reset);
+            }
+            AgentMessage::QueryStorageStatus => {
+                self.link
+                    .respond(who, AgentResponse::StorageStatus(self.storage_enabled));
+            }
+            AgentMessage::EnableStorage => {
+                self.storage_enabled = true;
+                self.save_login_state();
+                self.link
+                    .respond(who, AgentResponse::StorageStatus(self.storage_enabled));
+            }
+            AgentMessage::DisableStorage => {
+                self.storage_enabled = false;
+                self.save_login_state();
+                self.link
+                    .respond(who, AgentResponse::StorageStatus(self.storage_enabled));
             }
         }
     }
@@ -253,10 +276,15 @@ impl ApiAgent {
     }
 
     fn save_login_state(&mut self) {
-        self.storage.store(
-            "login_state",
-            Json(&self.auth_state.encrypted_login_information()),
-        );
+        if self.storage_enabled {
+            self.storage.store(
+                "login_state",
+                Json(&self.auth_state.encrypted_login_information()),
+            );
+        } else {
+            self.storage.remove("login_state");
+            self.storage.remove("return_path");
+        }
     }
 
     fn installation_id(&self) -> Option<Uuid> {
@@ -318,13 +346,13 @@ impl ApiAgent {
         }
     }
 }
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct AuthenticatedState {
     pub installation_id: Uuid,
     pub profile: UserProfile,
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, Eq, PartialEq)]
 enum AuthState {
     Unauthenticated,
     PreviouslyAuthenticated(Uuid),

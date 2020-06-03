@@ -75,7 +75,7 @@ impl ServerResponse {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
 pub struct UserProfile {
     pub id: i64,
     pub screenname: Option<String>,

@@ -96,6 +96,7 @@ impl Component for App {
                     }
                     _ => false,
                 },
+                _ => false,
             },
             Message::LogOut => {
                 self.api.send(AgentMessage::LogOut);
