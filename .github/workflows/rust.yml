@@ -33,13 +33,6 @@ jobs:
       - uses: actions/checkout@v1
         with:
           submodules: true
-      - name: Install doctl
-        if: github.ref == 'refs/heads/master'
-        run: |
-          wget https://github.com/digitalocean/doctl/releases/download/v1.35.0/doctl-1.35.0-linux-amd64.tar.gz
-          tar -xzf doctl-1.35.0-linux-amd64.tar.gz
-          mv doctl /usr/bin
-          doctl auth init -t ${{ secrets.DOAPIKEY }}
 
       # - name: Restore Cargo Cache
       #   env:
@@ -63,17 +56,17 @@ jobs:
           cargo make build -p release
           cd ..
           cargo build --package server --release
-      # - name: Run tests
-      #   run: cargo test --release --verbose
-      #   env:
-      #     NCOG_CLIENT_ENCRYPTION_KEY: ${{ secrets.NCOG_CLIENT_ENCRYPTION_KEY }}
+      - name: Run tests
+        run: cargo test --release --verbose
+        env:
+          NCOG_CLIENT_ENCRYPTION_KEY: ${{ secrets.NCOG_CLIENT_ENCRYPTION_KEY }}
       - name: Configure Production
-        # if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/master'
         env:
           DOTENVFILE: ${{ secrets.DOTENVFILE }}
         run: echo "$DOTENVFILE" > .env
       - uses: kciter/aws-ecr-action@v1
-        # if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/master'
         with:
           access_key_id: ${{ secrets.ECR_ACCESS_KEY_ID }}
           secret_access_key: ${{ secrets.ECR_SECRET_KEY }}
@@ -82,7 +75,7 @@ jobs:
           region: us-east-1
           tags: latest,sha-${{ github.sha }}
       - name: Update Cloudformation
-        # if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/master'
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.ECR_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.ECR_SECRET_KEY }}
