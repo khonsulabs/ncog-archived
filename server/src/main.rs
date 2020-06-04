@@ -1,5 +1,6 @@
 use std::convert::Infallible;
 use std::path::Path;
+use tokio::io::AsyncReadExt;
 use warp::{Filter, Reply};
 
 mod database;
@@ -44,7 +45,15 @@ async fn main() {
 
     let static_path = base_dir.join(STATIC_FOLDER_PATH);
     let index_path = static_path.join("index.html");
+
     let spa = warp::get().and(warp::fs::dir(static_path).or(warp::fs::file(index_path)));
+
+    // In release mode, we want to proxy with s3, but when debugging we want to use the current build.
+    #[cfg(not(debug_assertions))]
+    let spa = {
+        let s3_proxy = warp::path!("pkg" / String).and_then(|file_name| s3_proxy(file_name));
+        s3_proxy.or(spa)
+    };
 
     let websockets = warp::path!("ws")
         .and(warp::path::end())
@@ -72,6 +81,7 @@ async fn main() {
             "Access-Control-Allow-Headers",
             "Authorization, *",
         ));
+
     info!("Starting listening on port 7878");
     warp::serve(routes).run(([0, 0, 0, 0], 7878)).await;
 }
@@ -93,4 +103,47 @@ pub fn initialize_logging() -> slog_scope::GlobalLoggerGuard {
     let async_json = slog_async::Async::new(json).build().fuse();
     let log = slog::Logger::root(async_json, o!());
     slog_scope::set_global_logger(log)
+}
+
+use rusoto_core::Region;
+use rusoto_s3::{GetObjectRequest, S3Client, S3};
+use warp::http::StatusCode;
+async fn s3_proxy(file_name: String) -> Result<impl Reply, Infallible> {
+    let client = S3Client::new(Region::UsEast1);
+    let mime = mime_guess::from_path(&file_name)
+        .first_or_text_plain()
+        .to_string();
+
+    match client
+        .get_object(GetObjectRequest {
+            bucket: "ncog-releasesbucket-hvnlnyp4xejx".to_owned(), // TODO make this an environment variable
+            key: format!("pkg/{}", file_name),
+            ..Default::default()
+        })
+        .await
+    {
+        Ok(response) => {
+            let mut bytes = Vec::new();
+            response
+                .body
+                .unwrap()
+                .into_async_read()
+                .read_to_end(&mut bytes)
+                .await
+                .expect("Error reading from s3");
+
+            Ok(warp::reply::with_status(
+                warp::reply::with_header(bytes, warp::http::header::CONTENT_TYPE, mime),
+                StatusCode::OK,
+            ))
+        }
+        Err(err) => {
+            error!("Error proxying from s3: {}", err);
+            let empty = Vec::new();
+            Ok(warp::reply::with_status(
+                warp::reply::with_header(empty, warp::http::header::CONTENT_TYPE, mime),
+                StatusCode::NOT_FOUND,
+            ))
+        }
+    }
 }

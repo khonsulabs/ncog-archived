@@ -79,13 +79,14 @@ jobs:
           region: us-east-1
           tags: latest,sha-${{ github.sha }}
 
-      - name: Update Cloudformation
+      - name: Deploy
         if: github.ref == 'refs/heads/master'
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.ECR_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.ECR_SECRET_KEY }}
           AWS_DEFAULT_REGION: us-east-1
         run: |
+          aws s3 sync webapp/static/ s3://ncog-releasesbucket-hvnlnyp4xejx
           aws cloudformation wait stack-update-complete --stack-name ncog
           aws cloudformation update-stack --stack-name ncog --use-previous-template --capabilities CAPABILITY_NAMED_IAM --parameters ParameterKey=VpcId,UsePreviousValue=true ParameterKey=PrivateSubnetIds,UsePreviousValue=true ParameterKey=PublicSubnetIds,UsePreviousValue=true ParameterKey=DeployedTag,ParameterValue=sha-${{ github.sha }}
       # - name: Cache Cargo

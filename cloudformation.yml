@@ -82,6 +82,33 @@ Resources:
       #         - "ecr:BatchCheckLayerAvailability"
       #         - "ecr:BatchGetImage"
       #         - "ecr:GetDownloadUrlForLayer"
+
+  releasesBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: Private
+
+  assetsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: Private
+      WebsiteConfiguration:
+        ErrorDocument: error.html
+        IndexDocument: index.html
+
+  assetsBucketPolicy:
+    Type: "AWS::S3::BucketPolicy"
+    Properties:
+      Bucket: !Ref assetsBucket
+      PolicyDocument:
+        Statement:
+          - Action:
+              - "s3:GetObject"
+            Effect: "Allow"
+            Resource:
+              - !Join ["/", [!GetAtt [assetsBucket, Arn], "*"]]
+            Principal: "*"
+
   ecrDeploymentUser:
     Type: AWS::IAM::User
     Properties:
@@ -119,6 +146,14 @@ Resources:
                   - cloudformation:DescribeStackResources
                 Resource:
                   - !Ref AWS::StackId
+              - Effect: "Allow"
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !Join ["/", [!GetAtt [releasesBucket, Arn], "*"]]
+                  - !GetAtt [releasesBucket, Arn]
 
   executingRole:
     Type: AWS::IAM::Role
@@ -161,11 +196,34 @@ Resources:
       LogGroupName: ncog
       RetentionInDays: 14
 
-  # EcsServiceLinkedRole:
-  #   Type: "AWS::IAM::ServiceLinkedRole"
-  #   Properties:
-  #     AWSServiceName: "ecs.amazonaws.com"
-  #     Description: "Role to enable Amazon ECS to manage your cluster."
+  taskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [ecs-tasks.amazonaws.com]
+            Action: ["sts:AssumeRole"]
+      Path: /
+      Policies:
+        - PolicyName: ncog-task-execution-role
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !Join ["/", [!GetAtt [releasesBucket, Arn], "*"]]
+                  - !GetAtt [releasesBucket, Arn]
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !Join ["/", [!GetAtt [assetsBucket, Arn], "*"]]
+                  - !GetAtt [assetsBucket, Arn]
 
   ecsTask:
     Condition: deployEcsTasks
@@ -200,6 +258,7 @@ Resources:
       ExecutionRoleArn: !GetAtt [executingRole, Arn]
       Memory: 512
       NetworkMode: awsvpc
+      TaskRoleArn: !GetAtt [taskRole, Arn]
       RequiresCompatibilities:
         - FARGATE
         - EC2
@@ -214,7 +273,6 @@ Resources:
       DesiredCount: 2
       TaskDefinition: !Ref ecsTask
       LaunchType: FARGATE
-      # Role: "ecsServiceRole" # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/check-service-role.html
       NetworkConfiguration:
         AwsvpcConfiguration:
           AssignPublicIp: DISABLED
