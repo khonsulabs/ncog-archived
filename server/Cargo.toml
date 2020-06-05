@@ -30,9 +30,6 @@ shared = {path = "../shared"}
 
 mime_guess = "2"
 
-rusoto_core = "0.44.0"
-rusoto_s3 = "0.44.0"
-
 
 [dependencies.slog]
 version = "2"

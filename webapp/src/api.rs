@@ -254,11 +254,11 @@ impl ApiAgent {
 
     #[cfg(debug_assertions)]
     fn websocket_url() -> &'static str {
-        "ws://localhost:7878/api/ws"
+        "ws://localhost:7878/v1/ws"
     }
     #[cfg(not(debug_assertions))]
     fn websocket_url() -> &'static str {
-        "wss://ncog.link/api/ws"
+        "wss://api.ncog.link/v1/ws"
     }
 
     fn ws_send(&mut self, request: ServerRequest, who: Option<HandlerId>) {

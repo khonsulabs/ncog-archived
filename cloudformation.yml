@@ -87,6 +87,61 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       AccessControl: Private
+      WebsiteConfiguration:
+        ErrorDocument: index.html
+        IndexDocument: index.html
+  releasesBucketPolicy:
+    Type: "AWS::S3::BucketPolicy"
+    Properties:
+      Bucket: !Ref releasesBucket
+      PolicyDocument:
+        Statement:
+          - Action:
+              - "s3:GetObject"
+            Effect: "Allow"
+            Resource:
+              - !Join ["/", [!GetAtt [releasesBucket, Arn], "*"]]
+            Principal: "*"
+
+  releasesCloudFront:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Origins:
+          - DomainName:
+              !Join [
+                ".",
+                [!Ref releasesBucket, "s3-website.us-east-1.amazonaws.com"],
+              ]
+            Id: s3
+            CustomOriginConfig:
+              OriginProtocolPolicy: http-only
+        CustomErrorResponses:
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: "/index.html"
+            ErrorCachingMinTTL: 3600
+        CacheBehaviors:
+          - PathPattern: "*/index.html"
+            MaxTTL: 0
+            DefaultTTL: 0
+            MinTTL: 0
+            TargetOriginId: s3
+            ForwardedValues:
+              QueryString: true
+            ViewerProtocolPolicy: redirect-to-https
+        DefaultCacheBehavior:
+          TargetOriginId: s3
+          ForwardedValues:
+            QueryString: true
+          ViewerProtocolPolicy: redirect-to-https
+        Enabled: true
+        DefaultRootObject: index.html
+        ViewerCertificate:
+          AcmCertificateArn: !Ref certificate
+          SslSupportMethod: sni-only
+        Aliases:
+          - "ncog.link"
 
   assetsBucket:
     Type: AWS::S3::Bucket
@@ -309,6 +364,8 @@ Resources:
     Properties:
       DomainName: "ncog.link"
       ValidationMethod: DNS
+      SubjectAlternativeNames:
+        - "api.ncog.link"
 
   httpsListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
