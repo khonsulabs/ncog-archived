@@ -196,6 +196,20 @@ impl Agent for ApiAgent {
             }
         }
     }
+
+    fn disconnected(&mut self, id: HandlerId) {
+        self.broadcasts.remove(&id);
+        let callbacks_to_remove = self
+            .callbacks
+            .iter()
+            .filter(|(_, handler)| **handler == id)
+            .map(|(id, _)| *id)
+            .collect::<Vec<_>>();
+
+        for id in callbacks_to_remove {
+            self.callbacks.remove(&id);
+        }
+    }
 }
 
 use yew::format::{Binary, Bincode, Text};

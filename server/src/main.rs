@@ -11,7 +11,7 @@ mod websockets;
 extern crate slog_scope;
 
 #[cfg(debug_assertions)]
-const SERVER_URL: &'static str = "http://localhost:7878";
+const SERVER_URL: &'static str = "http://localhost:7879";
 #[cfg(not(debug_assertions))]
 const SERVER_URL: &'static str = "https://ncog.link";
 
