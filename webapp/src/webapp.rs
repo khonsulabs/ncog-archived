@@ -147,6 +147,10 @@ impl Component for App {
             self.api.send(AgentMessage::Initialize);
         }
     }
+
+    fn destroy(&mut self) {
+        self.api.send(AgentMessage::UnregisterBroadcastHandler);
+    }
 }
 
 impl App {

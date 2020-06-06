@@ -78,4 +78,8 @@ impl Component for LoggedIn {
             </div>
         )
     }
+
+    fn destroy(&mut self) {
+        self.api.send(AgentMessage::UnregisterBroadcastHandler);
+    }
 }
