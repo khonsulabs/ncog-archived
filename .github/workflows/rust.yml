@@ -87,6 +87,7 @@ jobs:
           AWS_DEFAULT_REGION: us-east-1
         run: |
           aws s3 sync webapp/static/ s3://ncog-releasesbucket-hvnlnyp4xejx
+          aws s3 cp webapp/static/pkg/webapp_bg.wasm s3://ncog-releasesbucket-hvnlnyp4xejx/pkg/webapp_bg.wasm --content-type "application/wasm"
           aws cloudformation wait stack-update-complete --stack-name ncog
           aws cloudformation update-stack --stack-name ncog --use-previous-template --capabilities CAPABILITY_NAMED_IAM --parameters ParameterKey=VpcId,UsePreviousValue=true ParameterKey=PrivateSubnetIds,UsePreviousValue=true ParameterKey=PublicSubnetIds,UsePreviousValue=true ParameterKey=DeployedTag,ParameterValue=sha-${{ github.sha }}
       # - name: Cache Cargo
