@@ -116,9 +116,7 @@ impl Agent for ApiAgent {
                     },
                     None,
                 );
-                for entry in self.broadcasts.iter() {
-                    self.link.respond(*entry, AgentResponse::Connected);
-                }
+                self.broadcast(AgentResponse::Connected);
             }
             Message::Message(ws_response) => {
                 let request_id = ws_response.request_id;
@@ -128,9 +126,7 @@ impl Agent for ApiAgent {
                         request_id,
                         result: individual_result.clone(),
                     });
-                    for entry in self.broadcasts.iter() {
-                        self.link.respond(*entry, individual_result.clone());
-                    }
+                    self.broadcast(individual_result.clone());
                     if let Some(who) = self.callbacks.get(&request_id) {
                         self.link.respond(*who, individual_result);
                     };
@@ -138,6 +134,8 @@ impl Agent for ApiAgent {
                 self.callbacks.remove(&request_id);
             }
             Message::Reset => {
+                self.broadcast(AgentResponse::Disconnected);
+
                 if self.reconnect_timer.is_some() {
                     return;
                 }
@@ -287,6 +285,12 @@ impl ApiAgent {
                     request,
                 }));
             }
+        }
+    }
+
+    fn broadcast(&self, response: AgentResponse) {
+        for entry in self.broadcasts.iter() {
+            self.link.respond(*entry, response.clone());
         }
     }
 

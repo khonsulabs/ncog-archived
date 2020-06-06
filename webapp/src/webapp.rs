@@ -13,6 +13,7 @@ pub struct App {
     show_nav: Option<bool>,
     api: ApiBridge,
     profile: Option<UserProfile>,
+    connected: Option<bool>,
 }
 
 #[derive(Debug)]
@@ -63,6 +64,7 @@ impl Component for App {
             show_nav: None,
             api,
             profile: None,
+            connected: None,
         }
     }
 
@@ -85,8 +87,14 @@ impl Component for App {
                 true
             }
             Message::WsMessage(message) => match message {
-                AgentResponse::Connected | AgentResponse::Disconnected => {
+                AgentResponse::Disconnected => {
                     self.profile = None;
+                    self.connected = Some(false);
+                    true
+                }
+                AgentResponse::Connected => {
+                    self.profile = None;
+                    self.connected = Some(true);
                     true
                 }
                 AgentResponse::Response(response) => match response.result {
@@ -178,6 +186,7 @@ impl App {
                     </div>
                     <div class="navbar-end">
                         { self.login_button() }
+                        { self.connection_indicator() }
                     </div>
                 </div>
             </nav>
@@ -210,6 +219,30 @@ impl App {
                     <RouterButton<AppRoute> route=AppRoute::LogIn classes="button is-primary" >
                         <strong>{ "Sign up/Log in" }</strong>
                     </RouterButton<AppRoute>>
+                </div>
+            }
+        }
+    }
+
+    fn connection_indicator(&self) -> Html {
+        if let Some(connected) = &self.connected {
+            if *connected {
+                html! {
+                    <div class="navbar-item">
+                        <span class="has-text-success"><i class="fas fa-circle" alt="Connected"></i></span>
+                    </div>
+                }
+            } else {
+                html! {
+                    <div class="navbar-item">
+                        <span class="has-text-danger"><i class="fas fa-times-circle" alt="Not able to connect"></i></span>
+                    </div>
+                }
+            }
+        } else {
+            html! {
+                <div class="navbar-item">
+                    <span class="has-text-info"><i class="fas fa-circle" alt="Connecting..."></i></span>
                 </div>
             }
         }
