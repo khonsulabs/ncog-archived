@@ -5,6 +5,7 @@ use warp::{Filter, Reply};
 mod database;
 mod pubsub;
 // mod randomnames;
+mod permissions;
 mod websockets;
 
 #[macro_use]

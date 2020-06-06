@@ -1,0 +1,305 @@
+use std::collections::HashMap;
+
+pub struct Claim {
+    service: String,
+    resource_type: String,
+    resource_id: i64,
+    action: String,
+}
+
+impl Claim {
+    pub fn new<S: Into<String>>(service: S, resource_type: S, resource_id: i64, action: S) -> Self {
+        Self {
+            service: service.into(),
+            resource_type: resource_type.into(),
+            resource_id,
+            action: action.into(),
+        }
+    }
+}
+
+pub struct Statement {
+    service: Option<String>,
+    resource_type: Option<String>,
+    resource_id: Option<i64>,
+
+    action: Option<String>,
+
+    allow: bool,
+}
+
+impl Statement {
+    pub fn new<S: Into<String>>(
+        service: Option<S>,
+        resource_type: Option<S>,
+        resource_id: Option<i64>,
+
+        action: Option<S>,
+
+        allow: bool,
+    ) -> Self {
+        Self {
+            service: service.map(|s| s.into()),
+            resource_type: resource_type.map(|s| s.into()),
+            resource_id,
+            action: action.map(|s| s.into()),
+            allow,
+        }
+    }
+}
+
+#[derive(Default, Debug)]
+pub struct PermissionSet {
+    service_permissions: HashMap<Option<String>, ServicePermission>,
+}
+
+impl From<Vec<Statement>> for PermissionSet {
+    fn from(statements: Vec<Statement>) -> Self {
+        let mut set = PermissionSet::default();
+
+        for statement in statements {
+            set.service_permissions
+                .entry(statement.service.clone())
+                .and_modify(|service_permission| service_permission.apply(&statement))
+                .or_insert_with(|| ServicePermission::from_statement(&statement));
+        }
+
+        set
+    }
+}
+
+impl PermissionSet {
+    pub fn allowed(&self, claim: &Claim) -> bool {
+        if let Some(service_permission) = self.service_permissions.get(&Some(claim.service.clone()))
+        {
+            if let Some(allowed) = service_permission.allowed(claim) {
+                return allowed;
+            }
+        }
+
+        if let Some(generic_permission) = self.service_permissions.get(&None) {
+            if let Some(allowed) = generic_permission.allowed(claim) {
+                return allowed;
+            }
+        }
+
+        false
+    }
+}
+
+#[derive(Default, Debug)]
+pub struct ServicePermission {
+    resource_type_permissions: HashMap<Option<String>, ResourceTypePermission>,
+}
+
+impl ServicePermission {
+    fn from_statement(statement: &Statement) -> Self {
+        let mut perm = ServicePermission::default();
+        perm.apply(statement);
+        perm
+    }
+
+    pub fn allowed(&self, claim: &Claim) -> Option<bool> {
+        if let Some(resource_type_permission) = self
+            .resource_type_permissions
+            .get(&Some(claim.resource_type.clone()))
+        {
+            return resource_type_permission.allowed(claim);
+        }
+
+        if let Some(generic_permission) = self.resource_type_permissions.get(&None) {
+            return generic_permission.allowed(claim);
+        }
+
+        None
+    }
+
+    fn apply(&mut self, statement: &Statement) {
+        self.resource_type_permissions
+            .entry(statement.resource_type.clone())
+            .and_modify(|rtp| rtp.apply(statement))
+            .or_insert_with(|| ResourceTypePermission::from_statement(statement));
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct ResourceTypePermission {
+    resource_permissions: HashMap<Option<i64>, ResourcePermission>,
+}
+
+impl ResourceTypePermission {
+    fn from_statement(statement: &Statement) -> Self {
+        let mut perm = ResourceTypePermission::default();
+        perm.apply(&statement);
+        perm
+    }
+    pub fn allowed(&self, claim: &Claim) -> Option<bool> {
+        if let Some(resource_permission) = self
+            .resource_permissions
+            .get(&Some(claim.resource_id.clone()))
+        {
+            if let Some(allowed) = resource_permission.allowed(claim) {
+                return Some(allowed);
+            }
+        }
+
+        if let Some(generic_permission) = self.resource_permissions.get(&None) {
+            if let Some(allowed) = generic_permission.allowed(claim) {
+                return Some(allowed);
+            }
+        }
+
+        None
+    }
+
+    fn apply(&mut self, statement: &Statement) {
+        self.resource_permissions
+            .entry(statement.resource_id.clone())
+            .and_modify(|rtp| rtp.apply(statement))
+            .or_insert_with(|| ResourcePermission::from_statement(statement));
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct ResourcePermission {
+    action_permissions: HashMap<Option<String>, bool>,
+}
+
+impl ResourcePermission {
+    fn from_statement(statement: &Statement) -> Self {
+        let mut perm = ResourcePermission::default();
+        perm.apply(&statement);
+        perm
+    }
+
+    pub fn allowed(&self, claim: &Claim) -> Option<bool> {
+        if let Some(action_permission) = self.action_permissions.get(&Some(claim.action.clone())) {
+            return Some(*action_permission);
+        }
+
+        if let Some(generic_permission) = self.action_permissions.get(&None) {
+            return Some(*generic_permission);
+        }
+
+        None
+    }
+
+    fn apply(&mut self, statement: &Statement) {
+        self.action_permissions
+            .entry(statement.action.clone())
+            .and_modify(|allowed| *allowed = statement.allow)
+            .or_insert_with(|| statement.allow);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_permissions() -> PermissionSet {
+        PermissionSet::from(vec![
+            // Allow read for everyhing
+            Statement::new(None, None, None, Some("read"), true),
+            // Allow everything for id 1
+            Statement::new(Option::<String>::None, None, Some(1i64), None, true),
+            // Allow everything for resource type 'always-type'
+            Statement::new(None, Some("always-type"), None, None, true),
+            // Allow everything for resource type 'always-type'
+            Statement::new(Some("always-service"), None, None, None, true),
+            // Deny reading for a specific id
+            Statement::new(None, None, Some(13i64), Some("read"), false),
+            // Deny reading for a specific type
+            Statement::new(None, Some("deny-type"), None, Some("read"), false),
+            // Deny reading for a specific service
+            Statement::new(Some("deny-service"), None, None, Some("read"), false),
+        ])
+    }
+
+    #[test]
+    fn default_deny() {
+        let set = test_permissions();
+        assert!(!set.allowed(&Claim::new(
+            "nonexistant-service",
+            "nonexistant-type",
+            i64::MAX,
+            "nonexistant-action"
+        )));
+    }
+
+    #[test]
+    fn deny_by_id() {
+        let set = test_permissions();
+        assert!(!set.allowed(&Claim::new(
+            "nonexistant-service",
+            "nonexistant-type",
+            13i64,
+            "read"
+        )));
+    }
+
+    #[test]
+    fn deny_by_type() {
+        let set = test_permissions();
+        assert!(!set.allowed(&Claim::new(
+            "nonexistant-service",
+            "deny-type",
+            i64::MAX,
+            "read"
+        )));
+    }
+
+    #[test]
+    fn deny_by_service() {
+        let set = test_permissions();
+        assert!(!set.allowed(&Claim::new(
+            "deny-service",
+            "nonexistant-type",
+            i64::MAX,
+            "read"
+        )));
+    }
+
+    #[test]
+    fn stranded_action_leaf_test() {
+        let set = test_permissions();
+        assert!(set.allowed(&Claim::new(
+            "nonexistant-service",
+            "nonexistant-type",
+            i64::MAX,
+            "read"
+        )));
+    }
+
+    #[test]
+    fn stranded_id_leaf_test() {
+        let set = test_permissions();
+        assert!(set.allowed(&Claim::new(
+            "nonexistant-service",
+            "nonexistant-type",
+            1,
+            "read"
+        )));
+    }
+
+    #[test]
+    fn stranded_resource_type_leaf_test() {
+        let set = test_permissions();
+        assert!(set.allowed(&Claim::new(
+            "nonexistant-service",
+            "always-type",
+            i64::MAX,
+            "nonexistant-action"
+        )));
+    }
+
+    #[test]
+    fn stranded_service_leaf_test() {
+        let set = test_permissions();
+        assert!(set.allowed(&Claim::new(
+            "always-service",
+            "nonexistant-type",
+            i64::MAX,
+            "nonexistant-action"
+        )));
+    }
+}
