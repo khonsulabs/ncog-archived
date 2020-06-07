@@ -1,4 +1,5 @@
 use super::{database, env, SERVER_URL};
+use crate::permissions::{Claim, PermissionSet};
 use async_std::sync::RwLock;
 use futures::{SinkExt, StreamExt};
 use lazy_static::lazy_static;
@@ -87,11 +88,12 @@ impl ConnectedClients {
         &self,
         installation_id: Uuid,
         account_id: i64,
-    ) -> Result<(), anyhow::Error> {
+    ) -> Result<Arc<RwLock<ConnectedAccount>>, anyhow::Error> {
         let mut data = self.data.write().await;
+        let account = CONNECTED_ACCOUNTS.connect(installation_id).await?;
         if let Some(client) = data.clients.get_mut(&installation_id) {
             let mut client = client.write().await;
-            client.account = Some(CONNECTED_ACCOUNTS.connect(installation_id).await?);
+            client.account = Some(account.clone());
         }
 
         data.account_by_installation
@@ -101,7 +103,7 @@ impl ConnectedClients {
             .entry(account_id)
             .or_insert_with(|| HashSet::new());
         installations.insert(installation_id);
-        Ok(())
+        Ok(account)
     }
 
     pub async fn disconnect(&self, installation_id: Uuid) {
@@ -212,12 +214,16 @@ impl ConnectedAccounts {
 
         let profile = database::get_profile(&pg(), installation_id).await?;
 
+        // TODO it'd be nice to not do this unless we need to do it, but I don't think it's possible without using a block_on.
+        let permissions = database::load_permissions_for(&pg(), profile.id).await?;
+
         Ok(accounts_by_id
             .entry(profile.id)
             .or_insert_with(|| {
                 Arc::new(RwLock::new(ConnectedAccount {
                     profile,
                     inputs: None,
+                    permissions,
                 }))
             })
             .clone())
@@ -236,6 +242,7 @@ impl ConnectedAccounts {
 
 pub struct ConnectedAccount {
     pub profile: UserProfile,
+    pub permissions: PermissionSet,
     pub inputs: Option<Inputs>,
 }
 
@@ -422,8 +429,13 @@ async fn handle_websocket_request(
             trace!("Looking up account");
             let logged_in = if let Some(account_id) = installation.account_id {
                 if let Ok(profile) = database::get_profile(&pg(), installation.id).await {
-                    if !database::check_permission(&pg(), account_id, "ncog", None, None, "connect")
-                        .await?
+                    let account = CONNECTED_CLIENTS
+                        .associate_account(installation.id, account_id)
+                        .await?;
+                    let account = account.read().await;
+                    if !account
+                        .permissions
+                        .allowed(&Claim::new("ncog", None, None, "connect"))
                     {
                         responder
                             .send(
@@ -438,9 +450,6 @@ async fn handle_websocket_request(
                         return Ok(());
                     }
 
-                    CONNECTED_CLIENTS
-                        .associate_account(installation.id, account_id)
-                        .await?;
                     responder
                         .send(
                             ServerResponse::Authenticated { profile }.into_ws_response(request.id),
@@ -570,10 +579,6 @@ async fn login_itchio(installation_id: Uuid, access_token: &String) -> Result<()
             .await?;
             account_id
         };
-
-        if !database::check_permission(&mut tx, account_id, "ncog", None, None, "connect").await? {
-            anyhow::bail!("Permission denied to connect with this account");
-        }
 
         // Create an itchio profile
         sqlx::query!("INSERT INTO itchio_profiles (id, account_id, username, url) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO UPDATE SET account_id = $2, username = $3, url = $4 ",
