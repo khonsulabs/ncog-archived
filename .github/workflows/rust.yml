@@ -88,7 +88,7 @@ jobs:
         run: |
           aws s3 sync webapp/static/ s3://ncog-releasesbucket-hvnlnyp4xejx
           aws s3 cp webapp/static/pkg/webapp_bg.wasm s3://ncog-releasesbucket-hvnlnyp4xejx/pkg/webapp_bg.wasm --content-type "application/wasm"
-          aws cloudfront create-invalidation --distribution-id E2RBPV8J4SLHOW --paths "*"
+          aws cloudfront create-invalidation --distribution-id E2RBPV8J4SLHOW --paths "/*"
 
       - name: Deploy API
         if: github.ref == 'refs/heads/master'
