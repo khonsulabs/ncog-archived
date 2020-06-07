@@ -209,6 +209,19 @@ Resources:
                 Resource:
                   - !Join ["/", [!GetAtt [releasesBucket, Arn], "*"]]
                   - !GetAtt [releasesBucket, Arn]
+              - Effect: "Allow"
+                Action:
+                  - cloudfront:CreateInvalidation
+                Resource:
+                  - !Join [
+                      "",
+                      [
+                        "arn:aws:cloudfront::",
+                        !Ref "AWS::AccountId",
+                        ":distribution/",
+                        !Ref releasesCloudFront,
+                      ],
+                    ]
 
   executingRole:
     Type: AWS::IAM::Role
