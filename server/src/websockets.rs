@@ -1,4 +1,5 @@
 use super::{database, env, SERVER_URL};
+use crate::permissions::{Claim, PermissionSet};
 use async_std::sync::RwLock;
 use futures::{SinkExt, StreamExt};
 use lazy_static::lazy_static;
@@ -87,6 +88,7 @@ impl ConnectedClients {
         &self,
         installation_id: Uuid,
         account_id: i64,
+        permissions: PermissionSet,
     ) -> Result<(), anyhow::Error> {
         let mut data = self.data.write().await;
         if let Some(client) = data.clients.get_mut(&installation_id) {
@@ -422,9 +424,9 @@ async fn handle_websocket_request(
             trace!("Looking up account");
             let logged_in = if let Some(account_id) = installation.account_id {
                 if let Ok(profile) = database::get_profile(&pg(), installation.id).await {
-                    if !database::check_permission(&pg(), account_id, "ncog", None, None, "connect")
-                        .await?
-                    {
+                    let account_permissions =
+                        database::load_permissions_for(&pg(), account_id).await?;
+                    if !account_permissions.allowed(&Claim::new("ncog", None, None, "connect")) {
                         responder
                             .send(
                                 ServerResponse::Error {
@@ -439,7 +441,7 @@ async fn handle_websocket_request(
                     }
 
                     CONNECTED_CLIENTS
-                        .associate_account(installation.id, account_id)
+                        .associate_account(installation.id, account_id, account_permissions)
                         .await?;
                     responder
                         .send(
@@ -570,10 +572,6 @@ async fn login_itchio(installation_id: Uuid, access_token: &String) -> Result<()
             .await?;
             account_id
         };
-
-        if !database::check_permission(&mut tx, account_id, "ncog", None, None, "connect").await? {
-            anyhow::bail!("Permission denied to connect with this account");
-        }
 
         // Create an itchio profile
         sqlx::query!("INSERT INTO itchio_profiles (id, account_id, username, url) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO UPDATE SET account_id = $2, username = $3, url = $4 ",

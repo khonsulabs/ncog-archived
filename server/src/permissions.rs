@@ -2,16 +2,21 @@ use std::collections::HashMap;
 
 pub struct Claim {
     service: String,
-    resource_type: String,
-    resource_id: i64,
+    resource_type: Option<String>,
+    resource_id: Option<i64>,
     action: String,
 }
 
 impl Claim {
-    pub fn new<S: Into<String>>(service: S, resource_type: S, resource_id: i64, action: S) -> Self {
+    pub fn new<S: Into<String>>(
+        service: S,
+        resource_type: Option<S>,
+        resource_id: Option<i64>,
+        action: S,
+    ) -> Self {
         Self {
             service: service.into(),
-            resource_type: resource_type.into(),
+            resource_type: resource_type.map(|r| r.into()),
             resource_id,
             action: action.into(),
         }
@@ -19,17 +24,18 @@ impl Claim {
 }
 
 pub struct Statement {
-    service: Option<String>,
-    resource_type: Option<String>,
-    resource_id: Option<i64>,
+    pub service: Option<String>,
+    pub resource_type: Option<String>,
+    pub resource_id: Option<i64>,
 
-    action: Option<String>,
+    pub action: Option<String>,
 
-    allow: bool,
+    pub allow: bool,
 }
 
 impl Statement {
-    pub fn new<S: Into<String>>(
+    #[cfg(test)]
+    fn new<S: Into<String>>(
         service: Option<S>,
         resource_type: Option<S>,
         resource_id: Option<i64>,
@@ -100,11 +106,13 @@ impl ServicePermission {
     }
 
     pub fn allowed(&self, claim: &Claim) -> Option<bool> {
-        if let Some(resource_type_permission) = self
-            .resource_type_permissions
-            .get(&Some(claim.resource_type.clone()))
-        {
-            return resource_type_permission.allowed(claim);
+        if let Some(claimed_type) = &claim.resource_type {
+            if let Some(resource_type_permission) = self
+                .resource_type_permissions
+                .get(&Some(claimed_type.clone()))
+            {
+                return resource_type_permission.allowed(claim);
+            }
         }
 
         if let Some(generic_permission) = self.resource_type_permissions.get(&None) {
@@ -134,12 +142,11 @@ impl ResourceTypePermission {
         perm
     }
     pub fn allowed(&self, claim: &Claim) -> Option<bool> {
-        if let Some(resource_permission) = self
-            .resource_permissions
-            .get(&Some(claim.resource_id.clone()))
-        {
-            if let Some(allowed) = resource_permission.allowed(claim) {
-                return Some(allowed);
+        if let Some(claimed_id) = &claim.resource_id {
+            if let Some(resource_permission) = self.resource_permissions.get(&Some(*claimed_id)) {
+                if let Some(allowed) = resource_permission.allowed(claim) {
+                    return Some(allowed);
+                }
             }
         }
 
@@ -220,8 +227,8 @@ mod tests {
         let set = test_permissions();
         assert!(!set.allowed(&Claim::new(
             "nonexistant-service",
-            "nonexistant-type",
-            i64::MAX,
+            Some("nonexistant-type"),
+            Some(i64::MAX),
             "nonexistant-action"
         )));
     }
@@ -231,8 +238,8 @@ mod tests {
         let set = test_permissions();
         assert!(!set.allowed(&Claim::new(
             "nonexistant-service",
-            "nonexistant-type",
-            13i64,
+            Some("nonexistant-type"),
+            Some(13i64),
             "read"
         )));
     }
@@ -242,8 +249,8 @@ mod tests {
         let set = test_permissions();
         assert!(!set.allowed(&Claim::new(
             "nonexistant-service",
-            "deny-type",
-            i64::MAX,
+            Some("deny-type"),
+            Some(i64::MAX),
             "read"
         )));
     }
@@ -253,8 +260,8 @@ mod tests {
         let set = test_permissions();
         assert!(!set.allowed(&Claim::new(
             "deny-service",
-            "nonexistant-type",
-            i64::MAX,
+            Some("nonexistant-type"),
+            Some(i64::MAX),
             "read"
         )));
     }
@@ -264,8 +271,8 @@ mod tests {
         let set = test_permissions();
         assert!(set.allowed(&Claim::new(
             "nonexistant-service",
-            "nonexistant-type",
-            i64::MAX,
+            Some("nonexistant-type"),
+            Some(i64::MAX),
             "read"
         )));
     }
@@ -275,8 +282,8 @@ mod tests {
         let set = test_permissions();
         assert!(set.allowed(&Claim::new(
             "nonexistant-service",
-            "nonexistant-type",
-            1,
+            Some("nonexistant-type"),
+            Some(1),
             "read"
         )));
     }
@@ -286,8 +293,8 @@ mod tests {
         let set = test_permissions();
         assert!(set.allowed(&Claim::new(
             "nonexistant-service",
-            "always-type",
-            i64::MAX,
+            Some("always-type"),
+            Some(i64::MAX),
             "nonexistant-action"
         )));
     }
@@ -297,8 +304,8 @@ mod tests {
         let set = test_permissions();
         assert!(set.allowed(&Claim::new(
             "always-service",
-            "nonexistant-type",
-            i64::MAX,
+            Some("nonexistant-type"),
+            Some(i64::MAX),
             "nonexistant-action"
         )));
     }
