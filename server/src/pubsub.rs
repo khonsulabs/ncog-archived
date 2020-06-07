@@ -1,7 +1,4 @@
-use super::{
-    database,
-    websockets::{CONNECTED_ACCOUNTS, CONNECTED_CLIENTS},
-};
+use super::websockets::{CONNECTED_ACCOUNTS, CONNECTED_CLIENTS};
 use migrations::{pg, sqlx};
 use shared::ServerResponse;
 use sqlx::postgres::PgListener;
@@ -25,12 +22,8 @@ pub async fn pg_notify_loop() -> Result<(), anyhow::Error> {
             let account = CONNECTED_ACCOUNTS.connect(installation_id).await?;
             let account = account.read().await;
 
-            // TODO refactor permissions
-            let account_permissions =
-                database::load_permissions_for(&pg(), account.profile.id).await?;
-
             CONNECTED_CLIENTS
-                .associate_account(installation_id, account.profile.id, account_permissions)
+                .associate_account(installation_id, account.profile.id)
                 .await?;
 
             CONNECTED_CLIENTS

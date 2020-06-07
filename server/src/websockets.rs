@@ -88,12 +88,12 @@ impl ConnectedClients {
         &self,
         installation_id: Uuid,
         account_id: i64,
-        permissions: PermissionSet,
-    ) -> Result<(), anyhow::Error> {
+    ) -> Result<Arc<RwLock<ConnectedAccount>>, anyhow::Error> {
         let mut data = self.data.write().await;
+        let account = CONNECTED_ACCOUNTS.connect(installation_id).await?;
         if let Some(client) = data.clients.get_mut(&installation_id) {
             let mut client = client.write().await;
-            client.account = Some(CONNECTED_ACCOUNTS.connect(installation_id).await?);
+            client.account = Some(account.clone());
         }
 
         data.account_by_installation
@@ -103,7 +103,7 @@ impl ConnectedClients {
             .entry(account_id)
             .or_insert_with(|| HashSet::new());
         installations.insert(installation_id);
-        Ok(())
+        Ok(account)
     }
 
     pub async fn disconnect(&self, installation_id: Uuid) {
@@ -214,12 +214,16 @@ impl ConnectedAccounts {
 
         let profile = database::get_profile(&pg(), installation_id).await?;
 
+        // TODO it'd be nice to not do this unless we need to do it, but I don't think it's possible without using a block_on.
+        let permissions = database::load_permissions_for(&pg(), profile.id).await?;
+
         Ok(accounts_by_id
             .entry(profile.id)
             .or_insert_with(|| {
                 Arc::new(RwLock::new(ConnectedAccount {
                     profile,
                     inputs: None,
+                    permissions,
                 }))
             })
             .clone())
@@ -238,6 +242,7 @@ impl ConnectedAccounts {
 
 pub struct ConnectedAccount {
     pub profile: UserProfile,
+    pub permissions: PermissionSet,
     pub inputs: Option<Inputs>,
 }
 
@@ -424,9 +429,14 @@ async fn handle_websocket_request(
             trace!("Looking up account");
             let logged_in = if let Some(account_id) = installation.account_id {
                 if let Ok(profile) = database::get_profile(&pg(), installation.id).await {
-                    let account_permissions =
-                        database::load_permissions_for(&pg(), account_id).await?;
-                    if !account_permissions.allowed(&Claim::new("ncog", None, None, "connect")) {
+                    let account = CONNECTED_CLIENTS
+                        .associate_account(installation.id, account_id)
+                        .await?;
+                    let account = account.read().await;
+                    if !account
+                        .permissions
+                        .allowed(&Claim::new("ncog", None, None, "connect"))
+                    {
                         responder
                             .send(
                                 ServerResponse::Error {
@@ -440,9 +450,6 @@ async fn handle_websocket_request(
                         return Ok(());
                     }
 
-                    CONNECTED_CLIENTS
-                        .associate_account(installation.id, account_id, account_permissions)
-                        .await?;
                     responder
                         .send(
                             ServerResponse::Authenticated { profile }.into_ws_response(request.id),
