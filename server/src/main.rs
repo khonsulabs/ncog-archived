@@ -5,7 +5,6 @@ use warp::{Filter, Reply};
 mod database;
 mod pubsub;
 // mod randomnames;
-mod permissions;
 mod websockets;
 
 #[macro_use]
@@ -37,7 +36,11 @@ async fn main() {
     info!("Done running migrations");
     websockets::initialize().await;
 
-    tokio::spawn(pubsub::pg_notify_loop());
+    tokio::spawn(async {
+        pubsub::pg_notify_loop()
+            .await
+            .expect("Error on pubsub thread")
+    });
 
     let healthcheck = warp::get()
         .and(warp::path("__healthcheck"))

@@ -31,6 +31,7 @@ pub async fn pg_notify_loop() -> Result<(), anyhow::Error> {
                     installation_id,
                     ServerResponse::Authenticated {
                         profile: account.profile.clone(),
+                        permissions: account.permissions.clone(),
                     },
                 )
                 .await;

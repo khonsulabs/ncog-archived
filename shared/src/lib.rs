@@ -2,7 +2,9 @@ use chrono::Utc;
 use serde_derive::{Deserialize, Serialize};
 use uuid::Uuid;
 
+pub mod permissions;
 pub mod websockets;
+use permissions::PermissionSet;
 use websockets::WsBatchResponse;
 
 pub const PROTOCOL_VERSION: &'static str = "0.0.1";
@@ -51,6 +53,7 @@ pub enum ServerResponse {
     },
     Authenticated {
         profile: UserProfile,
+        permissions: PermissionSet,
     },
     Error {
         message: Option<String>,

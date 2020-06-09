@@ -1,19 +1,34 @@
-use crate::{
-    api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
-    loggedin::LoggedIn,
-    login::Login,
-    strings::prelude::*,
-};
+mod api;
+mod backoffice;
+mod loggedin;
+mod login;
+mod strings;
+
+use api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge};
 use khonsuweb::static_page::StaticPage;
-use shared::{ServerResponse, UserProfile};
+use loggedin::LoggedIn;
+use login::Login;
+use shared::{
+    permissions::{Claim, PermissionSet},
+    ServerResponse, UserProfile,
+};
+use std::sync::Arc;
+use strings::localize;
 use yew::prelude::*;
 use yew_router::prelude::*;
+
 pub struct App {
     link: ComponentLink<Self>,
     show_nav: Option<bool>,
     api: ApiBridge,
-    profile: Option<UserProfile>,
     connected: Option<bool>,
+    user: Option<Arc<LoggedInUser>>,
+}
+
+#[derive(PartialEq, Debug)]
+pub struct LoggedInUser {
+    pub profile: UserProfile,
+    pub permissions: PermissionSet,
 }
 
 #[derive(Debug)]
@@ -31,13 +46,15 @@ pub enum AppRoute {
     LogIn,
     #[to = "/auth/callback/{service}"]
     LoggedIn(String),
+    #[to = "/backoffice!"]
+    BackOfficeDashboard,
     #[to = "/!"]
     Index,
     #[to = "/"]
     NotFound,
 }
 impl AppRoute {
-    pub fn render(&self, set_title: Callback<String>) -> Html {
+    pub fn render(&self, set_title: Callback<String>, user: Option<Arc<LoggedInUser>>) -> Html {
         match self {
             AppRoute::Index => {
                 html! {<StaticPage title="Welcome" content=localize("markdown/index.md") set_title=set_title.clone() />}
@@ -48,6 +65,9 @@ impl AppRoute {
             AppRoute::StylesTest => style_test(),
             AppRoute::LogIn => html! {<Login />},
             AppRoute::LoggedIn(service) => html! {<LoggedIn service=service.clone() />},
+            AppRoute::BackOfficeDashboard => {
+                html! { <backoffice::Dashboard set_title=set_title.clone() user=user.clone() />}
+            }
         }
     }
 }
@@ -63,7 +83,7 @@ impl Component for App {
             link,
             show_nav: None,
             api,
-            profile: None,
+            user: None,
             connected: None,
         }
     }
@@ -88,18 +108,24 @@ impl Component for App {
             }
             Message::WsMessage(message) => match message {
                 AgentResponse::Disconnected => {
-                    self.profile = None;
+                    self.user = None;
                     self.connected = Some(false);
                     true
                 }
                 AgentResponse::Connected => {
-                    self.profile = None;
+                    self.user = None;
                     self.connected = Some(true);
                     true
                 }
                 AgentResponse::Response(response) => match response.result {
-                    ServerResponse::Authenticated { profile } => {
-                        self.profile = Some(profile);
+                    ServerResponse::Authenticated {
+                        profile,
+                        permissions,
+                    } => {
+                        self.user = Some(Arc::new(LoggedInUser {
+                            profile,
+                            permissions,
+                        }));
                         true
                     }
                     _ => false,
@@ -115,6 +141,7 @@ impl Component for App {
 
     fn view(&self) -> Html {
         let set_title = self.link.callback(Message::SetTitle);
+        let user = self.user.clone();
         html! {
             <div>
                 { self.nav_bar() }
@@ -131,7 +158,7 @@ impl Component for App {
                     </div>
                     <Router<AppRoute>
                         render = Router::render(move |switch: AppRoute| {
-                            switch.render(set_title.clone())
+                            switch.render(set_title.clone(), user.clone())
                         })
                     />
                 </section>
@@ -208,10 +235,10 @@ impl App {
     }
 
     fn login_button(&self) -> Html {
-        if let Some(profile) = &self.profile {
+        if let Some(user) = &self.user {
             html! {
                 <div class="navbar-item">
-                    { profile.screenname.clone().unwrap_or_default() }
+                    { user.profile.screenname.clone().unwrap_or_default() }
                     <button class="button" onclick=self.link.callback(|_| Message::LogOut)>
                         <strong>{ "Log Out" }</strong>
                     </button>
@@ -289,6 +316,22 @@ fn style_test() -> Html {
             <a href="#" class="button is-success is-inverted" >{"Success"}</a>
             <a href="#" class="button is-warning is-inverted" >{"Warning"}</a>
             <a href="#" class="button is-danger is-inverted" >{"Danger"}</a>
+        </div>
+    }
+}
+
+fn has_permission(user: &Option<Arc<LoggedInUser>>, claim: Claim) -> bool {
+    if let Some(user) = user {
+        user.permissions.allowed(&claim)
+    } else {
+        false
+    }
+}
+
+fn invalid_permissions() -> Html {
+    html! {
+        <div class="notification is-danger">
+            {"You do not have the required permissions to view this."}
         </div>
     }
 }

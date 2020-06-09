@@ -1,8 +1,5 @@
+use super::{JONS_ACCOUNT_ID, JONS_ITCHIO_ID, TIMELORD_ROLE_ID};
 use sqlx_simple_migrator::Migration;
-
-const JONS_ACCOUNT_ID: i64 = 1;
-const JONS_ITCHIO_ID: i64 = 1997167;
-const TIMELORD_ROLE_ID: i64 = 1;
 
 pub fn migration() -> Migration {
     Migration::new(std::file!())

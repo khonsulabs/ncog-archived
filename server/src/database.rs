@@ -1,5 +1,7 @@
-use crate::permissions::{PermissionSet, Statement};
-use shared::{Installation, UserProfile};
+use shared::{
+    permissions::{PermissionSet, Statement},
+    Installation, UserProfile,
+};
 use uuid::Uuid;
 
 use migrations::sqlx;

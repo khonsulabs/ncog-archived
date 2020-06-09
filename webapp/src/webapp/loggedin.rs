@@ -1,4 +1,4 @@
-use crate::api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge};
+use super::api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge};
 use shared::ServerRequest;
 use yew::prelude::*;
 

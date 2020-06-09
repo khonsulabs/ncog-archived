@@ -1,3 +1,4 @@
+use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 pub struct Claim {
@@ -54,7 +55,7 @@ impl Statement {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct PermissionSet {
     service_permissions: HashMap<Option<String>, ServicePermission>,
 }
@@ -93,7 +94,7 @@ impl PermissionSet {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct ServicePermission {
     resource_type_permissions: HashMap<Option<String>, ResourceTypePermission>,
 }
@@ -130,7 +131,7 @@ impl ServicePermission {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct ResourceTypePermission {
     resource_permissions: HashMap<Option<i64>, ResourcePermission>,
 }
@@ -167,7 +168,7 @@ impl ResourceTypePermission {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct ResourcePermission {
     action_permissions: HashMap<Option<String>, bool>,
 }

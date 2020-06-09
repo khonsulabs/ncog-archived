@@ -168,7 +168,10 @@ async fn receive_loop(rx: &mut TokioReceiver<Msg>) -> bool {
                             UserConfig::set_installation_id(installation_id).await;
                             Network::set_login_state(LoginState::Connected).await;
                         }
-                        ServerResponse::Authenticated { profile } => {
+                        ServerResponse::Authenticated {
+                            profile,
+                            permissions,
+                        } => {
                             println!("Authenticated as {:?}", profile.screenname);
                             Network::set_login_state(LoginState::Authenticated { profile }).await;
                         }

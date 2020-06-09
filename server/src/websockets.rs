@@ -1,5 +1,4 @@
 use super::{database, env, SERVER_URL};
-use crate::permissions::{Claim, PermissionSet};
 use async_std::sync::RwLock;
 use futures::{SinkExt, StreamExt};
 use lazy_static::lazy_static;
@@ -7,6 +6,7 @@ use migrations::{pg, sqlx};
 use serde_derive::{Deserialize, Serialize};
 use shared::{
     current_timestamp,
+    permissions::{Claim, PermissionSet},
     websockets::{WsBatchResponse, WsRequest},
     Inputs, OAuthProvider, ServerRequest, ServerResponse, UserProfile,
 };
@@ -418,15 +418,15 @@ async fn handle_websocket_request(
                 None => Uuid::new_v4(),
             };
 
-            trace!("Looking up installation {:?}", installation_id);
+            info!("Looking up installation {:?}", installation_id);
             let installation = database::lookup_installation(&pg(), installation_id).await?;
 
-            trace!("Recording connection");
+            info!("Recording connection");
             CONNECTED_CLIENTS
                 .connect(installation.id, &client_handle)
                 .await;
 
-            trace!("Looking up account");
+            info!("Looking up account");
             let logged_in = if let Some(account_id) = installation.account_id {
                 if let Ok(profile) = database::get_profile(&pg(), installation.id).await {
                     let account = CONNECTED_CLIENTS
@@ -452,7 +452,11 @@ async fn handle_websocket_request(
 
                     responder
                         .send(
-                            ServerResponse::Authenticated { profile }.into_ws_response(request.id),
+                            ServerResponse::Authenticated {
+                                profile,
+                                permissions: account.permissions.clone(),
+                            }
+                            .into_ws_response(request.id),
                         )
                         .unwrap_or_default();
                     true
@@ -566,10 +570,20 @@ async fn login_itchio(installation_id: Uuid, access_token: &String) -> Result<()
         {
             account_id
         } else {
-            let account_id = sqlx::query!("INSERT INTO accounts DEFAULT VALUES RETURNING id")
-                .fetch_one(&mut tx)
-                .await?
-                .id;
+            let account_id = if let Ok(row) = sqlx::query!(
+                "SELECT account_id FROM itchio_profiles WHERE id = $1",
+                response.user.id
+            )
+            .fetch_one(&mut tx)
+            .await
+            {
+                row.account_id
+            } else {
+                sqlx::query!("INSERT INTO accounts DEFAULT VALUES RETURNING id")
+                    .fetch_one(&mut tx)
+                    .await?
+                    .id
+            };
             sqlx::query!(
                 "UPDATE installations SET account_id = $1 WHERE id = $2",
                 account_id,
