@@ -1,4 +1,5 @@
-use super::{has_permission, invalid_permissions, LoggedInUser};
+use super::LoggedInUser;
+use crate::require_permission;
 use shared::permissions::Claim;
 use std::sync::Arc;
 use yew::prelude::*;
@@ -32,13 +33,7 @@ impl Component for Dashboard {
     }
 
     fn view(&self) -> Html {
-        info!("Current permssions: {:#?}", self.props.user);
-        if !has_permission(
-            &self.props.user,
-            Claim::new("backoffice", Some("dashboard"), None, "read"),
-        ) {
-            return invalid_permissions();
-        }
+        require_permission!(&self.props.user, read_claim());
 
         html!(
             <div class="columns is-centered">
@@ -48,4 +43,8 @@ impl Component for Dashboard {
             </div>
         )
     }
+}
+
+pub fn read_claim() -> Claim {
+    Claim::new("backoffice", Some("dashboard"), None, "read")
 }

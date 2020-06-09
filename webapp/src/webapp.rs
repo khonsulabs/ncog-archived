@@ -21,8 +21,10 @@ pub struct App {
     link: ComponentLink<Self>,
     show_nav: Option<bool>,
     api: ApiBridge,
+    route_agent: RouteAgentBridge,
     connected: Option<bool>,
     user: Option<Arc<LoggedInUser>>,
+    current_route: String,
 }
 
 #[derive(PartialEq, Debug)]
@@ -36,6 +38,7 @@ pub enum Message {
     SetTitle(String),
     ToggleNavgar,
     WsMessage(AgentResponse),
+    RouteMessage(Route),
     LogOut,
 }
 #[derive(Switch, Clone, Debug)]
@@ -79,12 +82,16 @@ impl Component for App {
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
         let callback = link.callback(|message| Message::WsMessage(message));
         let api = ApiAgent::bridge(callback);
+        let route_agent =
+            RouteAgentBridge::new(link.callback(|message| Message::RouteMessage(message)));
         App {
             link,
             show_nav: None,
             api,
             user: None,
             connected: None,
+            route_agent,
+            current_route: "/".to_owned(),
         }
     }
 
@@ -132,6 +139,10 @@ impl Component for App {
                 },
                 _ => false,
             },
+            Message::RouteMessage(route) => {
+                self.current_route = route.route;
+                true
+            }
             Message::LogOut => {
                 self.api.send(AgentMessage::LogOut);
                 false
@@ -149,7 +160,7 @@ impl Component for App {
                 <section class="section content">
                     <div class="columns is-centered">
                         <div class="column is-half">
-                            <p class="notification is-danger">
+                            <p class="notification is-danger is-light">
                                 { "ncog.link is extremely early in development. Nothing is set in stone. To join in on the discussion, head over to "}
                                 <a href="https://community.khonsulabs.com/">{"the forums"}
                                 </a>{"."}
@@ -193,8 +204,21 @@ impl App {
         "navbar-menu"
     }
 
+    fn navbar_class_for(&self, path: &'static str) -> &'static str {
+        if &self.current_route == path {
+            return "navbar-item is-active";
+        }
+
+        "navbar-item"
+    }
+
     fn nav_bar(&self) -> Html {
         let toggle_navbar = self.link.callback(|_| Message::ToggleNavgar);
+        let backoffice_link = if has_permission(&self.user, backoffice::read_claim()) {
+            html! {<RouterAnchor<AppRoute> route=AppRoute::BackOfficeDashboard classes=self.navbar_class_for("/backoffice") >{ "Backoffice" } </RouterAnchor<AppRoute>>}
+        } else {
+            html! {}
+        };
         // let player_name = match &self.current_avatar {
         //     Some(avatar) => {
         //         html! {<RouterAnchor<AppRoute> route=AppRoute::AvatarProfile(avatar.name.clone()) classes="navbar-item" >{ &avatar.name } </RouterAnchor<AppRoute>>}
@@ -213,7 +237,8 @@ impl App {
                 </div>
                 <div id="navbarMenu" class=self.navbar_class()>
                     <div class="navbar-start">
-                        <RouterAnchor<AppRoute> route=AppRoute::Index classes="navbar-item" >{ "Home" } </RouterAnchor<AppRoute>>
+                        <RouterAnchor<AppRoute> route=AppRoute::Index classes=self.navbar_class_for("/") >{ "Home" } </RouterAnchor<AppRoute>>
+                        { backoffice_link }
                     </div>
                     <div class="navbar-end">
                         { self.login_button() }
@@ -334,4 +359,13 @@ fn invalid_permissions() -> Html {
             {"You do not have the required permissions to view this."}
         </div>
     }
+}
+
+#[macro_export]
+macro_rules! require_permission {
+    ($user:expr, $claim:expr) => {{
+        if !crate::webapp::has_permission($user, $claim) {
+            return crate::webapp::invalid_permissions();
+        }
+    }};
 }
