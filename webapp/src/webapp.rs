@@ -49,8 +49,8 @@ pub enum AppRoute {
     LogIn,
     #[to = "/auth/callback/{service}"]
     LoggedIn(String),
-    #[to = "/backoffice!"]
-    BackOfficeDashboard,
+    #[to = "/backoffice{*:rest}"]
+    BackOffice(backoffice::BackofficeAdmin),
     #[to = "/!"]
     Index,
     #[to = "/"]
@@ -68,8 +68,8 @@ impl AppRoute {
             AppRoute::StylesTest => style_test(),
             AppRoute::LogIn => html! {<Login />},
             AppRoute::LoggedIn(service) => html! {<LoggedIn service=service.clone() />},
-            AppRoute::BackOfficeDashboard => {
-                html! { <backoffice::Dashboard set_title=set_title.clone() user=user.clone() />}
+            AppRoute::BackOffice(admin) => {
+                html! { <backoffice::Dashboard set_title=set_title.clone() user=user.clone() admin=admin.clone() />}
             }
         }
     }
@@ -204,18 +204,29 @@ impl App {
         "navbar-menu"
     }
 
-    fn navbar_class_for(&self, path: &'static str) -> &'static str {
-        if &self.current_route == path {
-            return "navbar-item is-active";
+    fn navbar_class_for(&self, default_class: &'static str, path: &'static str) -> String {
+        if self.current_route.starts_with(path) {
+            // Special case "/" -- make it be an exact match, not a starts_with
+            if path.len() > 1 || self.current_route.len() == 1 {
+                return format!("{} is-active", default_class);
+            }
         }
 
-        "navbar-item"
+        default_class.to_owned()
     }
 
     fn nav_bar(&self) -> Html {
         let toggle_navbar = self.link.callback(|_| Message::ToggleNavgar);
-        let backoffice_link = if has_permission(&self.user, backoffice::read_claim()) {
-            html! {<RouterAnchor<AppRoute> route=AppRoute::BackOfficeDashboard classes=self.navbar_class_for("/backoffice") >{ "Backoffice" } </RouterAnchor<AppRoute>>}
+        let backoffice_links = if has_permission(&self.user, backoffice::read_claim()) {
+            html! {
+                <div class="navbar-item has-dropdown is-hoverable">
+                    <RouterAnchor<AppRoute> route=AppRoute::BackOffice(backoffice::BackofficeAdmin::Dashboard) classes=self.navbar_class_for("navbar-link", "/backoffice") >{ "Backoffice" } </RouterAnchor<AppRoute>>
+                    <div class="navbar-dropdown is-boxed">
+                        <RouterAnchor<AppRoute> route=AppRoute::BackOffice(backoffice::BackofficeAdmin::Users) classes=self.navbar_class_for("navbar-item", "/backoffice/users") >{ "Users" } </RouterAnchor<AppRoute>>
+                        <RouterAnchor<AppRoute> route=AppRoute::BackOffice(backoffice::BackofficeAdmin::Roles) classes=self.navbar_class_for("navbar-item", "/backoffice/roles") >{ "Roles" } </RouterAnchor<AppRoute>>
+                    </div>
+                </div>
+            }
         } else {
             html! {}
         };
@@ -226,7 +237,7 @@ impl App {
         //     None => html! {},
         // };
         html! {
-            <nav class="navbar" role="navigation" aria-label="main navigation">
+            <nav class="navbar is-dark" role="navigation" aria-label="main navigation">
                 <div class="navbar-brand">
                 <RouterAnchor<AppRoute> route=AppRoute::Index classes="navbar-item" ><h1 class="is-size-3 has-text-primary">{ "ncog.link" }</h1></RouterAnchor<AppRoute>>
                 <a role="button" class="navbar-burger burger" aria-label="menu" aria-expanded="false" data-target="navbarMenu" onclick=toggle_navbar.clone()>
@@ -237,8 +248,8 @@ impl App {
                 </div>
                 <div id="navbarMenu" class=self.navbar_class()>
                     <div class="navbar-start">
-                        <RouterAnchor<AppRoute> route=AppRoute::Index classes=self.navbar_class_for("/") >{ "Home" } </RouterAnchor<AppRoute>>
-                        { backoffice_link }
+                        <RouterAnchor<AppRoute> route=AppRoute::Index classes=self.navbar_class_for("navbar-item", "/") >{ "Home" } </RouterAnchor<AppRoute>>
+                        { backoffice_links }
                     </div>
                     <div class="navbar-end">
                         { self.login_button() }
