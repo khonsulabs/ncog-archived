@@ -315,7 +315,7 @@ impl ApiAgent {
     }
 
     fn handle_ws_message(&mut self, response: &ServerResponse) {
-        info!("Received response: {:?}", response);
+        trace!("Received response: {:?}", response);
         match response {
             ServerResponse::AdoptInstallationId { installation_id } => {
                 self.auth_state = match &self.auth_state {
