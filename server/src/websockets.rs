@@ -48,8 +48,8 @@ impl NetworkTiming {
 }
 
 lazy_static! {
-    pub static ref CONNECTED_CLIENTS: ConnectedClients = { ConnectedClients::default() };
-    pub static ref CONNECTED_ACCOUNTS: ConnectedAccounts = { ConnectedAccounts::default() };
+    pub static ref CONNECTED_CLIENTS: ConnectedClients = ConnectedClients::default();
+    pub static ref CONNECTED_ACCOUNTS: ConnectedAccounts = ConnectedAccounts::default();
 }
 
 pub struct ConnectedClients {

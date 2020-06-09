@@ -10,7 +10,7 @@ use tokio::sync::mpsc::{
 use yarws::{Client, Msg};
 
 lazy_static! {
-    static ref NETWORK: Arc<RwLock<Network>> = { Arc::new(RwLock::new(Network::new())) };
+    static ref NETWORK: Arc<RwLock<Network>> = Arc::new(RwLock::new(Network::new()));
 }
 
 #[derive(Clone, Debug)]

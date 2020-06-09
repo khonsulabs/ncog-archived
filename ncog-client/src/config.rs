@@ -3,7 +3,7 @@ use kludgine::prelude::*;
 use std::{fs, io::Write, path::PathBuf};
 
 lazy_static! {
-    static ref CONFIG: KludgineHandle<UserConfig> = { KludgineHandle::new(UserConfig::load()) };
+    static ref CONFIG: KludgineHandle<UserConfig> = KludgineHandle::new(UserConfig::load());
 }
 
 use serde_derive::{Deserialize, Serialize};
