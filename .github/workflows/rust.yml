@@ -59,7 +59,7 @@ jobs:
           cargo build --package server --release
 
       - name: Run tests
-        run: cargo test --release --verbose
+        run: cargo test --release --verbose --lib
         env:
           NCOG_CLIENT_ENCRYPTION_KEY: ${{ secrets.NCOG_CLIENT_ENCRYPTION_KEY }}
 
