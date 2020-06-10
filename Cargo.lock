@@ -3190,6 +3190,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-std",
+ "async-trait",
  "bincode",
  "chrono",
  "crossbeam",
@@ -3209,6 +3210,7 @@ dependencies = [
  "slog-json",
  "slog-scope",
  "tera",
+ "thiserror",
  "tokio",
  "url",
  "uuid",

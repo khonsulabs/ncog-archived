@@ -1,5 +1,6 @@
 use super::{database, env, SERVER_URL};
 use async_std::sync::RwLock;
+use async_trait::async_trait;
 use futures::{SinkExt, StreamExt};
 use lazy_static::lazy_static;
 use migrations::{pg, sqlx};
@@ -239,6 +240,39 @@ impl ConnectedAccounts {
     //     let accounts_by_id = self.accounts_by_id.read().await;
     //     accounts_by_id.values().map(|v| v.clone()).collect()
     // }
+}
+
+#[async_trait]
+pub trait ConnectedAccountHandle {
+    async fn permission_allowed(&self, claim: &Claim) -> Result<(), anyhow::Error>;
+}
+
+fn permission_denied(claim: &Claim) -> Result<(), anyhow::Error> {
+    anyhow::bail!("permission denied for accessing {:?}", claim)
+}
+
+#[async_trait]
+impl ConnectedAccountHandle for Arc<RwLock<ConnectedClient>> {
+    async fn permission_allowed(&self, claim: &Claim) -> Result<(), anyhow::Error> {
+        let client = self.read().await;
+        if let Some(account) = &client.account {
+            return account.permission_allowed(claim).await;
+        }
+
+        permission_denied(claim)
+    }
+}
+
+#[async_trait]
+impl ConnectedAccountHandle for Arc<RwLock<ConnectedAccount>> {
+    async fn permission_allowed(&self, claim: &Claim) -> Result<(), anyhow::Error> {
+        let account = self.read().await;
+        if account.permissions.allowed(&claim) {
+            return Ok(());
+        } else {
+            permission_denied(claim)
+        }
+    }
 }
 
 pub struct ConnectedAccount {

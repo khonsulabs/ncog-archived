@@ -1,7 +1,11 @@
-use crate::{database, websockets::ConnectedClient};
+use crate::{
+    database,
+    websockets::{ConnectedAccountHandle, ConnectedClient},
+};
 use async_std::sync::RwLock;
 use shared::{
     iam::{IAMRequest, IAMResponse},
+    permissions::Claim,
     websockets::WsBatchResponse,
     ServerResponse,
 };
@@ -16,6 +20,10 @@ pub async fn handle_request(
 ) -> Result<(), anyhow::Error> {
     match request {
         IAMRequest::UsersList => {
+            client_handle
+                .permission_allowed(&Claim::new("iam", Some("users"), None, "list"))
+                .await?;
+
             let users = database::iam_list_users(&migrations::pg()).await?;
 
             responder.send(
