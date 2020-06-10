@@ -1,4 +1,7 @@
-use super::api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge};
+use crate::webapp::{
+    api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
+    strings::localize,
+};
 use shared::ServerRequest;
 use yew::prelude::*;
 
@@ -72,7 +75,7 @@ impl Component for LoggedIn {
         html!(
             <div class="columns is-centered">
                 <div class="column is-half">
-                    <h1>{"Signing in..."}</h1>
+                    <h1>{localize("logging-in")}</h1>
                     <progress class="progress is-primary" max="100"/>
                 </div>
             </div>

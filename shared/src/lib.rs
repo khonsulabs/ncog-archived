@@ -3,8 +3,10 @@ use serde_derive::{Deserialize, Serialize};
 use uuid::Uuid;
 
 pub mod iam;
+pub mod localization;
 pub mod permissions;
 pub mod websockets;
+pub use fluent_templates;
 use permissions::PermissionSet;
 use websockets::WsBatchResponse;
 

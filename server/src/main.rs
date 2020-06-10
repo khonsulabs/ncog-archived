@@ -20,6 +20,8 @@ const STATIC_FOLDER_PATH: &'static str = "../webapp/static";
 #[cfg(not(debug_assertions))]
 const STATIC_FOLDER_PATH: &'static str = "static";
 
+use shared::fluent_templates::loader::Loader;
+
 #[tokio::main]
 async fn main() {
     dotenv::dotenv().expect("Error initializing environment");

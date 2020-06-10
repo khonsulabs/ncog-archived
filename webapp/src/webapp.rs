@@ -66,10 +66,10 @@ impl AppRoute {
     pub fn render(&self, set_title: Callback<String>, user: Option<Arc<LoggedInUser>>) -> Html {
         match self {
             AppRoute::Index => {
-                html! {<StaticPage title="Welcome" content=localize("markdown/index.md") set_title=set_title.clone() />}
+                html! {<StaticPage title="Welcome" content=localize("home-page") set_title=set_title.clone() />}
             }
             AppRoute::NotFound => {
-                html! {<StaticPage title="Not Found" content=localize("markdown/not_found.md") set_title=set_title.clone() />}
+                html! {<StaticPage title="Not Found" content=localize("not-found") set_title=set_title.clone() />}
             }
             AppRoute::StylesTest => style_test(),
             AppRoute::LogIn => html! {<Login />},
@@ -178,9 +178,7 @@ impl Component for App {
                     <div class="columns is-centered">
                         <div class="column is-half">
                             <p class="notification is-danger is-light">
-                                { "ncog.link is extremely early in development. Nothing is set in stone. To join in on the discussion, head over to "}
-                                <a href="https://community.khonsulabs.com/">{"the forums"}
-                                </a>{"."}
+                                { localize("early-warning") }
                             </p>
                         </div>
                     </div>
@@ -237,10 +235,10 @@ impl App {
         let backoffice_links = if has_permission(&self.user, backoffice::read_claim()) {
             html! {
                 <div class="navbar-item has-dropdown is-hoverable">
-                    <RouterAnchor<AppRoute> route=AppRoute::BackOfficeDashboard classes=self.navbar_class_for("navbar-link", "/backoffice") >{ "Backoffice" } </RouterAnchor<AppRoute>>
+                    <RouterAnchor<AppRoute> route=AppRoute::BackOfficeDashboard classes=self.navbar_class_for("navbar-link", "/backoffice") >{ localize("backoffice") }</RouterAnchor<AppRoute>>
                     <div class="navbar-dropdown is-boxed">
-                        <RouterAnchor<AppRoute> route=AppRoute::BackOfficeUsersList classes=self.navbar_class_for("navbar-item", "/backoffice/users") >{ "Users" } </RouterAnchor<AppRoute>>
-                        <RouterAnchor<AppRoute> route=AppRoute::BackOfficeRolesList classes=self.navbar_class_for("navbar-item", "/backoffice/roles") >{ "Roles" } </RouterAnchor<AppRoute>>
+                        <RouterAnchor<AppRoute> route=AppRoute::BackOfficeUsersList classes=self.navbar_class_for("navbar-item", "/backoffice/users") >{ localize("users") }</RouterAnchor<AppRoute>>
+                        <RouterAnchor<AppRoute> route=AppRoute::BackOfficeRolesList classes=self.navbar_class_for("navbar-item", "/backoffice/roles") >{ localize("roles") } </RouterAnchor<AppRoute>>
                     </div>
                 </div>
             }
@@ -265,7 +263,7 @@ impl App {
                 </div>
                 <div id="navbarMenu" class=self.navbar_class()>
                     <div class="navbar-start">
-                        <RouterAnchor<AppRoute> route=AppRoute::Index classes=self.navbar_class_for("navbar-item", "/") >{ "Home" } </RouterAnchor<AppRoute>>
+                        <RouterAnchor<AppRoute> route=AppRoute::Index classes=self.navbar_class_for("navbar-item", "/") >{ localize("home") } </RouterAnchor<AppRoute>>
                         { backoffice_links }
                     </div>
                     <div class="navbar-end">
@@ -281,7 +279,7 @@ impl App {
         html! {
             <footer class="footer">
                 <div class="content has-text-centered">
-                    { localize("markdown/footer.md") }
+                    { localize("footer") }
                 </div>
             </footer>
         }
@@ -293,7 +291,7 @@ impl App {
                 <div class="navbar-item">
                     { user.profile.screenname.clone().unwrap_or_default() }
                     <button class="button" onclick=self.link.callback(|_| Message::LogOut)>
-                        <strong>{ "Log Out" }</strong>
+                        <strong>{ localize("log-out") }</strong>
                     </button>
                 </div>
             }
@@ -301,7 +299,7 @@ impl App {
             html! {
                 <div class="navbar-item">
                     <RouterButton<AppRoute> route=AppRoute::LogIn classes="button is-primary" >
-                        <strong>{ "Sign up/Log in" }</strong>
+                        <strong>{ localize("log-in") }</strong>
                     </RouterButton<AppRoute>>
                 </div>
             }
@@ -384,7 +382,7 @@ fn has_permission(user: &Option<Arc<LoggedInUser>>, claim: Claim) -> bool {
 fn invalid_permissions() -> Html {
     html! {
         <div class="notification is-danger">
-            {"You do not have the required permissions to view this."}
+            {localize("no-permission")}
         </div>
     }
 }
