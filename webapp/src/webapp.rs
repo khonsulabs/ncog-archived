@@ -15,7 +15,7 @@ use shared::{
 use std::sync::Arc;
 use strings::localize;
 use yew::prelude::*;
-use yew_router::prelude::*;
+use yew_router::{agent::RouteRequest, prelude::*};
 
 pub struct App {
     link: ComponentLink<Self>,
@@ -97,8 +97,9 @@ impl Component for App {
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
         let callback = link.callback(|message| Message::WsMessage(message));
         let api = ApiAgent::bridge(callback);
-        let route_agent =
+        let mut route_agent =
             RouteAgentBridge::new(link.callback(|message| Message::RouteMessage(message)));
+        route_agent.send(RouteRequest::GetCurrentRoute);
         App {
             link,
             show_nav: None,
@@ -156,6 +157,7 @@ impl Component for App {
             },
             Message::RouteMessage(route) => {
                 self.current_route = route.route;
+                info!("New route: {}", self.current_route);
                 true
             }
             Message::LogOut => {
