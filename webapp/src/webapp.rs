@@ -49,8 +49,12 @@ pub enum AppRoute {
     LogIn,
     #[to = "/auth/callback/{service}"]
     LoggedIn(String),
-    #[to = "/backoffice{*:rest}"]
-    BackOffice(backoffice::BackofficeAdmin),
+    #[to = "/backoffice/users!"]
+    BackOfficeUsersList,
+    #[to = "/backoffice/roles!"]
+    BackOfficeRolesList,
+    #[to = "/backoffice!"]
+    BackOfficeDashboard,
     #[to = "/!"]
     Index,
     #[to = "/"]
@@ -68,8 +72,14 @@ impl AppRoute {
             AppRoute::StylesTest => style_test(),
             AppRoute::LogIn => html! {<Login />},
             AppRoute::LoggedIn(service) => html! {<LoggedIn service=service.clone() />},
-            AppRoute::BackOffice(admin) => {
-                html! { <backoffice::Dashboard set_title=set_title.clone() user=user.clone() admin=admin.clone() />}
+            AppRoute::BackOfficeDashboard => {
+                html! { <backoffice::Dashboard set_title=set_title.clone() user=user.clone() />}
+            }
+            AppRoute::BackOfficeUsersList => {
+                html! { <backoffice::users::Users set_title=set_title.clone() user=user.clone() />}
+            }
+            AppRoute::BackOfficeRolesList => {
+                html! { <p>{"todo"}</p> }
             }
         }
     }
@@ -220,10 +230,10 @@ impl App {
         let backoffice_links = if has_permission(&self.user, backoffice::read_claim()) {
             html! {
                 <div class="navbar-item has-dropdown is-hoverable">
-                    <RouterAnchor<AppRoute> route=AppRoute::BackOffice(backoffice::BackofficeAdmin::Dashboard) classes=self.navbar_class_for("navbar-link", "/backoffice") >{ "Backoffice" } </RouterAnchor<AppRoute>>
+                    <RouterAnchor<AppRoute> route=AppRoute::BackOfficeDashboard classes=self.navbar_class_for("navbar-link", "/backoffice") >{ "Backoffice" } </RouterAnchor<AppRoute>>
                     <div class="navbar-dropdown is-boxed">
-                        <RouterAnchor<AppRoute> route=AppRoute::BackOffice(backoffice::BackofficeAdmin::Users) classes=self.navbar_class_for("navbar-item", "/backoffice/users") >{ "Users" } </RouterAnchor<AppRoute>>
-                        <RouterAnchor<AppRoute> route=AppRoute::BackOffice(backoffice::BackofficeAdmin::Roles) classes=self.navbar_class_for("navbar-item", "/backoffice/roles") >{ "Roles" } </RouterAnchor<AppRoute>>
+                        <RouterAnchor<AppRoute> route=AppRoute::BackOfficeUsersList classes=self.navbar_class_for("navbar-item", "/backoffice/users") >{ "Users" } </RouterAnchor<AppRoute>>
+                        <RouterAnchor<AppRoute> route=AppRoute::BackOfficeRolesList classes=self.navbar_class_for("navbar-item", "/backoffice/roles") >{ "Roles" } </RouterAnchor<AppRoute>>
                     </div>
                 </div>
             }

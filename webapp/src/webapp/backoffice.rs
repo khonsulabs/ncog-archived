@@ -5,25 +5,16 @@ use std::sync::Arc;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
+pub mod users;
+
 pub struct Dashboard {
     props: Props,
-}
-
-#[derive(Switch, Clone, Debug, PartialEq)]
-pub enum BackofficeAdmin {
-    #[to = "/"]
-    Dashboard,
-    #[to = "/users"]
-    Users,
-    #[to = "/roles"]
-    Roles,
 }
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {
     pub user: Option<Arc<LoggedInUser>>,
     pub set_title: Callback<String>,
-    pub admin: BackofficeAdmin,
 }
 
 pub enum Message {}
