@@ -1,4 +1,5 @@
 use shared::{
+    iam::{RoleSummary, User},
     permissions::{PermissionSet, Statement},
     Installation, UserProfile,
 };
@@ -6,8 +7,9 @@ use uuid::Uuid;
 
 use migrations::sqlx;
 
+use chrono::{DateTime, Utc};
 use sqlx::executor::RefExecutor;
-use sqlx::postgres::Postgres;
+use sqlx::{postgres::Postgres, prelude::*};
 
 pub async fn get_profile<'e, E>(
     executor: E,
@@ -57,4 +59,45 @@ where
         "#, account_id).fetch_all(executor).await?;
 
     Ok(results.into())
+}
+
+pub async fn iam_list_users<'e, E>(executor: E) -> Result<Vec<User>, sqlx::Error>
+where
+    E: 'e + Send + RefExecutor<'e, Database = Postgres>,
+{
+    let mut users: Vec<User> = Vec::new();
+
+    // TODO https://github.com/launchbadge/sqlx/issues/367 Once this is shipping, we can switch this to strongly typed query again
+    let mut user_rows = sqlx::query(r#"SELECT accounts.id, screenname, created_at, roles.id as role_id, roles.name as role_name FROM accounts 
+            LEFT OUTER JOIN account_roles ON account_roles.account_id = accounts.id
+            LEFT OUTER JOIN roles ON roles.id = account_roles.role_id ORDER BY accounts.id"#).fetch(executor);
+    while let Some(row) = user_rows.next().await? {
+        let id = row.get::<i64, _>(0);
+        if users.len() == 0 || users[users.len() - 1].id != id {
+            users.push(User {
+                id,
+                screenname: row.get::<Option<String>, _>(1),
+                created_at: row.get::<DateTime<Utc>, _>(2),
+                roles: Vec::new(),
+            });
+        }
+
+        match row.get::<Option<i64>, _>(3) {
+            Some(role_id) => {
+                let role_name = row.get::<String, _>(4);
+                let users_count = users.len();
+                users
+                    .get_mut(users_count - 1)
+                    .unwrap()
+                    .roles
+                    .push(RoleSummary {
+                        id: role_id,
+                        name: role_name,
+                    });
+            }
+            None => {}
+        }
+    }
+
+    Ok(users)
 }

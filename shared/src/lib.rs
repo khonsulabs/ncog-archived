@@ -2,6 +2,7 @@ use chrono::Utc;
 use serde_derive::{Deserialize, Serialize};
 use uuid::Uuid;
 
+pub mod iam;
 pub mod permissions;
 pub mod websockets;
 use permissions::PermissionSet;
@@ -29,8 +30,8 @@ pub enum ServerRequest {
         original_timestamp: f64,
         timestamp: f64,
     },
+    IAM(iam::IAMRequest),
 }
-
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum OAuthProvider {
     ItchIO,
@@ -67,6 +68,7 @@ pub enum ServerResponse {
         average_roundtrip: f64,
         average_server_timestamp_delta: f64,
     },
+    IAM(iam::IAMResponse),
 }
 
 impl ServerResponse {

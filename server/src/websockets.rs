@@ -20,6 +20,7 @@ use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use url::Url;
 use uuid::Uuid;
 use warp::filters::ws::{Message, WebSocket};
+mod iam;
 
 #[derive(Default)]
 pub struct NetworkTiming {
@@ -500,6 +501,9 @@ async fn handle_websocket_request(
         } => {
             let mut client = client_handle.write().await;
             client.network_timing.update(original_timestamp, timestamp);
+        }
+        ServerRequest::IAM(iam_request) => {
+            iam::handle_request(client_handle, iam_request, responder, request.id).await?;
         }
     }
 

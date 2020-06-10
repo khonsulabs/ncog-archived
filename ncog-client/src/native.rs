@@ -201,6 +201,9 @@ async fn receive_loop(rx: &mut TokioReceiver<Msg>) -> bool {
                             })
                             .await;
                         }
+                        unmatched_message => {
+                            println!("Ignoring message {:#?}", unmatched_message);
+                        }
                     },
                     Err(_) => println!("Error deserializing message."),
                 },
