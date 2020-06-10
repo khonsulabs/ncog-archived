@@ -1,13 +1,20 @@
 use lazy_static::lazy_static;
+use shared::{
+    fluent_templates::loader::Loader,
+    localization::{LOCALES, US_ENGLISH},
+};
 use yew::prelude::*;
 
-use khonsuweb::{include_dir::include_dir, localization::StringBundle};
-lazy_static! {
-    static ref STATIC_BUNDLE: StringBundle = StringBundle::load(&include_dir!("strings"));
-}
+use khonsuweb::markdown::render_markdown;
 
 pub fn localize(name: &str) -> Html {
-    STATIC_BUNDLE.localize(name)
+    let source = LOCALES.lookup(&US_ENGLISH, name);
+    render_markdown(&source)
+}
+
+pub fn localize_raw(name: &str) -> Html {
+    let source = LOCALES.lookup(&US_ENGLISH, name);
+    source.into()
 }
 
 pub mod prelude {

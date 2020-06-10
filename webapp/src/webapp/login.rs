@@ -1,4 +1,7 @@
-use super::api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge};
+use crate::webapp::{
+    api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
+    strings::{localize, localize_raw},
+};
 use shared::{OAuthProvider, ServerRequest};
 use yew::prelude::*;
 
@@ -61,19 +64,19 @@ impl Component for Login {
         html!(
             <div class="login columns is-centered">
                 <div class="column is-half">
-                    <h1>{"Sign up/ Log in"}</h1>
-                    <p>{"ncog.link leverages the security and trust of major providers for logging in. Instead of needing to remember another password, simply use one of the providers below to log in or create an account."}</p>
+                    <h1>{localize("log-in")}</h1>
+                    <p>{localize("login-intro")}</p>
                     <div class="notification is-info has-text-left">
                         <label class="checkbox">
-                            {"Signing in requires that ncog.link utilize Local Storage which is a technology similar to Cookies. We do not currently have a privacy policy as this product is so early in development."}
+                            {localize("storage-agreement")}
                             <br />
                             <br />
                             <input type="checkbox" checked=self.current_storage_status onclick=self.link.callback(|_| Message::ToggleStatus) />
-                            {" By checking this checkbox, you permit ncog.link to store information in your browser that will be used to keep you logged in. You acknowledge that this software is under development and any and all data stored by ncog.link may be erased at any time. Khonsu Labs offers no warranties or guarantees on the functionality of this service at this time. Full international privacy law complaince will be part of ncog.link as development proceeds, but at this point in time it is too early to engage legal council over decisions that have yet to be made."}
+                            {localize_raw("i-agree")}
                         </label>
                     </div>
                     <button class="button is-primary itchio-button" disabled=!self.current_storage_status onclick=self.link.callback(|_| Message::LogInWith(OAuthProvider::ItchIO))>
-                        {"Log in with"} <img alt="itch.io" src="/providers/itchio.svg" />
+                        {localize("log-in-with-itchio")}
                     </button>
                 </div>
             </div>

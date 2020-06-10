@@ -12,3 +12,6 @@ serde_derive = "1"
 uuid={version = "*", features=["v4", "serde"]}
 
 chrono = "0.4"
+fluent-templates = "0.5"
+unic-langid = "0.9"
+include_dir = "0.6"
