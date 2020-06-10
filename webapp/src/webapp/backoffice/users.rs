@@ -1,8 +1,10 @@
-use super::{
-    super::api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
-    LoggedInUser,
+use crate::{
+    require_permission,
+    webapp::{
+        api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
+        LoggedInUser,
+    },
 };
-use crate::require_permission;
 use shared::{
     iam::{IAMRequest, IAMResponse, User},
     permissions::Claim,
@@ -15,7 +17,9 @@ use yew_router::{
     route::Route,
 };
 
-pub struct Users {
+pub mod edit;
+
+pub struct UsersList {
     api: ApiBridge,
     link: ComponentLink<Self>,
     props: Props,
@@ -33,7 +37,7 @@ pub enum Message {
     WsMessage(AgentResponse),
 }
 
-impl Component for Users {
+impl Component for UsersList {
     type Message = Message;
     type Properties = Props;
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
@@ -124,7 +128,7 @@ pub fn read_claim() -> Claim {
     Claim::new("iam", Some("users"), None, "list")
 }
 
-impl Users {
+impl UsersList {
     fn initialize(&mut self) {
         self.api
             .send(AgentMessage::Request(shared::ServerRequest::IAM(

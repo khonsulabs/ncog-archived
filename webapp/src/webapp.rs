@@ -78,10 +78,10 @@ impl AppRoute {
                 html! { <backoffice::Dashboard set_title=set_title.clone() user=user.clone() />}
             }
             AppRoute::BackOfficeUsersList => {
-                html! { <backoffice::users::Users set_title=set_title.clone() user=user.clone() />}
+                html! { <backoffice::users::UsersList set_title=set_title.clone() user=user.clone() />}
             }
             AppRoute::BackOfficeUserEdit(id) => {
-                html! { <p>{"todo"}</p> }
+                html! { <backoffice::users::edit::EditUser set_title=set_title.clone() user=user.clone() editing_id=Some(*id) /> }
             }
             AppRoute::BackOfficeRolesList => {
                 html! { <p>{"todo"}</p> }
