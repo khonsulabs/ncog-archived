@@ -10,10 +10,14 @@ use shared::{
 };
 use std::sync::Arc;
 use yew::prelude::*;
-use yew_router::prelude::*;
+use yew_router::{
+    agent::{RouteAgentBridge, RouteRequest},
+    route::Route,
+};
 
 pub struct Users {
     api: ApiBridge,
+    link: ComponentLink<Self>,
     props: Props,
     users: Option<Vec<User>>,
 }
@@ -25,6 +29,7 @@ pub struct Props {
 }
 
 pub enum Message {
+    OpenUser(i64),
     WsMessage(AgentResponse),
 }
 
@@ -37,12 +42,21 @@ impl Component for Users {
         Self {
             props,
             api,
+            link,
             users: None,
         }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
+            Message::OpenUser(id) => {
+                let mut agent = RouteAgentBridge::new(Callback::noop());
+                agent.send(RouteRequest::ChangeRoute(Route::new_no_state(&format!(
+                    "/backoffice/users/{}",
+                    id
+                ))));
+                false
+            }
             Message::WsMessage(agent_response) => match agent_response {
                 AgentResponse::Response(ws_response) => match ws_response.result {
                     ServerResponse::Authenticated { .. } => {
@@ -119,8 +133,10 @@ impl Users {
     }
 
     fn render_user(&self, user: &User) -> Html {
+        let user_id = user.id;
+        let open_user = self.link.callback(move |_| Message::OpenUser(user_id));
         html! {
-            <tr>
+            <tr onclick=open_user>
                 <td>{ user.id }</td>
                 <td>{ user.screenname.as_ref().unwrap_or(&"<Not Chosen>".to_owned())}</td>
                 <td>{ user.created_at }</td>

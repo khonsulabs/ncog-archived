@@ -49,6 +49,8 @@ pub enum AppRoute {
     LogIn,
     #[to = "/auth/callback/{service}"]
     LoggedIn(String),
+    #[to = "/backoffice/users/{id}"]
+    BackOfficeUserEdit(i64),
     #[to = "/backoffice/users!"]
     BackOfficeUsersList,
     #[to = "/backoffice/roles!"]
@@ -77,6 +79,9 @@ impl AppRoute {
             }
             AppRoute::BackOfficeUsersList => {
                 html! { <backoffice::users::Users set_title=set_title.clone() user=user.clone() />}
+            }
+            AppRoute::BackOfficeUserEdit(id) => {
+                html! { <p>{"todo"}</p> }
             }
             AppRoute::BackOfficeRolesList => {
                 html! { <p>{"todo"}</p> }
