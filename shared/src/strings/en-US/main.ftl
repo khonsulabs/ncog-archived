@@ -9,3 +9,9 @@ log-out = Log Out
 log-in = Sign up/Log in
 
 no-permission = You do not have the required permissions to view this.
+
+id = Id
+name = Name
+screenname = Screen Name
+created-at = Created At
+not-set = <Not Set>

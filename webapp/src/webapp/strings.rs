@@ -12,9 +12,9 @@ pub fn localize(name: &str) -> Html {
     render_markdown(&source)
 }
 
-pub fn localize_raw(name: &str) -> Html {
+pub fn localize_raw(name: &str) -> String {
     let source = LOCALES.lookup(&US_ENGLISH, name);
-    source.into()
+    source
 }
 
 pub mod prelude {

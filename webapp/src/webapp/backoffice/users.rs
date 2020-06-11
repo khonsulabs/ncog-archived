@@ -2,6 +2,7 @@ use crate::{
     require_permission,
     webapp::{
         api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
+        strings::{localize, localize_raw},
         LoggedInUser,
     },
 };
@@ -94,9 +95,9 @@ impl Component for UsersList {
                     <table class="table">
                         <thead>
                             <tr>
-                                <td>{"Id"}</td>
-                                <td>{"Screen Name"}</td>
-                                <td>{"Created At"}</td>
+                                <td>{localize("id")}</td>
+                                <td>{localize("screenname")}</td>
+                                <td>{localize("created-at")}</td>
                             </tr>
                         </thead>
                         <tbody>
@@ -142,7 +143,7 @@ impl UsersList {
         html! {
             <tr onclick=open_user>
                 <td>{ user.id }</td>
-                <td>{ user.screenname.as_ref().unwrap_or(&"<Not Chosen>".to_owned())}</td>
+                <td>{ user.screenname.as_ref().unwrap_or(&localize_raw("not-set"))}</td>
                 <td>{ user.created_at }</td>
             </tr>
         }
