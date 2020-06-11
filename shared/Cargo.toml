@@ -11,7 +11,8 @@ serde = "1"
 serde_derive = "1"
 uuid={version = "*", features=["v4", "serde"]}
 
-fluent-templates = "0.5"
+# Currently using local repo until https://github.com/XAMPPRocky/fluent-templates/pull/6 is merged
+fluent-templates = {git = "https://github.com/ecton/fluent-templates"}
 unic-langid = "0.9"
 include_dir = "0.6"
 

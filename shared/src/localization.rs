@@ -4,15 +4,14 @@ use unic_langid::{langid, LanguageIdentifier};
 pub const US_ENGLISH: LanguageIdentifier = langid!("en-US");
 
 fluent_templates::static_loader! {
-    // Declare our `StaticLoader` named `LOCALES`.
     pub static LOCALES = {
-        // The directory of localisations and fluent resources.
-        locales: "./shared/src/strings",
-        // The language to falback on if something is not present.
+        locales: "./src/strings",
         fallback_language: "en-US",
     };
 }
 
+// TODO This is only here because of https://github.com/XAMPPRocky/fluent-templates/issues/2
+#[allow(dead_code)]
 fn unused() {
     include_dir!("./src/strings");
 }
