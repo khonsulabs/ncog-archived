@@ -1,46 +1,69 @@
 use crate::{
-    require_permission,
+    localize, localize_html, require_permission,
     webapp::{
         api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
         backoffice::entity_list::{EntityList, ListableEntity},
-        strings::{localize, localize_raw, LocalizableName, Namable},
+        strings::{LocalizableName, Namable},
         AppRoute, LoggedInUser,
     },
 };
 use shared::{
-    iam::{IAMRequest, IAMResponse, User},
+    iam::{roles_list_claim, roles_read_claim, IAMRequest, IAMResponse, RoleSummary},
     permissions::Claim,
     ServerResponse,
 };
 use std::sync::Arc;
 use yew::prelude::*;
-use yew_router::prelude::*;
-
-pub mod edit;
 
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
-enum UserFields {
+enum RoleFields {
     Id,
-    Screenname,
+    Name,
     CreatedAt,
-    AssignedRoles,
 }
 
-impl Namable for UserFields {
+impl Namable for RoleFields {
     fn name(&self) -> &'static str {
         match self {
-            Self::Id => "user-fields-id",
-            Self::Screenname => "user-fields-screenname",
-            Self::CreatedAt => "user-fields-created-at",
-            Self::AssignedRoles => "user-fields-assigned-roles",
+            Self::Id => "role-fields-id",
+            Self::Name => "role-fields-name",
+            Self::CreatedAt => "role-fields-created-at",
         }
     }
 }
 
-pub struct UsersList {
+impl ListableEntity for RoleSummary {
+    type Entity = RoleSummary;
+
+    fn table_head() -> Html {
+        html! {
+            <tr>
+                <td>{ RoleFields::Id.localized_name() }</td>
+                <td>{ RoleFields::Name.localized_name() }</td>
+                <td></td>
+            </tr>
+        }
+    }
+
+    fn render_entity(role: &Self::Entity) -> Html {
+        html! {
+            <tr>
+                <td>{ role.id }</td>
+                <td>{ &role.name }</td>
+                <td>
+                    // <RouterButton<AppRoute> route=AppRoute::BackOfficeRoleEdit(role.id) classes="button is-primary" >
+                    //     <strong>{ localize("edit") }</strong>
+                    // </RouterButton<AppRoute>>
+                </td>
+            </tr>
+        }
+    }
+}
+
+pub struct RolesList {
     api: ApiBridge,
     props: Props,
-    users: Option<Vec<User>>,
+    roles: Option<Vec<RoleSummary>>,
 }
 
 #[derive(Clone, PartialEq, Properties)]
@@ -53,7 +76,7 @@ pub enum Message {
     WsMessage(AgentResponse),
 }
 
-impl Component for UsersList {
+impl Component for RolesList {
     type Message = Message;
     type Properties = Props;
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
@@ -62,7 +85,7 @@ impl Component for UsersList {
         Self {
             props,
             api,
-            users: None,
+            roles: None,
         }
     }
 
@@ -75,8 +98,8 @@ impl Component for UsersList {
                         false
                     }
                     ServerResponse::IAM(iam_response) => match iam_response {
-                        IAMResponse::UsersList(users) => {
-                            self.users = Some(users);
+                        IAMResponse::RolesList(users) => {
+                            self.roles = Some(users);
                             true
                         }
                         _ => false,
@@ -94,11 +117,11 @@ impl Component for UsersList {
     }
 
     fn view(&self) -> Html {
-        require_permission!(&self.props.user, read_claim());
+        require_permission!(&self.props.user, roles_list_claim());
         html!(
             <div class="container">
-                <h2>{localize("list-users")}</h2>
-                <EntityList<Self> entities=self.users.clone()/>
+                <h2>{localize_html!("list-roles")}</h2>
+                <EntityList<RoleSummary> entities=self.roles.clone()/>
             </div>
         )
     }
@@ -109,49 +132,15 @@ impl Component for UsersList {
             self.initialize();
         }
 
-        self.props.set_title.emit(localize_raw("list-users"));
+        self.props.set_title.emit(localize!("list-roles"));
     }
 }
 
-pub fn read_claim() -> Claim {
-    Claim::new("iam", Some("users"), None, "list")
-}
-
-impl UsersList {
+impl RolesList {
     fn initialize(&mut self) {
         self.api
             .send(AgentMessage::Request(shared::ServerRequest::IAM(
-                IAMRequest::UsersList,
+                IAMRequest::RolesList,
             )))
-    }
-}
-
-impl ListableEntity for UsersList {
-    type Entity = User;
-
-    fn table_head() -> Html {
-        html! {
-            <tr>
-                <td>{ UserFields::Id.localized_name() }</td>
-                <td>{ UserFields::Screenname.localized_name() }</td>
-                <td>{ UserFields::CreatedAt.localized_name() }</td>
-                <td></td>
-            </tr>
-        }
-    }
-
-    fn render_entity(user: &Self::Entity) -> Html {
-        html! {
-            <tr>
-                <td>{ user.id }</td>
-                <td>{ user.screenname.as_ref().unwrap_or(&localize_raw("not-set"))}</td>
-                <td>{ user.created_at }</td>
-                <td>
-                    <RouterButton<AppRoute> route=AppRoute::BackOfficeUserEdit(user.id) classes="button is-primary" >
-                        <strong>{ localize("edit") }</strong>
-                    </RouterButton<AppRoute>>
-                </td>
-            </tr>
-        }
     }
 }

@@ -5,6 +5,7 @@ use std::sync::Arc;
 use yew::prelude::*;
 
 pub mod entity_list;
+pub mod roles;
 pub mod users;
 
 pub struct Dashboard {

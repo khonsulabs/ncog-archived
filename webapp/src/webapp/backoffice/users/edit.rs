@@ -2,7 +2,10 @@ use crate::{
     localize, localize_html, require_permission,
     webapp::{
         api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
-        backoffice::users::UserFields,
+        backoffice::{
+            entity_list::{EntityList, ListableEntity},
+            users::UserFields,
+        },
         has_permission,
         strings::LocalizableName,
         LoggedInUser,
@@ -10,19 +13,18 @@ use crate::{
 };
 use khonsuweb::{forms::prelude::*, validations::prelude::*};
 use shared::{
-    iam::{IAMRequest, IAMResponse},
+    iam::{IAMRequest, IAMResponse, RoleSummary},
     permissions::Claim,
     ServerResponse,
 };
-use std::cell::RefCell;
-use std::rc::Rc;
-use std::sync::Arc;
+use std::{cell::RefCell, rc::Rc, sync::Arc};
 use yew::prelude::*;
 
 pub struct EditUser {
     api: ApiBridge,
     props: Props,
     user: User,
+    roles: Option<Vec<RoleSummary>>,
     link: ComponentLink<Self>,
 }
 
@@ -59,15 +61,13 @@ impl Component for EditUser {
             user,
             link,
             api,
+            roles: None,
         }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
-            Message::ValueChanged => {
-                info!("Current stored value: {}", self.user.screenname.borrow());
-                true
-            }
+            Message::ValueChanged => true,
             Message::WsMessage(agent_response) => match agent_response {
                 AgentResponse::Response(ws_response) => match ws_response.result {
                     ServerResponse::Authenticated { .. } => {
@@ -76,12 +76,12 @@ impl Component for EditUser {
                     }
                     ServerResponse::IAM(response) => match response {
                         IAMResponse::UserProfile(profile) => {
-                            info!("Got profile! {:#?}", profile);
                             if let Some(id) = &self.props.editing_id {
                                 if id == &profile.id {
                                     *self.user.id.borrow_mut() = profile.id.to_string();
                                     *self.user.screenname.borrow_mut() =
                                         profile.screenname.unwrap_or_default();
+                                    self.roles = Some(profile.roles);
                                     true
                                 } else {
                                     false
@@ -130,6 +130,9 @@ impl Component for EditUser {
                     </Field<UserFields>>
                 //     <Button label="Send" disabled=disable_button css_class="is-success" action=self.link.callback(|e: ClickEvent| {e.prevent_default(); Message::SendMessage})/>
                 </form>
+
+                <h2>{UserFields::AssignedRoles.localized_name()}</h2>
+                <EntityList<RoleSummary> entities=self.roles.clone() />
             </div>
         }
     }

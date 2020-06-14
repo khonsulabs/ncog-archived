@@ -84,7 +84,7 @@ impl AppRoute {
                 html! { <backoffice::users::edit::EditUser set_title=set_title.clone() user=user.clone() editing_id=Some(*id) /> }
             }
             AppRoute::BackOfficeRolesList => {
-                html! { <p>{"todo"}</p> }
+                html! { <backoffice::roles::RolesList set_title=set_title.clone() user=user.clone() />}
             }
         }
     }

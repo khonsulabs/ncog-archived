@@ -137,3 +137,12 @@ where
 
     Ok(user)
 }
+
+pub async fn iam_list_roles<'e, E>(executor: E) -> Result<Vec<RoleSummary>, sqlx::Error>
+where
+    E: 'e + Send + RefExecutor<'e, Database = Postgres>,
+{
+    sqlx::query_as!(RoleSummary, "SELECT id, name FROM roles")
+        .fetch_all(executor)
+        .await
+}
