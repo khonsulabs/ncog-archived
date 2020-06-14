@@ -1,12 +1,21 @@
 use super::label::Label;
+use std::collections::HashMap;
 use yew::prelude::*;
 
-pub struct Field {
-    props: Props,
+pub struct Field<T>
+where
+    T: Copy + std::hash::Hash + Eq + PartialEq + std::fmt::Debug + 'static,
+{
+    props: Props<T>,
 }
 
 #[derive(Clone, Properties)]
-pub struct Props {
+pub struct Props<T>
+where
+    T: Copy + std::hash::Hash + Eq + PartialEq + std::fmt::Debug + 'static,
+{
+    pub field: T,
+    pub errors: Option<HashMap<T, Vec<Html>>>,
     #[prop_or_default]
     pub label: String,
     #[prop_or_default]
@@ -15,9 +24,12 @@ pub struct Props {
     pub children: Children,
 }
 
-impl Component for Field {
+impl<T> Component for Field<T>
+where
+    T: Copy + std::hash::Hash + Eq + PartialEq + std::fmt::Debug + 'static,
+{
     type Message = ();
-    type Properties = Props;
+    type Properties = Props<T>;
 
     fn create(props: Self::Properties, _: ComponentLink<Self>) -> Self {
         Self { props }
@@ -38,10 +50,27 @@ impl Component for Field {
         } else {
             html! {}
         };
+        let errors = self.props.errors.as_ref().map(|errors| {
+            errors.get(&self.props.field).map(|errors| {
+                errors
+                    .iter()
+                    .map(|e| html! {<p class="help is-danger">{e.clone()}</p>})
+                    .collect::<Html>()
+            })
+        });
+
+        let error_message = match errors {
+            Some(errors) => match errors {
+                Some(field_errors) => field_errors,
+                None => Html::default(),
+            },
+            None => Html::default(),
+        };
         html! {
             <div class="field">
                 { label }
                 { self.props.children.render() }
+                { error_message }
                 { help }
             </div>
         }

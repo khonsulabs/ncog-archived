@@ -67,7 +67,7 @@ where
 #[derive(Debug)]
 pub struct Feild<F, V>
 where
-    F: std::fmt::Debug,
+    F: Copy + std::fmt::Debug,
     V: std::fmt::Debug,
 {
     field: F,
@@ -77,16 +77,25 @@ where
 #[derive(Error, Debug)]
 pub struct FieldError<F>
 where
-    F: std::fmt::Debug,
+    F: Copy + std::fmt::Debug,
 {
-    fields: HashSet<F>,
+    pub fields: HashSet<F>,
     #[source]
-    error: ValidationError,
+    pub error: ValidationError,
+}
+
+impl<F> FieldError<F>
+where
+    F: Copy + std::fmt::Debug,
+{
+    pub fn primary_field(&self) -> F {
+        *self.fields.iter().next().expect("No fields on FieldError")
+    }
 }
 
 impl<F> std::fmt::Display for FieldError<F>
 where
-    F: std::fmt::Debug,
+    F: Copy + std::fmt::Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
@@ -99,7 +108,7 @@ where
 #[derive(Error, Debug)]
 pub struct ErrorSet<F>
 where
-    F: std::fmt::Debug,
+    F: Copy + std::fmt::Debug,
 {
     errors: HashMap<F, Vec<Rc<FieldError<F>>>>,
 }
@@ -111,11 +120,29 @@ where
     pub fn errors_for(&self, field: &F) -> Option<Vec<Rc<FieldError<F>>>> {
         self.errors.get(field).map(|errors| errors.clone())
     }
+
+    pub fn translate<T, S>(&self, translator: T) -> HashMap<F, Vec<yew::Html>>
+    where
+        T: Fn(Rc<FieldError<F>>) -> S,
+        S: Into<yew::Html>,
+    {
+        let mut translated = HashMap::new();
+        for (field, errors) in self.errors.iter() {
+            translated.insert(
+                *field,
+                errors
+                    .iter()
+                    .map(|e| translator(e.clone()).into())
+                    .collect(),
+            );
+        }
+        translated
+    }
 }
 
 impl<F> std::fmt::Display for ErrorSet<F>
 where
-    F: std::fmt::Debug,
+    F: Copy + std::fmt::Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("ErrorSet {{ errors: {:?} }}", self.errors))
@@ -164,5 +191,7 @@ where
 pub mod prelude {
     pub use super::combinators::*;
     pub use super::present::*;
-    pub use super::{ErrorSet, ModelValidator, Validatable, ValidationError, Validator};
+    pub use super::{
+        ErrorSet, FieldError, ModelValidator, Validatable, ValidationError, Validator,
+    };
 }

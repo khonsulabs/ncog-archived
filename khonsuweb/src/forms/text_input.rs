@@ -1,5 +1,5 @@
-use crate::validations::prelude::*;
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
@@ -21,7 +21,7 @@ where
     pub on_value_changed: Callback<String>,
     pub storage: Rc<RefCell<String>>,
     pub field: T,
-    pub errors: Option<Rc<ErrorSet<T>>>,
+    pub errors: Option<HashMap<T, Vec<Html>>>,
     #[prop_or_default]
     pub placeholder: String,
     #[prop_or_default]
@@ -64,9 +64,9 @@ where
             .props
             .errors
             .as_ref()
-            .map(|errors| errors.errors_for(&self.props.field));
+            .map(|errors| errors.get(&self.props.field).map(|errors| errors.clone()));
         let css_class = match &errors {
-            Some(errors) => "input is-danger",
+            Some(_) => "input is-danger",
             None => "input ",
         };
         html! {

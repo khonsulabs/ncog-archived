@@ -1,9 +1,8 @@
 use crate::{
-    require_permission,
-    webapp::{has_permission, strings::localize, LoggedInUser},
+    localize, localize_html, require_permission,
+    webapp::{has_permission, LoggedInUser},
 };
 use khonsuweb::{forms::prelude::*, validations::prelude::*};
-use serde_derive::Deserialize;
 use shared::permissions::Claim;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -59,14 +58,23 @@ impl Component for EditUser {
     fn view(&self) -> Html {
         require_permission!(&self.props.user, read_claim(self.props.editing_id));
 
-        let errors = self.validate();
+        let errors = self.validate().map(|errors| {
+            errors.translate(|e| match e.error {
+                ValidationError::NotPresent => {
+                    localize_html!("form-field-required", "field" => localize!(e.primary_field().name()))
+                }
+            })
+        });
 
         let read_only = !has_permission(&self.props.user, write_claim(self.props.editing_id));
         html! {
             <div>
-                <h2>{localize("edit-user")}</h2>
+                <h2>{localize_html!("edit-user")}</h2>
                 <form>
-                    <TextInput<UserFields> field=UserFields::Screenname storage=self.user.screenname.clone() disabled=read_only on_value_changed=self.link.callback(|_| Message::ValueChanged) placeholder="Type your message here..." errors=errors.clone() />
+                    <Field<UserFields> field=UserFields::Screenname errors=errors.clone()>
+
+                        <TextInput<UserFields> field=UserFields::Screenname storage=self.user.screenname.clone() disabled=read_only on_value_changed=self.link.callback(|_| Message::ValueChanged) placeholder="Type your message here..." errors=errors.clone() />
+                    </Field<UserFields>>
                 //     <Button label="Send" disabled=disable_button css_class="is-success" action=self.link.callback(|e: ClickEvent| {e.prevent_default(); Message::SendMessage})/>
                 </form>
             </div>
@@ -85,6 +93,14 @@ pub fn write_claim(id: Option<i64>) -> Claim {
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
 enum UserFields {
     Screenname,
+}
+
+impl UserFields {
+    fn name(&self) -> &'static str {
+        match self {
+            UserFields::Screenname => "user-fields-screenname",
+        }
+    }
 }
 
 impl EditUser {

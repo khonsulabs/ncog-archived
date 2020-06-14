@@ -11,3 +11,7 @@
 edit-user = {-edit-item(type: {-user(count: 1)})}
 list-users = {-list-item(type: {-user(count: 0)})}
 edit-role = {-edit-item(type: {-role})}
+
+form-field-required = {$field} is required
+
+user-fields-screenname = Screen Name
