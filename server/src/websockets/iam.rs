@@ -4,7 +4,7 @@ use crate::{
 };
 use async_std::sync::RwLock;
 use shared::{
-    iam::{roles_list_claim, roles_read_claim, IAMRequest, IAMResponse},
+    iam::{roles_list_claim, roles_read_claim, roles_update_claim, IAMRequest, IAMResponse},
     permissions::Claim,
     websockets::WsBatchResponse,
     ServerResponse,
@@ -76,6 +76,33 @@ pub async fn handle_request(
 
             responder.send(
                 ServerResponse::IAM(IAMResponse::RolesList(roles)).into_ws_response(request_id),
+            )?;
+        }
+        IAMRequest::RoleGet(role_id) => {
+            client_handle
+                .permission_allowed(&roles_read_claim(Some(role_id)))
+                .await?;
+
+            let role = database::iam_get_role(&migrations::pg(), role_id).await?;
+
+            match role {
+                Some(role) => {
+                    responder.send(
+                        ServerResponse::IAM(IAMResponse::Role(role)).into_ws_response(request_id),
+                    )?;
+                }
+                None => anyhow::bail!("Unknown role id {}", role_id),
+            }
+        }
+        IAMRequest::RoleSave(role) => {
+            client_handle
+                .permission_allowed(&roles_update_claim(role.id))
+                .await?;
+
+            let role_id = database::iam_update_role(&migrations::pg(), &role).await?;
+
+            responder.send(
+                ServerResponse::IAM(IAMResponse::RoleSaved(role_id)).into_ws_response(request_id),
             )?;
         }
     }

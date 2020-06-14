@@ -2,18 +2,20 @@ use crate::{
     localize, localize_html, require_permission,
     webapp::{
         api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
-        backoffice::entity_list::{EntityList, ListableEntity},
-        strings::{LocalizableName, Namable},
-        AppRoute, LoggedInUser,
+        backoffice::entity_list::EntityList,
+        strings::Namable,
+        LoggedInUser,
     },
 };
 use shared::{
-    iam::{roles_list_claim, roles_read_claim, IAMRequest, IAMResponse, RoleSummary},
-    permissions::Claim,
+    iam::{roles_list_claim, IAMRequest, IAMResponse, RoleSummary},
     ServerResponse,
 };
 use std::sync::Arc;
 use yew::prelude::*;
+
+pub mod edit;
+pub mod summary_list;
 
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
 enum RoleFields {
@@ -28,34 +30,6 @@ impl Namable for RoleFields {
             Self::Id => "role-fields-id",
             Self::Name => "role-fields-name",
             Self::CreatedAt => "role-fields-created-at",
-        }
-    }
-}
-
-impl ListableEntity for RoleSummary {
-    type Entity = RoleSummary;
-
-    fn table_head() -> Html {
-        html! {
-            <tr>
-                <td>{ RoleFields::Id.localized_name() }</td>
-                <td>{ RoleFields::Name.localized_name() }</td>
-                <td></td>
-            </tr>
-        }
-    }
-
-    fn render_entity(role: &Self::Entity) -> Html {
-        html! {
-            <tr>
-                <td>{ role.id }</td>
-                <td>{ &role.name }</td>
-                <td>
-                    // <RouterButton<AppRoute> route=AppRoute::BackOfficeRoleEdit(role.id) classes="button is-primary" >
-                    //     <strong>{ localize("edit") }</strong>
-                    // </RouterButton<AppRoute>>
-                </td>
-            </tr>
         }
     }
 }

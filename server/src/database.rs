@@ -91,7 +91,7 @@ where
                     .unwrap()
                     .roles
                     .push(RoleSummary {
-                        id: role_id,
+                        id: Some(role_id),
                         name: role_name,
                     });
             }
@@ -127,7 +127,7 @@ where
             Some(role_id) => {
                 let role_name = row.get::<String, _>(4);
                 user.as_mut().unwrap().roles.push(RoleSummary {
-                    id: role_id,
+                    id: Some(role_id),
                     name: role_name,
                 });
             }
@@ -145,4 +145,45 @@ where
     sqlx::query_as!(RoleSummary, "SELECT id, name FROM roles")
         .fetch_all(executor)
         .await
+}
+
+pub async fn iam_get_role<'e, E>(
+    executor: E,
+    role_id: i64,
+) -> Result<Option<RoleSummary>, sqlx::Error>
+where
+    E: 'e + Send + RefExecutor<'e, Database = Postgres>,
+{
+    match sqlx::query_as!(
+        RoleSummary,
+        "SELECT id, name FROM roles WHERE id = $1",
+        role_id
+    )
+    .fetch_one(executor)
+    .await
+    {
+        Ok(role) => Ok(Some(role)),
+        Err(err) => match err {
+            sqlx::Error::RowNotFound => Ok(None),
+            _ => Err(err),
+        },
+    }
+}
+
+pub async fn iam_update_role<'e, E>(executor: E, role: &RoleSummary) -> Result<i64, sqlx::Error>
+where
+    E: 'e + Send + RefExecutor<'e, Database = Postgres>,
+{
+    let id = sqlx::query!(
+        r#"INSERT INTO roles (id, name) VALUES ($1, $2) 
+            ON CONFLICT (id) DO UPDATE SET name = $2
+            RETURNING id"#,
+        role.id,
+        &role.name
+    )
+    .fetch_one(executor)
+    .await?
+    .id;
+
+    Ok(id)
 }

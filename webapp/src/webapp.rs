@@ -53,6 +53,8 @@ pub enum AppRoute {
     BackOfficeUserEdit(i64),
     #[to = "/backoffice/users!"]
     BackOfficeUsersList,
+    #[to = "/backoffice/roles/{id}"]
+    BackOfficeRoleEdit(i64),
     #[to = "/backoffice/roles!"]
     BackOfficeRolesList,
     #[to = "/backoffice!"]
@@ -85,6 +87,9 @@ impl AppRoute {
             }
             AppRoute::BackOfficeRolesList => {
                 html! { <backoffice::roles::RolesList set_title=set_title.clone() user=user.clone() />}
+            }
+            AppRoute::BackOfficeRoleEdit(id) => {
+                html! { <backoffice::roles::edit::EditRole set_title=set_title.clone() user=user.clone() editing_id=Some(*id) /> }
             }
         }
     }
