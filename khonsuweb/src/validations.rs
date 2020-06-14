@@ -110,33 +110,29 @@ pub struct ErrorSet<F>
 where
     F: Copy + std::fmt::Debug,
 {
-    errors: HashMap<F, Vec<Rc<FieldError<F>>>>,
+    errors: Vec<FieldError<F>>,
 }
 
 impl<F> ErrorSet<F>
 where
     F: Copy + std::fmt::Debug + std::hash::Hash + std::cmp::Eq,
 {
-    pub fn errors_for(&self, field: &F) -> Option<Vec<Rc<FieldError<F>>>> {
-        self.errors.get(field).map(|errors| errors.clone())
-    }
-
-    pub fn translate<T, S>(&self, translator: T) -> HashMap<F, Vec<yew::Html>>
+    pub fn translate<T, S>(&self, translator: T) -> Rc<HashMap<F, Vec<Rc<yew::Html>>>>
     where
-        T: Fn(Rc<FieldError<F>>) -> S,
+        T: Fn(&FieldError<F>) -> S,
         S: Into<yew::Html>,
     {
-        let mut translated = HashMap::new();
-        for (field, errors) in self.errors.iter() {
-            translated.insert(
-                *field,
-                errors
-                    .iter()
-                    .map(|e| translator(e.clone()).into())
-                    .collect(),
-            );
+        let mut translated = HashMap::<F, Vec<Rc<yew::Html>>>::new();
+        for error in self.errors.iter() {
+            let error_html = Rc::new(translator(error).into());
+            for field in error.fields.iter() {
+                translated
+                    .entry(*field)
+                    .and_modify(|errors| errors.push(error_html.clone()))
+                    .or_insert_with(|| vec![error_html.clone()]);
+            }
         }
-        translated
+        Rc::new(translated)
     }
 }
 
@@ -170,13 +166,12 @@ where
         self
     }
     pub fn validate(self) -> Option<Rc<ErrorSet<F>>> {
-        let mut errors = HashMap::new();
+        let mut errors = Vec::new();
         for (field, validation) in self.validations.into_iter() {
             if let Err(error) = validation.validate() {
                 let mut fields = HashSet::new();
                 fields.insert(field);
-                let error = Rc::new(FieldError { fields, error });
-                errors.insert(field, vec![error]);
+                errors.push(FieldError { fields, error });
             }
         }
 

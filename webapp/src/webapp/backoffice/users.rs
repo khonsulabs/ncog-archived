@@ -77,6 +77,7 @@ impl Component for UsersList {
                             self.users = Some(users);
                             true
                         }
+                        _ => false,
                     },
                     _ => false,
                 },

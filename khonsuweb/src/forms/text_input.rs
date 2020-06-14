@@ -22,7 +22,7 @@ where
     pub on_value_changed: Callback<String>,
     pub storage: Rc<RefCell<String>>,
     pub field: T,
-    pub errors: Option<HashMap<T, Vec<Html>>>,
+    pub errors: Option<Rc<HashMap<T, Vec<Rc<Html>>>>>,
     #[prop_or_default]
     pub placeholder: String,
     #[prop_or_default]
@@ -77,7 +77,7 @@ where
         };
         html! {
             <div class="control">
-                <input class=css_class ref=self.input.clone() type="text" value=self.props.storage.borrow() placeholder=&self.props.placeholder onchange=self.link.callback(|_| Message::KeyPressed) oninput=self.link.callback(|_| Message::KeyPressed) disabled=self.props.disabled />
+                <input class=css_class ref=self.input.clone() type="text" value=self.props.storage.borrow() placeholder=&self.props.placeholder onchange=self.link.callback(|_| Message::KeyPressed) oninput=self.link.callback(|_| Message::KeyPressed) disabled=self.props.disabled readonly=self.props.readonly />
             </div>
         }
     }

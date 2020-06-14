@@ -1,5 +1,5 @@
 use super::label::Label;
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
 use yew::prelude::*;
 
 pub struct Field<T>
@@ -15,7 +15,7 @@ where
     T: Copy + std::hash::Hash + Eq + PartialEq + std::fmt::Debug + 'static,
 {
     pub field: T,
-    pub errors: Option<HashMap<T, Vec<Html>>>,
+    pub errors: Option<Rc<HashMap<T, Vec<Rc<Html>>>>>,
     #[prop_or_default]
     pub label: String,
     #[prop_or_default]
@@ -54,7 +54,7 @@ where
             errors.get(&self.props.field).map(|errors| {
                 errors
                     .iter()
-                    .map(|e| html! {<p class="help is-danger">{e.clone()}</p>})
+                    .map(|e| html! {<p class="help is-danger">{e.as_ref().clone()}</p>})
                     .collect::<Html>()
             })
         });

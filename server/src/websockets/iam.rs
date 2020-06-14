@@ -24,11 +24,38 @@ pub async fn handle_request(
                 .permission_allowed(&Claim::new("iam", Some("users"), None, "list"))
                 .await?;
 
-            let users = database::iam_list_users(&migrations::pg()).await?;
+            let mut users = Vec::new();
+
+            for user in database::iam_list_users(&migrations::pg()).await? {
+                if client_handle
+                    .permission_allowed(&Claim::new("iam", Some("users"), Some(user.id), "read"))
+                    .await
+                    .is_ok()
+                {
+                    users.push(user);
+                }
+            }
 
             responder.send(
                 ServerResponse::IAM(IAMResponse::UsersList(users)).into_ws_response(request_id),
             )?;
+        }
+        IAMRequest::UsersGetProfile(account_id) => {
+            client_handle
+                .permission_allowed(&Claim::new("iam", Some("users"), Some(account_id), "read"))
+                .await?;
+
+            let user = database::iam_get_user(&migrations::pg(), account_id).await?;
+
+            match user {
+                Some(user) => {
+                    responder.send(
+                        ServerResponse::IAM(IAMResponse::UserProfile(user))
+                            .into_ws_response(request_id),
+                    )?;
+                }
+                None => anyhow::bail!("Unknown user id {}", account_id),
+            }
         }
     }
 

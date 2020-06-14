@@ -1,17 +1,26 @@
 use crate::{
     localize, localize_html, require_permission,
     webapp::{
-        backoffice::users::UserFields, has_permission, strings::LocalizableName, LoggedInUser,
+        api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
+        backoffice::users::UserFields,
+        has_permission,
+        strings::LocalizableName,
+        LoggedInUser,
     },
 };
 use khonsuweb::{forms::prelude::*, validations::prelude::*};
-use shared::permissions::Claim;
+use shared::{
+    iam::{IAMRequest, IAMResponse},
+    permissions::Claim,
+    ServerResponse,
+};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Arc;
 use yew::prelude::*;
 
 pub struct EditUser {
+    api: ApiBridge,
     props: Props,
     user: User,
     link: ComponentLink<Self>,
@@ -25,6 +34,7 @@ pub struct User {
 
 pub enum Message {
     ValueChanged,
+    WsMessage(AgentResponse),
 }
 
 #[derive(Clone, PartialEq, Properties)]
@@ -42,7 +52,14 @@ impl Component for EditUser {
             id: Rc::new(RefCell::new(String::new())),
             screenname: Rc::new(RefCell::new(String::new())),
         };
-        Self { props, user, link }
+        let callback = link.callback(|message| Message::WsMessage(message));
+        let api = ApiAgent::bridge(callback);
+        Self {
+            props,
+            user,
+            link,
+            api,
+        }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
@@ -51,6 +68,34 @@ impl Component for EditUser {
                 info!("Current stored value: {}", self.user.screenname.borrow());
                 true
             }
+            Message::WsMessage(agent_response) => match agent_response {
+                AgentResponse::Response(ws_response) => match ws_response.result {
+                    ServerResponse::Authenticated { .. } => {
+                        self.initialize();
+                        false
+                    }
+                    ServerResponse::IAM(response) => match response {
+                        IAMResponse::UserProfile(profile) => {
+                            info!("Got profile! {:#?}", profile);
+                            if let Some(id) = &self.props.editing_id {
+                                if id == &profile.id {
+                                    *self.user.id.borrow_mut() = profile.id.to_string();
+                                    *self.user.screenname.borrow_mut() =
+                                        profile.screenname.unwrap_or_default();
+                                    true
+                                } else {
+                                    false
+                                }
+                            } else {
+                                false
+                            }
+                        }
+                        _ => false,
+                    },
+                    _ => false,
+                },
+                _ => false,
+            },
         }
     }
 
@@ -89,7 +134,11 @@ impl Component for EditUser {
         }
     }
 
-    fn rendered(&mut self, _first_render: bool) {
+    fn rendered(&mut self, first_render: bool) {
+        if first_render {
+            self.api.send(AgentMessage::RegisterBroadcastHandler);
+            self.initialize();
+        }
         self.props.set_title.emit(localize!("edit-user"))
     }
 }
@@ -107,5 +156,14 @@ impl EditUser {
         ModelValidator::new()
             .with_field(UserFields::Screenname, self.user.screenname.is_present())
             .validate()
+    }
+
+    fn initialize(&mut self) {
+        if let Some(account_id) = self.props.editing_id {
+            self.api
+                .send(AgentMessage::Request(shared::ServerRequest::IAM(
+                    IAMRequest::UsersGetProfile(account_id),
+                )))
+        }
     }
 }

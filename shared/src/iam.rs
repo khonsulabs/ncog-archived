@@ -4,11 +4,13 @@ use serde_derive::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum IAMRequest {
     UsersList,
+    UsersGetProfile(i64),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum IAMResponse {
     UsersList(Vec<User>),
+    UserProfile(User),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
