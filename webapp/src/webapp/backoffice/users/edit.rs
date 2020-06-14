@@ -17,6 +17,7 @@ pub struct EditUser {
 
 #[derive(Debug)]
 pub struct User {
+    id: Rc<RefCell<String>>,
     screenname: Rc<RefCell<String>>,
 }
 
@@ -36,6 +37,7 @@ impl Component for EditUser {
     type Properties = Props;
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let user = User {
+            id: Rc::new(RefCell::new(String::new())),
             screenname: Rc::new(RefCell::new(String::new())),
         };
         Self { props, user, link }
@@ -66,19 +68,27 @@ impl Component for EditUser {
             })
         });
 
-        let read_only = !has_permission(&self.props.user, write_claim(self.props.editing_id));
+        let readonly = !has_permission(&self.props.user, write_claim(self.props.editing_id));
         html! {
             <div>
                 <h2>{localize_html!("edit-user")}</h2>
                 <form>
+                    <Field<UserFields> field=UserFields::Id errors=errors.clone()>
+                        <Label text=localize!(UserFields::Id.name()) />
+                        <TextInput<UserFields> field=UserFields::Id storage=self.user.id.clone() readonly=readonly errors=errors.clone() />
+                    </Field<UserFields>>
                     <Field<UserFields> field=UserFields::Screenname errors=errors.clone()>
-
-                        <TextInput<UserFields> field=UserFields::Screenname storage=self.user.screenname.clone() disabled=read_only on_value_changed=self.link.callback(|_| Message::ValueChanged) placeholder="Type your message here..." errors=errors.clone() />
+                        <Label text=localize!(UserFields::Screenname.name()) />
+                        <TextInput<UserFields> field=UserFields::Screenname storage=self.user.screenname.clone() readonly=readonly on_value_changed=self.link.callback(|_| Message::ValueChanged) placeholder="Type your message here..." errors=errors.clone() />
                     </Field<UserFields>>
                 //     <Button label="Send" disabled=disable_button css_class="is-success" action=self.link.callback(|e: ClickEvent| {e.prevent_default(); Message::SendMessage})/>
                 </form>
             </div>
         }
+    }
+
+    fn rendered(&mut self, _first_render: bool) {
+        self.props.set_title.emit(localize!("edit-user"))
     }
 }
 
@@ -92,12 +102,14 @@ pub fn write_claim(id: Option<i64>) -> Claim {
 
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
 enum UserFields {
+    Id,
     Screenname,
 }
 
 impl UserFields {
     fn name(&self) -> &'static str {
         match self {
+            UserFields::Id => "user-fields-id",
             UserFields::Screenname => "user-fields-screenname",
         }
     }

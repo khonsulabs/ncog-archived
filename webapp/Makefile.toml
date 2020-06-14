@@ -37,4 +37,4 @@ script = ["sass --watch sass/styles.sass static/styles.css"]
 
 [tasks.watch-wasm]
 command = "cargo"
-args = ["watch", "-i", "static/index.html", "-w", "src", "-w","static/styles.css", "-w", "../shared", "-w", "../ncog-client", "-x", "make build-wasm"]
+args = ["watch", "-i", "static/index.html", "-w", "src", "-w","static/styles.css", "-w", "../khonsuweb", "-w", "../shared", "-w", "../ncog-client", "-x", "make build-wasm"]

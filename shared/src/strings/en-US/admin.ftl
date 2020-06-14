@@ -14,4 +14,5 @@ edit-role = {-edit-item(type: {-role})}
 
 form-field-required = {$field} is required
 
+user-fields-id = {-user(count:1)} Id
 user-fields-screenname = Screen Name

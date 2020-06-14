@@ -18,6 +18,7 @@ pub struct Props<T>
 where
     T: Copy + std::hash::Hash + Eq + PartialEq + std::fmt::Debug + 'static,
 {
+    #[prop_or_default]
     pub on_value_changed: Callback<String>,
     pub storage: Rc<RefCell<String>>,
     pub field: T,
@@ -26,6 +27,8 @@ where
     pub placeholder: String,
     #[prop_or_default]
     pub disabled: bool,
+    #[prop_or_default]
+    pub readonly: bool,
 }
 
 pub enum Message {
@@ -66,8 +69,11 @@ where
             .as_ref()
             .map(|errors| errors.get(&self.props.field).map(|errors| errors.clone()));
         let css_class = match &errors {
-            Some(_) => "input is-danger",
-            None => "input ",
+            Some(errors) => match errors {
+                Some(_) => "input is-danger",
+                None => "input",
+            },
+            None => "input",
         };
         html! {
             <div class="control">
