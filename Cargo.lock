@@ -953,8 +953,9 @@ checksum = "ac0f7e83d14cccbf26e165d8881dcac5891af0d85a88543c09dd72ebd31d91ba"
 
 [[package]]
 name = "fluent-template-macros"
-version = "0.5.4"
-source = "git+https://github.com/ecton/fluent-templates#5fa3da9fc608b74f1debbdf504d62d0307541559"
+version = "0.5.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "019a6a4fb1bb7283c867b6cc96de5d7b27e428e558d4071ccc88aeb462f5b728"
 dependencies = [
  "flume",
  "ignore",
@@ -967,8 +968,9 @@ dependencies = [
 
 [[package]]
 name = "fluent-templates"
-version = "0.5.4"
-source = "git+https://github.com/ecton/fluent-templates#5fa3da9fc608b74f1debbdf504d62d0307541559"
+version = "0.5.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1cbb300c6aa9c06d2c0f890352c01da20b47e5b2c2fb8ef91a00b8d45541a1b"
 dependencies = [
  "arc-swap",
  "fluent",
