@@ -1,6 +1,8 @@
 use crate::{
     localize, localize_html, require_permission,
-    webapp::{has_permission, LoggedInUser},
+    webapp::{
+        backoffice::users::UserFields, has_permission, strings::LocalizableName, LoggedInUser,
+    },
 };
 use khonsuweb::{forms::prelude::*, validations::prelude::*};
 use shared::permissions::Claim;
@@ -63,7 +65,7 @@ impl Component for EditUser {
         let errors = self.validate().map(|errors| {
             errors.translate(|e| match e.error {
                 ValidationError::NotPresent => {
-                    localize_html!("form-field-required", "field" => localize!(e.primary_field().name()))
+                    localize_html!("form-field-required", "field" => e.primary_field().localized_name())
                 }
             })
         });
@@ -74,11 +76,11 @@ impl Component for EditUser {
                 <h2>{localize_html!("edit-user")}</h2>
                 <form>
                     <Field<UserFields> field=UserFields::Id errors=errors.clone()>
-                        <Label text=localize!(UserFields::Id.name()) />
-                        <TextInput<UserFields> field=UserFields::Id storage=self.user.id.clone() readonly=readonly errors=errors.clone() />
+                        <Label text=UserFields::Id.localized_name() />
+                        <TextInput<UserFields> field=UserFields::Id storage=self.user.id.clone() readonly=true errors=errors.clone() />
                     </Field<UserFields>>
                     <Field<UserFields> field=UserFields::Screenname errors=errors.clone()>
-                        <Label text=localize!(UserFields::Screenname.name()) />
+                        <Label text=UserFields::Screenname.localized_name() />
                         <TextInput<UserFields> field=UserFields::Screenname storage=self.user.screenname.clone() readonly=readonly on_value_changed=self.link.callback(|_| Message::ValueChanged) placeholder="Type your message here..." errors=errors.clone() />
                     </Field<UserFields>>
                 //     <Button label="Send" disabled=disable_button css_class="is-success" action=self.link.callback(|e: ClickEvent| {e.prevent_default(); Message::SendMessage})/>
@@ -98,21 +100,6 @@ pub fn read_claim(id: Option<i64>) -> Claim {
 
 pub fn write_claim(id: Option<i64>) -> Claim {
     Claim::new("iam", Some("users"), id, "write")
-}
-
-#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
-enum UserFields {
-    Id,
-    Screenname,
-}
-
-impl UserFields {
-    fn name(&self) -> &'static str {
-        match self {
-            UserFields::Id => "user-fields-id",
-            UserFields::Screenname => "user-fields-screenname",
-        }
-    }
 }
 
 impl EditUser {

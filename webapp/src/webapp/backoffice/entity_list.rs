@@ -1,4 +1,3 @@
-use crate::webapp::strings::localize;
 use yew::prelude::*;
 
 pub trait ListableEntity {
@@ -44,12 +43,7 @@ where
             Some(entities) => html!(
                 <table class="table is-hoverable is-striped">
                     <thead>
-                        <tr>
-                            <td>{localize("id")}</td>
-                            <td>{localize("screenname")}</td>
-                            <td>{localize("created-at")}</td>
-                            <td></td>
-                        </tr>
+                        {T::table_head()}
                     </thead>
                     <tbody>
                         { entities.iter().map(|u| T::render_entity(u)).collect::<Html>() }

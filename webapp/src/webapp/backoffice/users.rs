@@ -3,7 +3,7 @@ use crate::{
     webapp::{
         api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
         backoffice::entity_list::{EntityList, ListableEntity},
-        strings::{localize, localize_raw},
+        strings::{localize, localize_raw, LocalizableName, Namable},
         AppRoute, LoggedInUser,
     },
 };
@@ -17,6 +17,23 @@ use yew::prelude::*;
 use yew_router::prelude::*;
 
 pub mod edit;
+
+#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
+enum UserFields {
+    Id,
+    Screenname,
+    CreatedAt,
+}
+
+impl Namable for UserFields {
+    fn name(&self) -> &'static str {
+        match self {
+            UserFields::Id => "user-fields-id",
+            UserFields::Screenname => "user-fields-screenname",
+            UserFields::CreatedAt => "user-fields-created-at",
+        }
+    }
+}
 
 pub struct UsersList {
     api: ApiBridge,
@@ -112,9 +129,9 @@ impl ListableEntity for UsersList {
     fn table_head() -> Html {
         html! {
             <tr>
-                <td>{localize("id")}</td>
-                <td>{localize("screenname")}</td>
-                <td>{localize("created-at")}</td>
+                <td>{ UserFields::Id.localized_name() }</td>
+                <td>{ UserFields::Screenname.localized_name() }</td>
+                <td>{ UserFields::CreatedAt.localized_name() }</td>
                 <td></td>
             </tr>
         }

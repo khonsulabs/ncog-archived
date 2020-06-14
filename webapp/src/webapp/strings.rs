@@ -23,6 +23,14 @@ pub fn localize_raw_with_args(name: &str, args: &HashMap<String, FluentValue>) -
     LOCALES.lookup_with_args(&US_ENGLISH, name, args)
 }
 
+pub trait Namable {
+    fn name(&self) -> &'static str;
+}
+
+pub trait LocalizableName {
+    fn localized_name(&self) -> String;
+}
+
 #[macro_export]
 macro_rules! localize_html {
     ($name:expr) => {
@@ -48,6 +56,15 @@ macro_rules! localize {
         )+
         crate::webapp::strings::localize_raw_with_args($name, &args)
     }};
+}
+
+impl<T> LocalizableName for T
+where
+    T: Namable,
+{
+    fn localized_name(&self) -> String {
+        localize!(&self.name())
+    }
 }
 
 pub mod prelude {
