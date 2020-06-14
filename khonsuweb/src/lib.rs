@@ -3,3 +3,4 @@ pub mod forms;
 pub mod localization;
 pub mod markdown;
 pub mod static_page;
+pub mod validations;

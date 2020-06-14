@@ -21,7 +21,7 @@ pub struct App {
     link: ComponentLink<Self>,
     show_nav: Option<bool>,
     api: ApiBridge,
-    route_agent: RouteAgentBridge,
+    _route_agent: RouteAgentBridge,
     connected: Option<bool>,
     user: Option<Arc<LoggedInUser>>,
     current_route: String,
@@ -106,7 +106,7 @@ impl Component for App {
             api,
             user: None,
             connected: None,
-            route_agent,
+            _route_agent: route_agent,
             current_route: "/".to_owned(),
         }
     }
@@ -120,7 +120,7 @@ impl Component for App {
             Message::SetTitle(title) => {
                 if let Some(window) = web_sys::window() {
                     if let Some(document) = window.document() {
-                        document.set_title(&title);
+                        document.set_title(&format!("{} - ncog.link", title));
                     }
                 }
                 false

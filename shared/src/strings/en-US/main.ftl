@@ -15,3 +15,5 @@ name = Name
 screenname = Screen Name
 created-at = Created At
 not-set = <Not Set>
+
+edit = Edit

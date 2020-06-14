@@ -1,4 +1,3 @@
-use lazy_static::lazy_static;
 use shared::{
     fluent_templates::loader::Loader,
     localization::{LOCALES, US_ENGLISH},

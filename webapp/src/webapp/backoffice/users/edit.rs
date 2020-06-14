@@ -1,25 +1,30 @@
 use crate::{
     require_permission,
-    webapp::{
-        api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
-        has_permission, LoggedInUser,
-    },
+    webapp::{has_permission, strings::localize, LoggedInUser},
 };
-use shared::{
-    iam::{IAMRequest, IAMResponse, User},
-    permissions::Claim,
-    ServerResponse,
-};
+use khonsuweb::{forms::prelude::*, validations::prelude::*};
+use serde_derive::Deserialize;
+use shared::permissions::Claim;
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::sync::Arc;
 use yew::prelude::*;
-use yew_router::{
-    agent::{RouteAgentBridge, RouteRequest},
-    route::Route,
-};
 
 pub struct EditUser {
     props: Props,
+    user: User,
+    link: ComponentLink<Self>,
 }
+
+#[derive(Debug)]
+pub struct User {
+    screenname: Rc<RefCell<String>>,
+}
+
+pub enum Message {
+    ValueChanged,
+}
+
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {
     pub user: Option<Arc<LoggedInUser>>,
@@ -28,14 +33,22 @@ pub struct Props {
 }
 
 impl Component for EditUser {
-    type Message = ();
+    type Message = Message;
     type Properties = Props;
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        Self { props }
+        let user = User {
+            screenname: Rc::new(RefCell::new(String::new())),
+        };
+        Self { props, user, link }
     }
 
-    fn update(&mut self, _msg: Self::Message) -> ShouldRender {
-        false
+    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+        match msg {
+            Message::ValueChanged => {
+                info!("Current stored value: {}", self.user.screenname.borrow());
+                true
+            }
+        }
     }
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
@@ -46,14 +59,16 @@ impl Component for EditUser {
     fn view(&self) -> Html {
         require_permission!(&self.props.user, read_claim(self.props.editing_id));
 
-        let editable = has_permission(&self.props.user, write_claim(self.props.editing_id));
+        let errors = self.validate();
+
+        let read_only = !has_permission(&self.props.user, write_claim(self.props.editing_id));
         html! {
-            // TODO THIS IS WHERE YOU LEFT OFF JON -- Start trying to use the form controls.
             <div>
-                // <form>
-                //     <TextInput value=self.pending_message.clone() on_value_changed=self.link.callback(|value| Message::MessageInputChanged(value)) placeholder="Type your message here..." />
+                <h2>{localize("edit-user")}</h2>
+                <form>
+                    <TextInput<UserFields> field=UserFields::Screenname storage=self.user.screenname.clone() disabled=read_only on_value_changed=self.link.callback(|_| Message::ValueChanged) placeholder="Type your message here..." errors=errors.clone() />
                 //     <Button label="Send" disabled=disable_button css_class="is-success" action=self.link.callback(|e: ClickEvent| {e.prevent_default(); Message::SendMessage})/>
-                // </form>
+                </form>
             </div>
         }
     }
@@ -65,4 +80,17 @@ pub fn read_claim(id: Option<i64>) -> Claim {
 
 pub fn write_claim(id: Option<i64>) -> Claim {
     Claim::new("iam", Some("users"), id, "write")
+}
+
+#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
+enum UserFields {
+    Screenname,
+}
+
+impl EditUser {
+    fn validate(&self) -> Option<Rc<ErrorSet<UserFields>>> {
+        ModelValidator::new()
+            .with_field(UserFields::Screenname, self.user.screenname.is_present())
+            .validate()
+    }
 }

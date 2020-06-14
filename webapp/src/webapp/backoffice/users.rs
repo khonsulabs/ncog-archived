@@ -2,8 +2,9 @@ use crate::{
     require_permission,
     webapp::{
         api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
+        backoffice::entity_list::{EntityList, ListableEntity},
         strings::{localize, localize_raw},
-        LoggedInUser,
+        AppRoute, LoggedInUser,
     },
 };
 use shared::{
@@ -13,16 +14,12 @@ use shared::{
 };
 use std::sync::Arc;
 use yew::prelude::*;
-use yew_router::{
-    agent::{RouteAgentBridge, RouteRequest},
-    route::Route,
-};
+use yew_router::prelude::*;
 
 pub mod edit;
 
 pub struct UsersList {
     api: ApiBridge,
-    link: ComponentLink<Self>,
     props: Props,
     users: Option<Vec<User>>,
 }
@@ -34,7 +31,6 @@ pub struct Props {
 }
 
 pub enum Message {
-    OpenUser(i64),
     WsMessage(AgentResponse),
 }
 
@@ -47,21 +43,12 @@ impl Component for UsersList {
         Self {
             props,
             api,
-            link,
             users: None,
         }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
-            Message::OpenUser(id) => {
-                let mut agent = RouteAgentBridge::new(Callback::noop());
-                agent.send(RouteRequest::ChangeRoute(Route::new_no_state(&format!(
-                    "/backoffice/users/{}",
-                    id
-                ))));
-                false
-            }
             Message::WsMessage(agent_response) => match agent_response {
                 AgentResponse::Response(ws_response) => match ws_response.result {
                     ServerResponse::Authenticated { .. } => {
@@ -88,33 +75,12 @@ impl Component for UsersList {
 
     fn view(&self) -> Html {
         require_permission!(&self.props.user, read_claim());
-
-        match self.users.clone() {
-            Some(users) => html!(
-                <div class="container">
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <td>{localize("id")}</td>
-                                <td>{localize("screenname")}</td>
-                                <td>{localize("created-at")}</td>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            { users.iter().map(|u| self.render_user(u)).collect::<Html>() }
-                        </tbody>
-                    </table>
-                </div>
-            ),
-            None => {
-                html! {
-                    <div>
-                        <h1>{"Loading..."}</h1>
-                        <progress class="progress is-primary" max="100"/>
-                    </div>
-                }
-            }
-        }
+        html!(
+            <div class="container">
+                <h2>{localize("list-users")}</h2>
+                <EntityList<Self> entities=self.users.clone()/>
+            </div>
+        )
     }
 
     fn rendered(&mut self, first_render: bool) {
@@ -122,6 +88,8 @@ impl Component for UsersList {
             self.api.send(AgentMessage::RegisterBroadcastHandler);
             self.initialize();
         }
+
+        self.props.set_title.emit(localize_raw("list-users"));
     }
 }
 
@@ -136,15 +104,33 @@ impl UsersList {
                 IAMRequest::UsersList,
             )))
     }
+}
 
-    fn render_user(&self, user: &User) -> Html {
-        let user_id = user.id;
-        let open_user = self.link.callback(move |_| Message::OpenUser(user_id));
+impl ListableEntity for UsersList {
+    type Entity = User;
+
+    fn table_head() -> Html {
         html! {
-            <tr onclick=open_user>
+            <tr>
+                <td>{localize("id")}</td>
+                <td>{localize("screenname")}</td>
+                <td>{localize("created-at")}</td>
+                <td></td>
+            </tr>
+        }
+    }
+
+    fn render_entity(user: &Self::Entity) -> Html {
+        html! {
+            <tr>
                 <td>{ user.id }</td>
                 <td>{ user.screenname.as_ref().unwrap_or(&localize_raw("not-set"))}</td>
                 <td>{ user.created_at }</td>
+                <td>
+                    <RouterButton<AppRoute> route=AppRoute::BackOfficeUserEdit(user.id) classes="button is-primary" >
+                        <strong>{ localize("edit") }</strong>
+                    </RouterButton<AppRoute>>
+                </td>
             </tr>
         }
     }
