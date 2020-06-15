@@ -135,6 +135,7 @@ impl Component for EditRole {
 
         let readonly = self.is_saving
             || !has_permission(&self.props.user, roles_update_claim(self.props.editing_id));
+        let can_save = !readonly && !errors.is_some();
         html! {
             <div>
                 <h2>{localize_html!("edit-role")}</h2>
@@ -150,7 +151,7 @@ impl Component for EditRole {
                     </Field<RoleFields>>
                     <Button
                         label=localize!("save-role")
-                        disabled=readonly
+                        disabled=!can_save
                         css_class="is-primary"
                         action=self.link.callback(|e: web_sys::MouseEvent| {e.prevent_default(); Message::Save})
                         processing=self.is_saving
