@@ -11,7 +11,8 @@ use crate::{
 };
 use khonsuweb::{flash, forms::prelude::*, validations::prelude::*};
 use shared::{
-    iam::{IAMRequest, IAMResponse, RoleSummary},
+    iam::{roles_read_claim, roles_update_claim, IAMRequest, IAMResponse, RoleSummary},
+    permissions::Claim,
     ServerRequest, ServerResponse,
 };
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
@@ -25,6 +26,15 @@ pub struct Role {
 
 impl Form for Role {
     type Fields = RoleFields;
+    fn title() -> &'static str {
+        "edit-role"
+    }
+    fn load_request(&self, props: &Props) -> Option<ServerRequest> {
+        props
+            .editing_id
+            .map(|role_id| ServerRequest::IAM(IAMRequest::RoleGet(role_id)))
+    }
+
     fn save(&mut self, props: &Props, api: &mut ApiBridge) {
         let role = RoleSummary {
             id: props.editing_id,
@@ -95,5 +105,12 @@ impl Form for Role {
         ModelValidator::new()
             .with_field(RoleFields::Name, self.name.is_present())
             .validate()
+    }
+
+    fn read_claim(id: Option<i64>) -> Claim {
+        roles_read_claim(id)
+    }
+    fn update_claim(id: Option<i64>) -> Claim {
+        roles_update_claim(id)
     }
 }

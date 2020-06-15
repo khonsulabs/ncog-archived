@@ -8,10 +8,7 @@ use crate::{
     },
 };
 use khonsuweb::{flash, validations::prelude::*};
-use shared::{
-    iam::{roles_read_claim, roles_update_claim, IAMRequest},
-    ServerResponse,
-};
+use shared::{iam::IAMRequest, permissions::Claim, ServerRequest, ServerResponse};
 use std::{collections::HashMap, rc::Rc, sync::Arc, time::Duration};
 use yew::prelude::*;
 
@@ -21,7 +18,11 @@ pub enum Handled {
 }
 pub trait Form: Default {
     type Fields: Namable + Copy + std::hash::Hash + Eq + PartialEq + std::fmt::Debug + 'static;
+    fn title() -> &'static str;
+    fn load_request(&self, props: &Props) -> Option<ServerRequest>;
+
     fn save(&mut self, props: &Props, api: &mut ApiBridge);
+
     fn handle_webserver_response(&mut self, props: &Props, response: ServerResponse) -> Handled;
 
     fn render(
@@ -33,6 +34,9 @@ pub trait Form: Default {
     ) -> Html;
 
     fn validate(&self) -> Option<Rc<ErrorSet<Self::Fields>>>;
+
+    fn read_claim(id: Option<i64>) -> Claim;
+    fn update_claim(id: Option<i64>) -> Claim;
 }
 
 pub struct EditForm<T>
@@ -119,7 +123,7 @@ where
     }
 
     fn view(&self) -> Html {
-        require_permission!(&self.props.user, roles_read_claim(self.props.editing_id));
+        require_permission!(&self.props.user, T::read_claim(self.props.editing_id));
 
         let errors = self.validate().map(|errors| {
             errors.translate(|e| match e.error {
@@ -130,7 +134,7 @@ where
         });
 
         let readonly = self.is_saving
-            || !has_permission(&self.props.user, roles_update_claim(self.props.editing_id));
+            || !has_permission(&self.props.user, T::update_claim(self.props.editing_id));
         let can_save = !readonly && !errors.is_some();
         self.form.render(self, readonly, can_save, errors)
     }
@@ -139,7 +143,7 @@ where
         if first_render {
             self.initialize();
         }
-        self.props.set_title.emit(localize!("edit-role"))
+        self.props.set_title.emit(localize!(T::title()))
     }
 }
 
@@ -162,11 +166,9 @@ where
     }
 
     fn initialize(&mut self) {
-        if let Some(role_id) = self.props.editing_id {
-            self.api
-                .send(AgentMessage::Request(shared::ServerRequest::IAM(
-                    IAMRequest::RoleGet(role_id),
-                )))
+        match self.form.load_request(&self.props) {
+            Some(request) => self.api.send(AgentMessage::Request(request)),
+            None => {}
         }
     }
 }
