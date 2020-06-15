@@ -8,12 +8,12 @@ use crate::{
         LoggedInUser,
     },
 };
-use khonsuweb::{forms::prelude::*, validations::prelude::*};
+use khonsuweb::{flash, forms::prelude::*, validations::prelude::*};
 use shared::{
     iam::{roles_read_claim, roles_update_claim, IAMRequest, IAMResponse, RoleSummary},
     ServerRequest, ServerResponse,
 };
-use std::{cell::RefCell, rc::Rc, sync::Arc};
+use std::{cell::RefCell, rc::Rc, sync::Arc, time::Duration};
 use yew::prelude::*;
 
 pub struct EditRole {
@@ -21,6 +21,7 @@ pub struct EditRole {
     props: Props,
     role: Role,
     link: ComponentLink<Self>,
+    flash_message: Option<flash::Message>,
     is_saving: bool,
 }
 
@@ -59,6 +60,7 @@ impl Component for EditRole {
             link,
             api,
             is_saving: false,
+            flash_message: None,
         }
     }
 
@@ -98,6 +100,11 @@ impl Component for EditRole {
                             }
                         }
                         IAMResponse::RoleSaved(_) => {
+                            self.flash_message = Some(flash::Message::new(
+                                flash::Kind::Success,
+                                localize!("saved-role"),
+                                Duration::from_secs(5),
+                            ));
                             self.is_saving = false;
                             true
                         }
@@ -132,6 +139,7 @@ impl Component for EditRole {
             <div>
                 <h2>{localize_html!("edit-role")}</h2>
                 <form>
+                    <flash::Flash message=self.flash_message.clone() />
                     <Field<RoleFields> field=RoleFields::Id errors=errors.clone()>
                         <Label text=RoleFields::Id.localized_name() />
                         <TextInput<RoleFields> field=RoleFields::Id storage=self.role.id.clone() readonly=true errors=errors.clone() />
