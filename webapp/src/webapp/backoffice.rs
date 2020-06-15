@@ -4,6 +4,7 @@ use shared::permissions::Claim;
 use std::sync::Arc;
 use yew::prelude::*;
 
+pub mod edit_form;
 pub mod entity_list;
 pub mod roles;
 pub mod users;

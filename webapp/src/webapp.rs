@@ -89,7 +89,7 @@ impl AppRoute {
                 html! { <backoffice::roles::RolesList set_title=set_title.clone() user=user.clone() />}
             }
             AppRoute::BackOfficeRoleEdit(id) => {
-                html! { <backoffice::roles::edit::EditRole set_title=set_title.clone() user=user.clone() editing_id=Some(*id) /> }
+                html! { <backoffice::edit_form::EditForm<backoffice::roles::edit::Role> set_title=set_title.clone() user=user.clone() editing_id=Some(*id) /> }
             }
         }
     }

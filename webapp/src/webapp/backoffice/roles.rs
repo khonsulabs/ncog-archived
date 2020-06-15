@@ -18,7 +18,7 @@ pub mod edit;
 pub mod summary_list;
 
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
-enum RoleFields {
+pub enum RoleFields {
     Id,
     Name,
     CreatedAt,
