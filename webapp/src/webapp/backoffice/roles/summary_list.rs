@@ -1,7 +1,7 @@
 use crate::{
     localize,
     webapp::{
-        backoffice::{entity_list::ListableEntity, roles::RoleFields},
+        backoffice::{entity_list::ListableEntity, roles::fields::RoleFields},
         strings::LocalizableName,
         AppRoute,
     },

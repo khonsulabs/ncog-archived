@@ -3,7 +3,6 @@ use crate::{
     webapp::{
         api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
         backoffice::entity_list::EntityList,
-        strings::Namable,
         LoggedInUser,
     },
 };
@@ -13,26 +12,6 @@ use shared::{
 };
 use std::sync::Arc;
 use yew::prelude::*;
-
-pub mod edit;
-pub mod summary_list;
-
-#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
-pub enum RoleFields {
-    Id,
-    Name,
-    CreatedAt,
-}
-
-impl Namable for RoleFields {
-    fn name(&self) -> &'static str {
-        match self {
-            Self::Id => "role-fields-id",
-            Self::Name => "role-fields-name",
-            Self::CreatedAt => "role-fields-created-at",
-        }
-    }
-}
 
 pub struct RolesList {
     api: ApiBridge,

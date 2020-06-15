@@ -45,3 +45,11 @@ pub fn roles_read_claim(id: Option<i64>) -> Claim {
 pub fn roles_update_claim(id: Option<i64>) -> Claim {
     Claim::new("iam", Some("roles"), id, "update")
 }
+
+pub fn users_read_claim(id: Option<i64>) -> Claim {
+    Claim::new("iam", Some("users"), id, "read")
+}
+
+pub fn users_update_claim(id: Option<i64>) -> Claim {
+    Claim::new("iam", Some("users"), id, "update")
+}

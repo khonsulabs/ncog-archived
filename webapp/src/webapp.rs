@@ -80,13 +80,13 @@ impl AppRoute {
                 html! { <backoffice::Dashboard set_title=set_title.clone() user=user.clone() />}
             }
             AppRoute::BackOfficeUsersList => {
-                html! { <backoffice::users::UsersList set_title=set_title.clone() user=user.clone() />}
+                html! { <backoffice::users::list::UsersList set_title=set_title.clone() user=user.clone() />}
             }
             AppRoute::BackOfficeUserEdit(id) => {
-                html! { <backoffice::users::edit::EditUser set_title=set_title.clone() user=user.clone() editing_id=Some(*id) /> }
+                html! { <backoffice::edit_form::EditForm<backoffice::users::edit::User> set_title=set_title.clone() user=user.clone() editing_id=Some(*id) /> }
             }
             AppRoute::BackOfficeRolesList => {
-                html! { <backoffice::roles::RolesList set_title=set_title.clone() user=user.clone() />}
+                html! { <backoffice::roles::list::RolesList set_title=set_title.clone() user=user.clone() />}
             }
             AppRoute::BackOfficeRoleEdit(id) => {
                 html! { <backoffice::edit_form::EditForm<backoffice::roles::edit::Role> set_title=set_title.clone() user=user.clone() editing_id=Some(*id) /> }

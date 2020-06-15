@@ -2,8 +2,11 @@ use crate::{
     require_permission,
     webapp::{
         api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
-        backoffice::entity_list::{EntityList, ListableEntity},
-        strings::{localize, localize_raw, LocalizableName, Namable},
+        backoffice::{
+            entity_list::{EntityList, ListableEntity},
+            users::fields::UserFields,
+        },
+        strings::{localize, localize_raw, LocalizableName},
         AppRoute, LoggedInUser,
     },
 };
@@ -15,27 +18,6 @@ use shared::{
 use std::sync::Arc;
 use yew::prelude::*;
 use yew_router::prelude::*;
-
-pub mod edit;
-
-#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
-enum UserFields {
-    Id,
-    Screenname,
-    CreatedAt,
-    AssignedRoles,
-}
-
-impl Namable for UserFields {
-    fn name(&self) -> &'static str {
-        match self {
-            Self::Id => "user-fields-id",
-            Self::Screenname => "user-fields-screenname",
-            Self::CreatedAt => "user-fields-created-at",
-            Self::AssignedRoles => "user-fields-assigned-roles",
-        }
-    }
-}
 
 pub struct UsersList {
     api: ApiBridge,

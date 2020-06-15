@@ -17,3 +17,10 @@ pub fn run_app() -> Result<(), JsValue> {
 
     Ok(())
 }
+
+#[allow(dead_code)]
+#[macro_export]
+macro_rules! todo_err {
+    () => { error!("not yet implemented {}:{}", file!(), line!()) };
+    ($($arg:tt)+) => { error!( "not yet implemented {}:{}: {}", file!(), line!(), std::format_args!($($arg)+))};
+}

@@ -8,7 +8,7 @@ use crate::{
     },
 };
 use khonsuweb::{flash, validations::prelude::*};
-use shared::{iam::IAMRequest, permissions::Claim, ServerRequest, ServerResponse};
+use shared::{permissions::Claim, ServerRequest, ServerResponse};
 use std::{collections::HashMap, rc::Rc, sync::Arc, time::Duration};
 use yew::prelude::*;
 
@@ -18,13 +18,11 @@ pub enum Handled {
 }
 pub trait Form: Default {
     type Fields: Namable + Copy + std::hash::Hash + Eq + PartialEq + std::fmt::Debug + 'static;
+
     fn title() -> &'static str;
     fn load_request(&self, props: &Props) -> Option<ServerRequest>;
-
     fn save(&mut self, props: &Props, api: &mut ApiBridge);
-
     fn handle_webserver_response(&mut self, props: &Props, response: ServerResponse) -> Handled;
-
     fn render(
         &self,
         edit_form: &EditForm<Self>,
@@ -32,9 +30,7 @@ pub trait Form: Default {
         can_save: bool,
         errors: Option<Rc<HashMap<Self::Fields, Vec<Rc<Html>>>>>,
     ) -> Html;
-
     fn validate(&self) -> Option<Rc<ErrorSet<Self::Fields>>>;
-
     fn read_claim(id: Option<i64>) -> Claim;
     fn update_claim(id: Option<i64>) -> Claim;
 }

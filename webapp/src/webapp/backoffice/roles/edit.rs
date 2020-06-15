@@ -4,7 +4,7 @@ use crate::{
         api::{AgentMessage, ApiBridge},
         backoffice::{
             edit_form::{EditForm, Form, Handled, Message, Props},
-            roles::RoleFields,
+            roles::fields::RoleFields,
         },
         strings::LocalizableName,
     },
