@@ -1,4 +1,4 @@
-use chrono::{DateTime, NaiveDateTime, Utc};
+use khonsuweb::wasm_utc_now;
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 use shared::{
@@ -8,14 +8,16 @@ use shared::{
 use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 use uuid::Uuid;
-use yew::format::Json;
 use yew::prelude::*;
-use yew::services::{
-    storage::{Area, StorageService},
-    timeout::{TimeoutService, TimeoutTask},
-    websocket::{WebSocketService, WebSocketStatus, WebSocketTask},
-};
 use yew::worker::*;
+use yew::{
+    format::Json,
+    services::{
+        storage::{Area, StorageService},
+        timeout::{TimeoutService, TimeoutTask},
+        websocket::{WebSocketService, WebSocketStatus, WebSocketTask},
+    },
+};
 use yew_router::{
     agent::{RouteAgentBridge, RouteRequest},
     route::Route,
@@ -448,12 +450,4 @@ impl EncryptedLoginInformation {
         }
         AuthState::Unauthenticated
     }
-}
-
-pub fn wasm_utc_now() -> DateTime<Utc> {
-    let timestamp = js_sys::Date::new_0().get_time();
-    let secs = timestamp.floor();
-    let nanoes = (timestamp - secs) * 1_000_000_000f64;
-    let naivetime = NaiveDateTime::from_timestamp(secs as i64, nanoes as u32);
-    DateTime::from_utc(naivetime, Utc)
 }

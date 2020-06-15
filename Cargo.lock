@@ -1798,7 +1798,9 @@ dependencies = [
 name = "khonsuweb"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "include_dir",
+ "js-sys",
  "pulldown-cmark",
  "thiserror",
  "web-sys",
