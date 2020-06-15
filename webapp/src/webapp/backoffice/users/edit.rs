@@ -1,13 +1,10 @@
-use crate::{
-    localize, localize_html, todo_err,
-    webapp::{
-        api::ApiBridge,
-        backoffice::{
-            edit_form::{EditForm, Form, Handled, Message, Props},
-            {entity_list::EntityList, users::fields::UserFields},
-        },
-        strings::LocalizableName,
+use crate::webapp::{
+    api::ApiBridge,
+    backoffice::{
+        edit_form::{EditForm, Form, Handled, Message, Props},
+        {entity_list::EntityList, users::fields::UserFields},
     },
+    strings::LocalizableName,
 };
 use khonsuweb::{flash, forms::prelude::*, validations::prelude::*};
 use shared::{
@@ -39,22 +36,18 @@ impl Form for User {
     }
 
     fn save(&mut self, _props: &Props, _api: &mut ApiBridge) {
-        todo_err!("need to be able to save users eventually")
+        todo!("need to be able to save users eventually")
     }
 
-    fn handle_webserver_response(&mut self, props: &Props, response: ServerResponse) -> Handled {
+    fn handle_webserver_response(&mut self, response: ServerResponse) -> Handled {
         match response {
             ServerResponse::IAM(response) => match response {
                 IAMResponse::UserProfile(profile) => {
-                    if let Some(id) = &props.editing_id {
-                        if id == &profile.id {
-                            *self.id.borrow_mut() = profile.id.to_string();
-                            *self.screenname.borrow_mut() = profile.screenname.unwrap_or_default();
-                            self.roles = Some(profile.roles);
-                            Handled::ShouldRender(true)
-                        } else {
-                            Handled::ShouldRender(false)
-                        }
+                    if let Some(id) = &profile.id {
+                        *self.id.borrow_mut() = id.to_string();
+                        *self.screenname.borrow_mut() = profile.screenname.unwrap_or_default();
+                        self.roles = Some(profile.roles);
+                        Handled::ShouldRender(true)
                     } else {
                         Handled::ShouldRender(false)
                     }

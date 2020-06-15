@@ -1,5 +1,4 @@
 use super::LoggedInUser;
-use crate::require_permission;
 use shared::permissions::Claim;
 use std::sync::Arc;
 use yew::prelude::*;

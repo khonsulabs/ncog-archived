@@ -1,5 +1,17 @@
 #![recursion_limit = "8192"]
 use wasm_bindgen::prelude::*;
+
+#[macro_use]
+mod internal_macros {
+    #[allow(dead_code)]
+    #[macro_export]
+    macro_rules! todo {
+        () => { error!("not yet implemented {}:{}", file!(), line!()) };
+        ($($arg:tt)+) => { error!( "not yet implemented {}:{}: {}", file!(), line!(), std::format_args!($($arg)+))};
+    }
+}
+
+#[macro_use]
 mod webapp;
 
 #[macro_use]
@@ -16,11 +28,4 @@ pub fn run_app() -> Result<(), JsValue> {
     yew::start_app::<webapp::App>();
 
     Ok(())
-}
-
-#[allow(dead_code)]
-#[macro_export]
-macro_rules! todo_err {
-    () => { error!("not yet implemented {}:{}", file!(), line!()) };
-    ($($arg:tt)+) => { error!( "not yet implemented {}:{}: {}", file!(), line!(), std::format_args!($($arg)+))};
 }

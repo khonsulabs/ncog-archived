@@ -1,10 +1,7 @@
-use crate::{
-    localize,
-    webapp::{
-        backoffice::{entity_list::ListableEntity, roles::fields::RoleFields},
-        strings::LocalizableName,
-        AppRoute,
-    },
+use crate::webapp::{
+    backoffice::{entity_list::ListableEntity, roles::fields::RoleFields},
+    strings::LocalizableName,
+    AppRoute,
 };
 use shared::iam::RoleSummary;
 use std::rc::Rc;

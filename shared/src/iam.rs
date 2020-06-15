@@ -16,16 +16,28 @@ pub enum IAMResponse {
     UsersList(Vec<User>),
     RolesList(Vec<RoleSummary>),
     UserProfile(User),
-    Role(RoleSummary),
+    Role(Role),
     RoleSaved(i64),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct User {
-    pub id: i64,
+    pub id: Option<i64>,
     pub screenname: Option<String>,
     pub created_at: DateTime<Utc>,
     pub roles: Vec<RoleSummary>,
+}
+
+pub fn users_list_claim() -> Claim {
+    Claim::new("iam", Some("users"), None, "list")
+}
+
+pub fn users_read_claim(id: Option<i64>) -> Claim {
+    Claim::new("iam", Some("users"), id, "read")
+}
+
+pub fn users_update_claim(id: Option<i64>) -> Claim {
+    Claim::new("iam", Some("users"), id, "update")
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -46,10 +58,22 @@ pub fn roles_update_claim(id: Option<i64>) -> Claim {
     Claim::new("iam", Some("roles"), id, "update")
 }
 
-pub fn users_read_claim(id: Option<i64>) -> Claim {
-    Claim::new("iam", Some("users"), id, "read")
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct Role {
+    pub id: Option<i64>,
+    pub name: String,
+    pub permission_statements: Vec<PermissionStatement>,
 }
 
-pub fn users_update_claim(id: Option<i64>) -> Claim {
-    Claim::new("iam", Some("users"), id, "update")
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct PermissionStatement {
+    pub id: Option<i64>,
+
+    pub service: Option<String>,
+    pub resource_type: Option<String>,
+    pub resource_id: Option<i64>,
+
+    pub action: Option<String>,
+
+    pub allow: bool,
 }

@@ -1,10 +1,6 @@
-mod api;
-mod backoffice;
-mod loggedin;
-mod login;
+#[macro_use]
 mod strings;
 
-use api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge};
 use khonsuweb::static_page::StaticPage;
 use loggedin::LoggedIn;
 use login::Login;
@@ -16,6 +12,21 @@ use std::sync::Arc;
 use strings::localize;
 use yew::prelude::*;
 use yew_router::{agent::RouteRequest, prelude::*};
+
+#[macro_export]
+macro_rules! require_permission {
+    ($user:expr, $claim:expr) => {{
+        if !crate::webapp::has_permission($user, $claim) {
+            return crate::webapp::invalid_permissions();
+        }
+    }};
+}
+
+mod api;
+mod backoffice;
+mod loggedin;
+mod login;
+use api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge};
 
 pub struct App {
     link: ComponentLink<Self>,
@@ -57,6 +68,8 @@ pub enum AppRoute {
     BackOfficeRoleEdit(i64),
     #[to = "/backoffice/roles!"]
     BackOfficeRolesList,
+    #[to = "/backoffice/permissions/{id}"]
+    BackOfficeRolePermissionStatementEdit(i64),
     #[to = "/backoffice!"]
     BackOfficeDashboard,
     #[to = "/!"]
@@ -90,6 +103,10 @@ impl AppRoute {
             }
             AppRoute::BackOfficeRoleEdit(id) => {
                 html! { <backoffice::edit_form::EditForm<backoffice::roles::edit::Role> set_title=set_title.clone() user=user.clone() editing_id=Some(*id) /> }
+            }
+            AppRoute::BackOfficeRolePermissionStatementEdit(_id) => {
+                todo!("need to add role permission statement view");
+                html! { <p>{"todo"}</p> }
             }
         }
     }
@@ -390,13 +407,4 @@ fn invalid_permissions() -> Html {
             {localize("no-permission")}
         </div>
     }
-}
-
-#[macro_export]
-macro_rules! require_permission {
-    ($user:expr, $claim:expr) => {{
-        if !crate::webapp::has_permission($user, $claim) {
-            return crate::webapp::invalid_permissions();
-        }
-    }};
 }

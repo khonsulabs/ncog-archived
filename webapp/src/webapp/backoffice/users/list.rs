@@ -1,18 +1,14 @@
-use crate::{
-    require_permission,
-    webapp::{
-        api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
-        backoffice::{
-            entity_list::{EntityList, ListableEntity},
-            users::fields::UserFields,
-        },
-        strings::{localize, localize_raw, LocalizableName},
-        AppRoute, LoggedInUser,
+use crate::webapp::{
+    api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
+    backoffice::{
+        entity_list::{EntityList, ListableEntity},
+        users::fields::UserFields,
     },
+    strings::{localize, localize_raw, LocalizableName},
+    AppRoute, LoggedInUser,
 };
 use shared::{
-    iam::{IAMRequest, IAMResponse, User},
-    permissions::Claim,
+    iam::{users_list_claim, IAMRequest, IAMResponse, User},
     ServerResponse,
 };
 use std::{rc::Rc, sync::Arc};
@@ -73,7 +69,7 @@ impl Component for UsersList {
     }
 
     fn view(&self) -> Html {
-        require_permission!(&self.props.user, read_claim());
+        require_permission!(&self.props.user, users_list_claim());
         html!(
             <div class="container">
                 <h2>{localize("list-users")}</h2>
@@ -89,10 +85,6 @@ impl Component for UsersList {
 
         self.props.set_title.emit(localize_raw("list-users"));
     }
-}
-
-pub fn read_claim() -> Claim {
-    Claim::new("iam", Some("users"), None, "list")
 }
 
 impl UsersList {
@@ -124,7 +116,7 @@ impl ListableEntity for UsersList {
     ) -> Html {
         html! {
             <tr>
-                <td>{ user.id }</td>
+                <td>{ user.id.unwrap() }</td>
                 <td>{ user.screenname.as_ref().unwrap_or(&localize_raw("not-set"))}</td>
                 <td>{ user.created_at }</td>
                 <td>
@@ -141,7 +133,7 @@ pub fn default_action_buttons() -> Option<Rc<Box<dyn Fn(&User) -> Html>>> {
 
 fn render_default_action_buttons(user: &User) -> Html {
     html! {
-        <RouterButton<AppRoute> route=AppRoute::BackOfficeUserEdit(user.id) classes="button is-primary" >
+        <RouterButton<AppRoute> route=AppRoute::BackOfficeUserEdit(user.id.unwrap()) classes="button is-primary" >
             <strong>{ localize("edit") }</strong>
         </RouterButton<AppRoute>>
     }

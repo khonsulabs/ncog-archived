@@ -13,7 +13,13 @@
     [other] Roles
 }
 
+-permission-statement = {$count -> 
+    *[one] Permission Statement
+    [other] Permission Statements
+}
+
 -created-at = Created At
+-permission-statements = Permission Statements
 -name = Name
 
 edit-user = {-edit-item(type: {-user})}
@@ -36,3 +42,18 @@ user-fields-assigned-roles = Assigned {-role(count:0)}
 role-fields-id = {-role(count:1)} Id
 role-fields-name = {-name}
 role-fields-created-at = {-created-at}
+role-fields-permission-statements = {-permission-statements}
+
+permission-statements-id = {-permission-statement(count:1)} Id
+permission-statements-service = Service
+permission-statements-resource-type = Resource Type
+permission-statements-resource-id = Resource Id
+permission-statements-action = Action
+permission-statements-allow = Allow / Deny
+
+any-service = Any Service
+any-resource-type = Any Resource Type
+any-resource-id = All Resources
+any-action = Any Action
+action-denied = Denied
+action-allowed = Allowed

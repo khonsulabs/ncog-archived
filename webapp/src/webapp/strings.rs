@@ -44,6 +44,7 @@ macro_rules! localize_html {
         crate::webapp::strings::localize_with_args($name, &args)
     }};
 }
+
 #[macro_export]
 macro_rules! localize {
     ($name:expr) => {
@@ -65,9 +66,4 @@ where
     fn localized_name(&self) -> String {
         localize!(&self.name())
     }
-}
-
-pub mod prelude {
-    pub use super::localize;
-    pub use khonsuweb::localization::StringBundle;
 }

@@ -4,8 +4,10 @@ use crate::{
 };
 use async_std::sync::RwLock;
 use shared::{
-    iam::{roles_list_claim, roles_read_claim, roles_update_claim, IAMRequest, IAMResponse},
-    permissions::Claim,
+    iam::{
+        roles_list_claim, roles_read_claim, roles_update_claim, users_list_claim, users_read_claim,
+        IAMRequest, IAMResponse,
+    },
     websockets::WsBatchResponse,
     ServerResponse,
 };
@@ -21,14 +23,14 @@ pub async fn handle_request(
     match request {
         IAMRequest::UsersList => {
             client_handle
-                .permission_allowed(&Claim::new("iam", Some("users"), None, "list"))
+                .permission_allowed(&users_list_claim())
                 .await?;
 
             let mut users = Vec::new();
 
             for user in database::iam_list_users(&migrations::pg()).await? {
                 if client_handle
-                    .permission_allowed(&Claim::new("iam", Some("users"), Some(user.id), "read"))
+                    .permission_allowed(&users_read_claim(user.id))
                     .await
                     .is_ok()
                 {
@@ -42,7 +44,7 @@ pub async fn handle_request(
         }
         IAMRequest::UsersGetProfile(account_id) => {
             client_handle
-                .permission_allowed(&Claim::new("iam", Some("users"), Some(account_id), "read"))
+                .permission_allowed(&users_read_claim(Some(account_id)))
                 .await?;
 
             let user = database::iam_get_user(&migrations::pg(), account_id).await?;

@@ -1,17 +1,19 @@
-use crate::{
-    localize, localize_html,
-    webapp::{
-        api::{AgentMessage, ApiBridge},
-        backoffice::{
-            edit_form::{EditForm, Form, Handled, Message, Props},
-            roles::fields::RoleFields,
-        },
-        strings::LocalizableName,
+use crate::webapp::{
+    api::{AgentMessage, ApiBridge},
+    backoffice::{
+        edit_form::{EditForm, Form, Handled, Message, Props},
+        entity_list::EntityList,
+        roles::fields::RoleFields,
+        roles::permission_statements,
     },
+    strings::LocalizableName,
 };
 use khonsuweb::{flash, forms::prelude::*, validations::prelude::*};
 use shared::{
-    iam::{roles_read_claim, roles_update_claim, IAMRequest, IAMResponse, RoleSummary},
+    iam::{
+        roles_read_claim, roles_update_claim, IAMRequest, IAMResponse, PermissionStatement,
+        RoleSummary,
+    },
     permissions::Claim,
     ServerRequest, ServerResponse,
 };
@@ -22,6 +24,7 @@ use yew::prelude::*;
 pub struct Role {
     id: Rc<RefCell<String>>,
     name: Rc<RefCell<String>>,
+    permission_statements: Vec<PermissionStatement>,
 }
 
 impl Form for Role {
@@ -46,18 +49,15 @@ impl Form for Role {
         )));
     }
 
-    fn handle_webserver_response(&mut self, props: &Props, response: ServerResponse) -> Handled {
+    fn handle_webserver_response(&mut self, response: ServerResponse) -> Handled {
         match response {
             ServerResponse::IAM(response) => match response {
                 IAMResponse::Role(role) => {
-                    if let Some(id) = &props.editing_id {
-                        if id == &role.id.unwrap() {
-                            *self.id.borrow_mut() = id.to_string();
-                            *self.name.borrow_mut() = role.name.clone();
-                            Handled::ShouldRender(true)
-                        } else {
-                            Handled::ShouldRender(false)
-                        }
+                    if let Some(id) = &role.id {
+                        *self.id.borrow_mut() = id.to_string();
+                        *self.name.borrow_mut() = role.name;
+                        self.permission_statements = role.permission_statements;
+                        Handled::ShouldRender(true)
                     } else {
                         Handled::ShouldRender(false)
                     }
@@ -97,6 +97,9 @@ impl Form for Role {
                         processing=edit_form.is_saving
                     />
                 </form>
+
+                <h2>{RoleFields::PermissionStatements.localized_name()}</h2>
+                <EntityList<PermissionStatement> entities=self.permission_statements.clone() action_buttons=permission_statements::list::default_action_buttons() />
             </div>
         }
     }

@@ -1,11 +1,8 @@
-use crate::{
-    localize, localize_html, require_permission,
-    webapp::{
-        api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
-        has_permission,
-        strings::{LocalizableName, Namable},
-        LoggedInUser,
-    },
+use crate::webapp::{
+    api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
+    has_permission,
+    strings::{LocalizableName, Namable},
+    LoggedInUser,
 };
 use khonsuweb::{flash, validations::prelude::*};
 use shared::{permissions::Claim, ServerRequest, ServerResponse};
@@ -22,7 +19,7 @@ pub trait Form: Default {
     fn title() -> &'static str;
     fn load_request(&self, props: &Props) -> Option<ServerRequest>;
     fn save(&mut self, props: &Props, api: &mut ApiBridge);
-    fn handle_webserver_response(&mut self, props: &Props, response: ServerResponse) -> Handled;
+    fn handle_webserver_response(&mut self, response: ServerResponse) -> Handled;
     fn render(
         &self,
         edit_form: &EditForm<Self>,
@@ -94,13 +91,13 @@ where
                             self.flash_message = Some(flash::Message::new(
                                 flash::Kind::Danger,
                                 message,
-                                Duration::from_secs(5),
+                                Duration::from_secs(3),
                             ));
                         }
                         self.is_saving = false;
                         true
                     }
-                    other => match self.form.handle_webserver_response(&self.props, other) {
+                    other => match self.form.handle_webserver_response(other) {
                         Handled::Saved(message) => self.saved(message),
                         Handled::ShouldRender(should_render) => should_render,
                     },
