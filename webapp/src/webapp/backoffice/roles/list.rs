@@ -2,7 +2,7 @@ use crate::{
     localize, localize_html, require_permission,
     webapp::{
         api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
-        backoffice::entity_list::EntityList,
+        backoffice::{entity_list::EntityList, roles::summary_list::default_action_buttons},
         LoggedInUser,
     },
 };
@@ -71,7 +71,7 @@ impl Component for RolesList {
         html!(
             <div class="container">
                 <h2>{localize_html!("list-roles")}</h2>
-                <EntityList<RoleSummary> entities=self.roles.clone()/>
+                <EntityList<RoleSummary> entities=self.roles.clone() action_buttons=default_action_buttons()/>
             </div>
         )
     }

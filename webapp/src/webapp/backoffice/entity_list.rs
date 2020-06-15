@@ -1,10 +1,31 @@
+use std::rc::Rc;
 use yew::prelude::*;
 
 pub trait ListableEntity {
     type Entity: Clone;
 
     fn table_head() -> Html;
-    fn render_entity(entity: &Self::Entity) -> Html;
+    fn render_entity(
+        entity: &Self::Entity,
+        action_buttons: Option<Rc<Box<dyn Fn(&Self::Entity) -> Html>>>,
+    ) -> Html;
+
+    fn render_action_buttons(
+        action_buttons: Option<Rc<Box<dyn Fn(&Self::Entity) -> Html>>>,
+        entity: &Self::Entity,
+    ) -> Html {
+        action_buttons
+            .map(|buttons| buttons(entity))
+            .unwrap_or_default()
+    }
+}
+
+pub trait ActionableEntity: ListableEntity {
+    type ButtonProvider: ActionButtonProvider<Self::Entity>;
+}
+
+pub trait ActionButtonProvider<T> {
+    fn action_buttons_for(entity: &T) -> Html;
 }
 
 pub struct EntityList<T>
@@ -14,9 +35,11 @@ where
     props: Props<T::Entity>,
 }
 
-#[derive(Clone, PartialEq, Properties)]
+#[derive(Clone, Properties)]
 pub struct Props<T: Clone> {
     pub entities: Option<Vec<T>>,
+    #[prop_or_default]
+    pub action_buttons: Option<Rc<Box<dyn Fn(&T) -> Html>>>,
 }
 
 impl<T> Component for EntityList<T>
@@ -46,7 +69,7 @@ where
                         {T::table_head()}
                     </thead>
                     <tbody>
-                        { entities.iter().map(|u| T::render_entity(u)).collect::<Html>() }
+                        { entities.iter().map(|u| T::render_entity(u, self.props.action_buttons.clone())).collect::<Html>() }
                     </tbody>
                 </table>
             ),

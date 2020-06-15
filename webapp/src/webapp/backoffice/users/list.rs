@@ -15,7 +15,7 @@ use shared::{
     permissions::Claim,
     ServerResponse,
 };
-use std::sync::Arc;
+use std::{rc::Rc, sync::Arc};
 use yew::prelude::*;
 use yew_router::prelude::*;
 
@@ -77,7 +77,7 @@ impl Component for UsersList {
         html!(
             <div class="container">
                 <h2>{localize("list-users")}</h2>
-                <EntityList<Self> entities=self.users.clone()/>
+                <EntityList<Self> entities=self.users.clone() action_buttons=default_action_buttons() />
             </div>
         )
     }
@@ -118,18 +118,31 @@ impl ListableEntity for UsersList {
         }
     }
 
-    fn render_entity(user: &Self::Entity) -> Html {
+    fn render_entity(
+        user: &Self::Entity,
+        action_buttons: Option<Rc<Box<dyn Fn(&Self::Entity) -> Html>>>,
+    ) -> Html {
         html! {
             <tr>
                 <td>{ user.id }</td>
                 <td>{ user.screenname.as_ref().unwrap_or(&localize_raw("not-set"))}</td>
                 <td>{ user.created_at }</td>
                 <td>
-                    <RouterButton<AppRoute> route=AppRoute::BackOfficeUserEdit(user.id) classes="button is-primary" >
-                        <strong>{ localize("edit") }</strong>
-                    </RouterButton<AppRoute>>
+                    { Self::render_action_buttons(action_buttons, user) }
                 </td>
             </tr>
         }
+    }
+}
+
+pub fn default_action_buttons() -> Option<Rc<Box<dyn Fn(&User) -> Html>>> {
+    Some(Rc::new(Box::new(render_default_action_buttons)))
+}
+
+fn render_default_action_buttons(user: &User) -> Html {
+    html! {
+        <RouterButton<AppRoute> route=AppRoute::BackOfficeUserEdit(user.id) classes="button is-primary" >
+            <strong>{ localize("edit") }</strong>
+        </RouterButton<AppRoute>>
     }
 }

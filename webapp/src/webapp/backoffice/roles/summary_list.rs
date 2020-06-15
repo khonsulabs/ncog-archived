@@ -7,6 +7,7 @@ use crate::{
     },
 };
 use shared::iam::RoleSummary;
+use std::rc::Rc;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
@@ -23,17 +24,30 @@ impl ListableEntity for RoleSummary {
         }
     }
 
-    fn render_entity(role: &Self::Entity) -> Html {
+    fn render_entity(
+        role: &Self::Entity,
+        action_buttons: Option<Rc<Box<dyn Fn(&Self::Entity) -> Html>>>,
+    ) -> Html {
         html! {
             <tr>
                 <td>{ role.id.unwrap() }</td>
                 <td>{ &role.name }</td>
                 <td>
-                    <RouterButton<AppRoute> route=AppRoute::BackOfficeRoleEdit(role.id.unwrap()) classes="button is-primary" >
-                        <strong>{ localize!("edit") }</strong>
-                    </RouterButton<AppRoute>>
+                    { Self::render_action_buttons(action_buttons, role) }
                 </td>
             </tr>
         }
+    }
+}
+
+pub fn default_action_buttons() -> Option<Rc<Box<dyn Fn(&RoleSummary) -> Html>>> {
+    Some(Rc::new(Box::new(render_default_action_buttons)))
+}
+
+fn render_default_action_buttons(role: &RoleSummary) -> Html {
+    html! {
+        <RouterButton<AppRoute> route=AppRoute::BackOfficeRoleEdit(role.id.unwrap()) classes="button is-primary" >
+            <strong>{ localize!("edit") }</strong>
+        </RouterButton<AppRoute>>
     }
 }
