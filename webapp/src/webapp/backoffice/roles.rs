@@ -67,10 +67,6 @@ impl Component for RolesList {
         match msg {
             Message::WsMessage(agent_response) => match agent_response {
                 AgentResponse::Response(ws_response) => match ws_response.result {
-                    ServerResponse::Authenticated { .. } => {
-                        self.initialize();
-                        false
-                    }
                     ServerResponse::IAM(iam_response) => match iam_response {
                         IAMResponse::RolesList(users) => {
                             self.roles = Some(users);
@@ -87,6 +83,7 @@ impl Component for RolesList {
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
         self.props = props;
+        self.initialize();
         true
     }
 
@@ -102,7 +99,6 @@ impl Component for RolesList {
 
     fn rendered(&mut self, first_render: bool) {
         if first_render {
-            self.api.send(AgentMessage::RegisterBroadcastHandler);
             self.initialize();
         }
 

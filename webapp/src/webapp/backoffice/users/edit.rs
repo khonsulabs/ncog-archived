@@ -67,10 +67,6 @@ impl Component for EditUser {
             Message::ValueChanged => true,
             Message::WsMessage(agent_response) => match agent_response {
                 AgentResponse::Response(ws_response) => match ws_response.result {
-                    ServerResponse::Authenticated { .. } => {
-                        self.initialize();
-                        false
-                    }
                     ServerResponse::IAM(response) => match response {
                         IAMResponse::UserProfile(profile) => {
                             if let Some(id) = &self.props.editing_id {
@@ -98,6 +94,7 @@ impl Component for EditUser {
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
         self.props = props;
+        self.initialize();
         true
     }
 
@@ -125,7 +122,6 @@ impl Component for EditUser {
                         <Label text=UserFields::Screenname.localized_name() />
                         <TextInput<UserFields> field=UserFields::Screenname storage=self.user.screenname.clone() readonly=readonly on_value_changed=self.link.callback(|_| Message::ValueChanged) placeholder="Type your message here..." errors=errors.clone() />
                     </Field<UserFields>>
-                //     <Button label="Send" disabled=disable_button css_class="is-success" action=self.link.callback(|e: ClickEvent| {e.prevent_default(); Message::SendMessage})/>
                 </form>
 
                 <h2>{UserFields::AssignedRoles.localized_name()}</h2>
@@ -136,7 +132,6 @@ impl Component for EditUser {
 
     fn rendered(&mut self, first_render: bool) {
         if first_render {
-            self.api.send(AgentMessage::RegisterBroadcastHandler);
             self.initialize();
         }
         self.props.set_title.emit(localize!("edit-user"))
@@ -153,9 +148,7 @@ pub fn write_claim(id: Option<i64>) -> Claim {
 
 impl EditUser {
     fn validate(&self) -> Option<Rc<ErrorSet<UserFields>>> {
-        ModelValidator::new()
-            .with_field(UserFields::Screenname, self.user.screenname.is_present())
-            .validate()
+        ModelValidator::new().validate()
     }
 
     fn initialize(&mut self) {

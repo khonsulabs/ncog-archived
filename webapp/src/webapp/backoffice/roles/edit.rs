@@ -81,10 +81,6 @@ impl Component for EditRole {
             }
             Message::WsMessage(agent_response) => match agent_response {
                 AgentResponse::Response(ws_response) => match ws_response.result {
-                    ServerResponse::Authenticated { .. } => {
-                        self.initialize();
-                        false
-                    }
                     ServerResponse::IAM(response) => match response {
                         IAMResponse::Role(role) => {
                             if let Some(id) = &self.props.editing_id {
@@ -110,6 +106,17 @@ impl Component for EditRole {
                         }
                         _ => false,
                     },
+                    ServerResponse::Error { message } => {
+                        if let Some(message) = message {
+                            self.flash_message = Some(flash::Message::new(
+                                flash::Kind::Danger,
+                                message,
+                                Duration::from_secs(5),
+                            ));
+                        }
+                        self.is_saving = false;
+                        true
+                    }
                     _ => false,
                 },
                 _ => false,
@@ -119,6 +126,9 @@ impl Component for EditRole {
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
         self.props = props;
+        if self.props.editing_id.is_some() {
+            self.initialize()
+        }
         true
     }
 
@@ -163,7 +173,6 @@ impl Component for EditRole {
 
     fn rendered(&mut self, first_render: bool) {
         if first_render {
-            self.api.send(AgentMessage::RegisterBroadcastHandler);
             self.initialize();
         }
         self.props.set_title.emit(localize!("edit-role"))
