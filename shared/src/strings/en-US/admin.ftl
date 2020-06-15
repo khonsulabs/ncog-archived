@@ -26,10 +26,16 @@ edit-user = {-edit-item(type: {-user})}
 list-users = {-list-item(type: {-user(count: 0)})}
 save-user = {-save-item(type: {-user})}
 saved-user = {-saved-item(type: {-user})}
+
 edit-role = {-edit-item(type: {-role})}
 save-role = {-save-item(type: {-role})}
 saved-role = {-saved-item(type: {-role})}
 list-roles = {-list-item(type: {-role(count: 0)})}
+
+edit-permission-statement = {-edit-item(type: {-permission-statement})}
+list-permission-statement = {-list-item(type: {-permission-statement(count: 0)})}
+save-permission-statement = {-save-item(type: {-permission-statement})}
+saved-permission-statement = {-saved-item(type: {-permission-statement})}
 
 form-field-required = {$field} is required
 

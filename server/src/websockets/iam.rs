@@ -107,6 +107,16 @@ pub async fn handle_request(
                 ServerResponse::IAM(IAMResponse::RoleSaved(role_id)).into_ws_response(request_id),
             )?;
         }
+        IAMRequest::PermissionStatementGet(id) => {
+            let statement = database::iam_get_permission_statement(&migrations::pg(), id).await?;
+            client_handle
+                .permission_allowed(&roles_read_claim(statement.role_id))
+                .await?;
+            responder.send(
+                ServerResponse::IAM(IAMResponse::PermissionStatement(statement))
+                    .into_ws_response(request_id),
+            )?;
+        }
     }
 
     Ok(())

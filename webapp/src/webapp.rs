@@ -104,9 +104,8 @@ impl AppRoute {
             AppRoute::BackOfficeRoleEdit(id) => {
                 html! { <backoffice::edit_form::EditForm<backoffice::roles::edit::Role> set_title=set_title.clone() user=user.clone() editing_id=Some(*id) /> }
             }
-            AppRoute::BackOfficeRolePermissionStatementEdit(_id) => {
-                todo!("need to add role permission statement view");
-                html! { <p>{"todo"}</p> }
+            AppRoute::BackOfficeRolePermissionStatementEdit(id) => {
+                html! { <backoffice::edit_form::EditForm<backoffice::roles::permission_statements::edit::PermissionStatementForm> set_title=set_title.clone() user=user.clone() editing_id=Some(*id) /> }
             }
         }
     }

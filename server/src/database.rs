@@ -168,12 +168,7 @@ where
 
     let permission_statements = sqlx::query_as!(
         PermissionStatement,
-        r#"SELECT id,
-            service,
-            resource_type,
-            resource_id,
-            action,
-            allow
+        r#"SELECT *
         FROM role_permission_statements
         WHERE role_id = $1
         ORDER BY id"#,
@@ -205,4 +200,22 @@ where
     .id;
 
     Ok(id)
+}
+
+pub async fn iam_get_permission_statement<'e, E>(
+    executor: E,
+    permission_statement_id: i64,
+) -> Result<PermissionStatement, sqlx::Error>
+where
+    E: Copy + 'e + Send + RefExecutor<'e, Database = Postgres>,
+{
+    sqlx::query_as!(
+        PermissionStatement,
+        r#"SELECT *
+        FROM role_permission_statements
+        WHERE id = $1"#,
+        permission_statement_id
+    )
+    .fetch_one(executor)
+    .await
 }

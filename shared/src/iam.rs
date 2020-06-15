@@ -9,6 +9,7 @@ pub enum IAMRequest {
     RolesList,
     RoleGet(i64),
     RoleSave(RoleSummary),
+    PermissionStatementGet(i64),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -18,6 +19,7 @@ pub enum IAMResponse {
     UserProfile(User),
     Role(Role),
     RoleSaved(i64),
+    PermissionStatement(PermissionStatement),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -68,6 +70,7 @@ pub struct Role {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct PermissionStatement {
     pub id: Option<i64>,
+    pub role_id: Option<i64>,
 
     pub service: Option<String>,
     pub resource_type: Option<String>,
@@ -76,4 +79,6 @@ pub struct PermissionStatement {
     pub action: Option<String>,
 
     pub allow: bool,
+
+    pub comment: Option<String>,
 }

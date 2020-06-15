@@ -9,6 +9,17 @@ mod internal_macros {
         () => { error!("not yet implemented {}:{}", file!(), line!()) };
         ($($arg:tt)+) => { error!( "not yet implemented {}:{}: {}", file!(), line!(), std::format_args!($($arg)+))};
     }
+
+    #[macro_export]
+    macro_rules! hash_map {
+        ($($key:expr => $value:expr),+) => {{
+            let mut map = std::collections::HashMap::new();
+            $(
+                map.insert($key, $value);
+            )+
+            map
+        }};
+    }
 }
 
 #[macro_use]
