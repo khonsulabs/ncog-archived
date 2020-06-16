@@ -8,7 +8,10 @@ use crate::webapp::{
 };
 use khonsuweb::{flash, forms::prelude::*, validations::prelude::*};
 use shared::{
-    iam::{users_read_claim, users_update_claim, IAMRequest, IAMResponse, RoleSummary},
+    iam::{
+        users_create_claim, users_read_claim, users_update_claim, IAMRequest, IAMResponse,
+        RoleSummary,
+    },
     permissions::Claim,
     ServerRequest, ServerResponse,
 };
@@ -32,6 +35,7 @@ impl Form for User {
     fn load_request(&self, props: &Props) -> Option<ServerRequest> {
         props
             .editing_id
+            .existing_id()
             .map(|account_id| shared::ServerRequest::IAM(IAMRequest::UsersGetProfile(account_id)))
     }
 
@@ -102,5 +106,8 @@ impl Form for User {
     }
     fn update_claim(id: Option<i64>) -> Claim {
         users_update_claim(id)
+    }
+    fn create_claim() -> Claim {
+        users_create_claim()
     }
 }

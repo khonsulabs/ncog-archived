@@ -1,7 +1,7 @@
 use crate::webapp::{
     backoffice::{entity_list::ListableEntity, roles::fields::RoleFields},
     strings::LocalizableName,
-    AppRoute,
+    AppRoute, EditingId,
 };
 use shared::iam::RoleSummary;
 use std::rc::Rc;
@@ -43,7 +43,7 @@ pub fn default_action_buttons() -> Option<Rc<Box<dyn Fn(&RoleSummary) -> Html>>>
 
 fn render_default_action_buttons(role: &RoleSummary) -> Html {
     html! {
-        <RouterButton<AppRoute> route=AppRoute::BackOfficeRoleEdit(role.id.unwrap()) classes="button is-primary" >
+        <RouterButton<AppRoute> route=AppRoute::BackOfficeRoleEdit(EditingId::Id(role.id.unwrap())) classes="button is-primary" >
             <strong>{ localize!("edit") }</strong>
         </RouterButton<AppRoute>>
     }

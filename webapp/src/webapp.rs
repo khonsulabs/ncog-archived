@@ -44,6 +44,35 @@ pub struct LoggedInUser {
     pub permissions: PermissionSet,
 }
 
+#[derive(Switch, Debug, Clone, Copy, PartialEq)]
+pub enum EditingId {
+    #[to = "/new"]
+    New,
+    #[to = "/{id}"]
+    Id(i64),
+}
+
+impl EditingId {
+    pub fn is_existing(&self) -> bool {
+        !self.is_new()
+    }
+
+    pub fn is_new(&self) -> bool {
+        if let EditingId::New = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn existing_id(&self) -> Option<i64> {
+        match self {
+            EditingId::Id(id) => Some(*id),
+            EditingId::New => None,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum Message {
     SetTitle(String),
@@ -60,16 +89,19 @@ pub enum AppRoute {
     LogIn,
     #[to = "/auth/callback/{service}"]
     LoggedIn(String),
-    #[to = "/backoffice/users/{id}"]
-    BackOfficeUserEdit(i64),
+    #[to = "/backoffice/users"]
+    #[rest]
+    BackOfficeUserEdit(EditingId),
     #[to = "/backoffice/users!"]
     BackOfficeUsersList,
-    #[to = "/backoffice/roles/{id}"]
-    BackOfficeRoleEdit(i64),
+    #[to = "/backoffice/roles"]
+    #[rest]
+    BackOfficeRoleEdit(EditingId),
     #[to = "/backoffice/roles!"]
     BackOfficeRolesList,
-    #[to = "/backoffice/permissions/{id}"]
-    BackOfficeRolePermissionStatementEdit(i64),
+    #[to = "/backoffice/permissions"]
+    #[rest]
+    BackOfficeRolePermissionStatementEdit(EditingId),
     #[to = "/backoffice!"]
     BackOfficeDashboard,
     #[to = "/!"]
@@ -96,16 +128,16 @@ impl AppRoute {
                 html! { <backoffice::users::list::UsersList set_title=set_title.clone() user=user.clone() />}
             }
             AppRoute::BackOfficeUserEdit(id) => {
-                html! { <backoffice::edit_form::EditForm<backoffice::users::edit::User> set_title=set_title.clone() user=user.clone() editing_id=Some(*id) /> }
+                html! { <backoffice::edit_form::EditForm<backoffice::users::edit::User> set_title=set_title.clone() user=user.clone() editing_id=*id /> }
             }
             AppRoute::BackOfficeRolesList => {
                 html! { <backoffice::roles::list::RolesList set_title=set_title.clone() user=user.clone() />}
             }
             AppRoute::BackOfficeRoleEdit(id) => {
-                html! { <backoffice::edit_form::EditForm<backoffice::roles::edit::Role> set_title=set_title.clone() user=user.clone() editing_id=Some(*id) /> }
+                html! { <backoffice::edit_form::EditForm<backoffice::roles::edit::Role> set_title=set_title.clone() user=user.clone() editing_id=*id /> }
             }
             AppRoute::BackOfficeRolePermissionStatementEdit(id) => {
-                html! { <backoffice::edit_form::EditForm<backoffice::roles::permission_statements::edit::PermissionStatementForm> set_title=set_title.clone() user=user.clone() editing_id=Some(*id) /> }
+                html! { <backoffice::edit_form::EditForm<backoffice::roles::permission_statements::edit::PermissionStatementForm> set_title=set_title.clone() user=user.clone() editing_id=id /> }
             }
         }
     }

@@ -117,6 +117,19 @@ pub async fn handle_request(
                     .into_ws_response(request_id),
             )?;
         }
+        IAMRequest::PermissionStatementSave(statement) => {
+            client_handle
+                .permission_allowed(&roles_update_claim(statement.role_id))
+                .await?;
+
+            let statement_id =
+                database::iam_update_permission_statement(&migrations::pg(), &statement).await?;
+
+            responder.send(
+                ServerResponse::IAM(IAMResponse::PermissionStatementSaved(statement_id))
+                    .into_ws_response(request_id),
+            )?;
+        }
     }
 
     Ok(())

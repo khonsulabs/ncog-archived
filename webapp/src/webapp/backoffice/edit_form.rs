@@ -2,7 +2,7 @@ use crate::webapp::{
     api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
     has_permission,
     strings::{LocalizableName, Namable},
-    LoggedInUser,
+    EditingId, LoggedInUser,
 };
 use khonsuweb::{flash, validations::prelude::*};
 use shared::{permissions::Claim, ServerRequest, ServerResponse};
@@ -30,6 +30,7 @@ pub trait Form: Default {
     fn validate(&self) -> Option<Rc<ErrorSet<Self::Fields>>>;
     fn read_claim(id: Option<i64>) -> Claim;
     fn update_claim(id: Option<i64>) -> Claim;
+    fn create_claim() -> Claim;
 }
 
 pub struct EditForm<T>
@@ -52,7 +53,7 @@ pub enum Message {
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {
     pub user: Option<Arc<LoggedInUser>>,
-    pub editing_id: Option<i64>,
+    pub editing_id: EditingId,
     pub set_title: Callback<String>,
 }
 
@@ -109,14 +110,18 @@ where
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
         self.props = props;
-        if self.props.editing_id.is_some() {
+        if self.props.editing_id.is_existing() {
             self.initialize()
         }
         true
     }
 
     fn view(&self) -> Html {
-        require_permission!(&self.props.user, T::read_claim(self.props.editing_id));
+        if let Some(id) = self.props.editing_id.existing_id() {
+            require_permission!(&self.props.user, T::read_claim(Some(id)));
+        } else {
+            require_permission!(&self.props.user, T::create_claim());
+        }
 
         let errors = self.validate().map(|errors| {
             errors.translate(|e| match e.error {
@@ -126,8 +131,13 @@ where
             })
         });
 
-        let readonly = self.is_saving
-            || !has_permission(&self.props.user, T::update_claim(self.props.editing_id));
+        let can_update = self
+            .props
+            .editing_id
+            .existing_id()
+            .map(|id| has_permission(&self.props.user, T::update_claim(Some(id))))
+            .unwrap_or_default();
+        let readonly = self.is_saving || !can_update;
         let can_save = !readonly && !errors.is_some();
         self.form.render(self, readonly, can_save, errors)
     }

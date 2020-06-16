@@ -10,6 +10,7 @@ pub enum IAMRequest {
     RoleGet(i64),
     RoleSave(RoleSummary),
     PermissionStatementGet(i64),
+    PermissionStatementSave(PermissionStatement),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -20,6 +21,7 @@ pub enum IAMResponse {
     Role(Role),
     RoleSaved(i64),
     PermissionStatement(PermissionStatement),
+    PermissionStatementSaved(i64),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -42,6 +44,10 @@ pub fn users_update_claim(id: Option<i64>) -> Claim {
     Claim::new("iam", Some("users"), id, "update")
 }
 
+pub fn users_create_claim() -> Claim {
+    Claim::new("iam", Some("users"), None, "create")
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct RoleSummary {
     pub id: Option<i64>,
@@ -58,6 +64,10 @@ pub fn roles_read_claim(id: Option<i64>) -> Claim {
 
 pub fn roles_update_claim(id: Option<i64>) -> Claim {
     Claim::new("iam", Some("roles"), id, "update")
+}
+
+pub fn roles_create_claim() -> Claim {
+    Claim::new("iam", Some("roles"), None, "create")
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]

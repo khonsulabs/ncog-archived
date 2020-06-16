@@ -219,3 +219,28 @@ where
     .fetch_one(executor)
     .await
 }
+
+pub async fn iam_update_permission_statement<'e, E>(
+    executor: E,
+    statement: &PermissionStatement,
+) -> Result<i64, sqlx::Error>
+where
+    E: 'e + Send + RefExecutor<'e, Database = Postgres>,
+{
+    let id = sqlx::query(
+        r#"INSERT INTO role_permission_statements (id, role_id, service, resource_type, resource_id, action, allow, comment) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+            ON CONFLICT (id) DO UPDATE SET role_id = $2, service = $3, resource_type = $4, resource_id = $5, action = $6, allow = $7, comment = $8
+            RETURNING id"#)
+        .bind(statement.id)
+        .bind(statement.role_id)
+        .bind(&statement.service)
+        .bind(&statement.resource_type)
+        .bind(statement.resource_id)
+        .bind(&statement.action)
+        .bind(statement.allow)
+        .bind(&statement.comment)
+    
+    .fetch(executor).next().await?.expect("Error saving permission statement").get::<i64,_>(0);
+
+    Ok(id)
+}

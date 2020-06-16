@@ -4,7 +4,7 @@ use crate::webapp::{
         roles::permission_statements::fields::PermissionStatementFields,
     },
     strings::LocalizableName,
-    AppRoute,
+    AppRoute, EditingId,
 };
 use shared::iam::PermissionStatement;
 use std::rc::Rc;
@@ -69,7 +69,7 @@ pub fn default_action_buttons() -> Option<Rc<Box<dyn Fn(&PermissionStatement) ->
 
 fn render_default_action_buttons(stmt: &PermissionStatement) -> Html {
     html! {
-        <RouterButton<AppRoute> route=AppRoute::BackOfficeRolePermissionStatementEdit(stmt.id.unwrap()) classes="button is-primary" >
+        <RouterButton<AppRoute> route=AppRoute::BackOfficeRolePermissionStatementEdit(EditingId::Id(stmt.id.unwrap())) classes="button is-primary" >
             <strong>{ localize!("edit") }</strong>
         </RouterButton<AppRoute>>
     }

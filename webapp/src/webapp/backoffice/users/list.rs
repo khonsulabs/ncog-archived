@@ -5,7 +5,7 @@ use crate::webapp::{
         users::fields::UserFields,
     },
     strings::{localize, localize_raw, LocalizableName},
-    AppRoute, LoggedInUser,
+    AppRoute, EditingId, LoggedInUser,
 };
 use shared::{
     iam::{users_list_claim, IAMRequest, IAMResponse, User},
@@ -133,7 +133,7 @@ pub fn default_action_buttons() -> Option<Rc<Box<dyn Fn(&User) -> Html>>> {
 
 fn render_default_action_buttons(user: &User) -> Html {
     html! {
-        <RouterButton<AppRoute> route=AppRoute::BackOfficeUserEdit(user.id.unwrap()) classes="button is-primary" >
+        <RouterButton<AppRoute> route=AppRoute::BackOfficeUserEdit(EditingId::Id(user.id.unwrap())) classes="button is-primary" >
             <strong>{ localize("edit") }</strong>
         </RouterButton<AppRoute>>
     }
