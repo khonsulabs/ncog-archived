@@ -1,7 +1,8 @@
-use super::LoggedInUser;
+use super::{AppRoute, LoggedInUser};
 use shared::permissions::Claim;
 use std::sync::Arc;
 use yew::prelude::*;
+use yew_router::prelude::*;
 
 pub mod edit_form;
 pub mod entity_list;
@@ -51,4 +52,23 @@ impl Component for Dashboard {
 
 pub fn read_claim() -> Claim {
     Claim::new("backoffice", Some("dashboard"), None, "read")
+}
+
+fn render_heading_with_add_button(
+    title: &'static str,
+    add_route: AppRoute,
+    add_caption: &'static str,
+) -> Html {
+    html! {
+        <div class="level">
+            <div class="level-left">
+                <h2>{localize!(title)}</h2>
+            </div>
+            <div class="level-right">
+                <RouterButton<AppRoute> route=add_route classes="button is-success" >
+                    <strong>{ localize!(add_caption) }</strong>
+                </RouterButton<AppRoute>>
+            </div>
+        </div>
+    }
 }

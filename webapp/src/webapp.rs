@@ -103,14 +103,14 @@ pub enum AppRoute {
     BackOfficeUserEdit(EditingId),
     #[to = "/backoffice/users!"]
     BackOfficeUsersList,
+    #[to = "/backoffice/roles/{id}/permissions"]
+    #[rest]
+    BackOfficeRolePermissionStatementEdit(i64, EditingId),
     #[to = "/backoffice/roles"]
     #[rest]
     BackOfficeRoleEdit(EditingId),
     #[to = "/backoffice/roles!"]
     BackOfficeRolesList,
-    #[to = "/backoffice/permissions"]
-    #[rest]
-    BackOfficeRolePermissionStatementEdit(EditingId),
     #[to = "/backoffice!"]
     BackOfficeDashboard,
     #[to = "/!"]
@@ -146,8 +146,8 @@ impl AppRoute {
             AppRoute::BackOfficeRoleEdit(id) => {
                 html! { <backoffice::edit_form::EditForm<backoffice::roles::edit::Role> set_title=set_title.clone() user=user.clone() editing_id=*id /> }
             }
-            AppRoute::BackOfficeRolePermissionStatementEdit(id) => {
-                html! { <backoffice::edit_form::EditForm<backoffice::roles::permission_statements::edit::PermissionStatementForm> set_title=set_title.clone() user=user.clone() editing_id=id /> }
+            AppRoute::BackOfficeRolePermissionStatementEdit(role_id, id) => {
+                html! { <backoffice::edit_form::EditForm<backoffice::roles::permission_statements::edit::PermissionStatementForm> set_title=set_title.clone() user=user.clone() editing_id=id owning_id=role_id /> }
             }
         }
     }

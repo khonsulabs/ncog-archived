@@ -1,7 +1,7 @@
 use super::{ValidationError, Validator};
-use std::{cell::RefCell, rc::Rc};
+use crate::forms::storage::FormStorage;
 
-pub trait Presentable {
+pub trait Presentable: Default + Clone + PartialEq {
     fn present(&self) -> bool;
 }
 
@@ -98,9 +98,9 @@ impl Presentable for f64 {
 #[derive(Debug)]
 pub struct PresentValidation<T>
 where
-    T: std::fmt::Debug,
+    T: Default + Clone + PartialEq + std::fmt::Debug,
 {
-    pub value: Rc<RefCell<T>>,
+    pub value: FormStorage<T>,
 }
 
 impl<T> Validator for PresentValidation<T>

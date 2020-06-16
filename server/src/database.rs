@@ -228,7 +228,16 @@ where
     E: 'e + Send + RefExecutor<'e, Database = Postgres>,
 {
     let id = sqlx::query(
-        r#"INSERT INTO role_permission_statements (COALESCE($1, (SELECT nextval('role_permission_statements_id_seq'))), role_id, service, resource_type, resource_id, action, allow, comment) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+        r#"INSERT INTO role_permission_statements (
+                id, 
+                role_id, 
+                service, 
+                resource_type, 
+                resource_id, 
+                action, 
+                allow, 
+                comment
+            ) VALUES (COALESCE($1, (SELECT nextval('role_permission_statements_id_seq'))), $2, $3, $4, $5, $6, $7, $8) 
             ON CONFLICT (id) DO UPDATE SET role_id = $2, service = $3, resource_type = $4, resource_id = $5, action = $6, allow = $7, comment = $8
             RETURNING id"#)
         .bind(statement.id)

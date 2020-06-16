@@ -23,6 +23,7 @@
 -permission-statements = Permission Statements
 -name = Name
 
+add-user = {-add-item(type: {-user})}
 edit-user = {-edit-item(type: {-user})}
 list-users = {-list-item(type: {-user(count: 0)})}
 save-user = {-save-item(type: {-user})}
@@ -34,6 +35,7 @@ save-role = {-save-item(type: {-role})}
 saved-role = {-saved-item(type: {-role})}
 list-roles = {-list-item(type: {-role(count: 0)})}
 
+add-permission-statement = {-add-item(type: {-permission-statement})}
 edit-permission-statement = {-edit-item(type: {-permission-statement})}
 list-permission-statement = {-list-item(type: {-permission-statement(count: 0)})}
 save-permission-statement = {-save-item(type: {-permission-statement})}
@@ -58,6 +60,8 @@ permission-statements-resource-type = Resource Type
 permission-statements-resource-id = Resource Id
 permission-statements-action = Action
 permission-statements-allow = Allow / Deny
+permission-statements-comment = Comment
+permission-statement-comment-placeholder = Describe what this permission statement is for
 
 any-service = Any Service
 any-resource-type = Any Resource Type

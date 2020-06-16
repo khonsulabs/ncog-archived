@@ -3,11 +3,12 @@ use crate::webapp::{
     backoffice::{
         edit_form::{EditForm, Form, Handled, Message, Props},
         entity_list::EntityList,
+        render_heading_with_add_button,
         roles::fields::RoleFields,
         roles::permission_statements,
     },
-    strings::LocalizableName,
-    EditingId,
+    strings::{LocalizableName, Namable},
+    AppRoute, EditingId,
 };
 use khonsuweb::{flash, forms::prelude::*, validations::prelude::*};
 use shared::{
@@ -18,13 +19,13 @@ use shared::{
     permissions::Claim,
     ServerRequest, ServerResponse,
 };
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{collections::HashMap, rc::Rc};
 use yew::prelude::*;
 
 #[derive(Debug, Default)]
 pub struct Role {
-    id: Rc<RefCell<String>>,
-    name: Rc<RefCell<String>>,
+    id: FormStorage<String>,
+    name: FormStorage<String>,
     permission_statements: Vec<PermissionStatement>,
 }
 
@@ -37,7 +38,7 @@ impl Form for Role {
         }
     }
 
-    fn route_for(id: EditingId) -> String {
+    fn route_for(id: EditingId, _owning_id: Option<i64>) -> String {
         format!("/backoffice/roles/{}", id)
     }
 
@@ -51,7 +52,7 @@ impl Form for Role {
     fn save(&mut self, props: &Props, api: &mut ApiBridge) {
         let role = RoleSummary {
             id: props.editing_id.existing_id(),
-            name: self.name.borrow().clone(),
+            name: self.name.value().clone(),
         };
 
         api.send(AgentMessage::Request(ServerRequest::IAM(
@@ -64,8 +65,8 @@ impl Form for Role {
             ServerResponse::IAM(response) => match response {
                 IAMResponse::Role(role) => {
                     if let Some(id) = &role.id {
-                        *self.id.borrow_mut() = id.to_string();
-                        *self.name.borrow_mut() = role.name;
+                        self.id.update(id.to_string());
+                        self.name.update(role.name);
                         self.permission_statements = role.permission_statements;
                         Handled::ShouldRender(true)
                     } else {
@@ -106,7 +107,7 @@ impl Form for Role {
             true => Html::default(),
             false => html! {
                 <div>
-                    <h2>{RoleFields::PermissionStatements.localized_name()}</h2>
+                    { render_heading_with_add_button(RoleFields::PermissionStatements.name(), AppRoute::BackOfficeRolePermissionStatementEdit(edit_form.props.editing_id.existing_id().expect("Editing a permission without an role is not allowed"), EditingId::New), "add-permission-statement") }
                     <EntityList<PermissionStatement> entities=self.permission_statements.clone() action_buttons=permission_statements::list::default_action_buttons() />
                 </div>
             },

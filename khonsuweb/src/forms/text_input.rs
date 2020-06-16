@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use super::storage::FormStorage;
 use std::collections::HashMap;
 use std::rc::Rc;
 use web_sys::HtmlInputElement;
@@ -20,7 +20,7 @@ where
 {
     #[prop_or_default]
     pub on_value_changed: Callback<String>,
-    pub storage: Rc<RefCell<String>>,
+    pub storage: FormStorage<String>,
     pub field: T,
     pub errors: Option<Rc<HashMap<T, Vec<Rc<Html>>>>>,
     #[prop_or_default]
@@ -54,7 +54,7 @@ where
         match msg {
             Message::KeyPressed => {
                 if let Some(input) = self.input.cast::<HtmlInputElement>() {
-                    *self.props.storage.borrow_mut() = input.value();
+                    self.props.storage.update(input.value());
                     self.props.on_value_changed.emit(input.value());
                 }
             }
@@ -77,7 +77,7 @@ where
         };
         html! {
             <div class="control">
-                <input class=css_class ref=self.input.clone() type="text" value=self.props.storage.borrow() placeholder=&self.props.placeholder onchange=self.link.callback(|_| Message::KeyPressed) oninput=self.link.callback(|_| Message::KeyPressed) disabled=self.props.disabled readonly=self.props.readonly />
+                <input class=css_class ref=self.input.clone() type="text" value=self.props.storage.value() placeholder=&self.props.placeholder onchange=self.link.callback(|_| Message::KeyPressed) oninput=self.link.callback(|_| Message::KeyPressed) disabled=self.props.disabled readonly=self.props.readonly />
             </div>
         }
     }

@@ -16,13 +16,13 @@ use shared::{
     permissions::Claim,
     ServerRequest, ServerResponse,
 };
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{collections::HashMap, rc::Rc};
 use yew::prelude::*;
 
 #[derive(Debug, Default)]
 pub struct User {
-    id: Rc<RefCell<String>>,
-    screenname: Rc<RefCell<String>>,
+    id: FormStorage<String>,
+    screenname: FormStorage<String>,
     roles: Option<Vec<RoleSummary>>,
 }
 
@@ -36,7 +36,7 @@ impl Form for User {
         }
     }
 
-    fn route_for(id: EditingId) -> String {
+    fn route_for(id: EditingId, _owning_id: Option<i64>) -> String {
         format!("/backoffice/users/{}", id)
     }
 
@@ -56,8 +56,9 @@ impl Form for User {
             ServerResponse::IAM(response) => match response {
                 IAMResponse::UserProfile(profile) => {
                     if let Some(id) = &profile.id {
-                        *self.id.borrow_mut() = id.to_string();
-                        *self.screenname.borrow_mut() = profile.screenname.unwrap_or_default();
+                        self.id.update(id.to_string());
+                        self.screenname
+                            .update(profile.screenname.unwrap_or_default());
                         self.roles = Some(profile.roles);
                         Handled::ShouldRender(true)
                     } else {

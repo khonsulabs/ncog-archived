@@ -1,11 +1,11 @@
 use std::{
-    cell::RefCell,
     collections::{HashMap, HashSet},
     rc::Rc,
 };
 use thiserror::Error;
 pub mod combinators;
 pub mod present;
+use crate::forms::storage::FormStorage;
 use combinators::*;
 use present::*;
 
@@ -37,7 +37,7 @@ pub trait ValidatorCombinators: Sized + Validator {
 
 pub trait Validatable<T>
 where
-    T: std::fmt::Debug,
+    T: Clone + Default + PartialEq + std::fmt::Debug,
 {
     fn is_present(&self) -> PresentValidation<T>;
 }
@@ -48,12 +48,12 @@ where
 {
     fn is_present(&self) -> PresentValidation<T> {
         PresentValidation {
-            value: Rc::new(RefCell::new(self.clone())),
+            value: FormStorage::new(self.clone()),
         }
     }
 }
 
-impl<T> Validatable<T> for Rc<RefCell<T>>
+impl<T> Validatable<T> for FormStorage<T>
 where
     T: Presentable + std::fmt::Debug,
 {

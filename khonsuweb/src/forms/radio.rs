@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use super::storage::FormStorage;
 use std::collections::HashMap;
 use std::rc::Rc;
 use yew::prelude::*;
@@ -6,7 +6,7 @@ use yew::prelude::*;
 pub struct Radio<T, V>
 where
     T: Copy + std::hash::Hash + Eq + PartialEq + std::fmt::Debug + 'static,
-    V: Copy + Eq + 'static,
+    V: Default + std::fmt::Debug + Copy + Eq + 'static,
 {
     props: Props<T, V>,
     link: ComponentLink<Self>,
@@ -16,11 +16,11 @@ where
 pub struct Props<T, V>
 where
     T: Copy + std::hash::Hash + Eq + PartialEq + std::fmt::Debug + 'static,
-    V: Copy + Eq + 'static,
+    V: Default + std::fmt::Debug + Copy + Eq + 'static,
 {
     #[prop_or_default]
     pub on_value_changed: Callback<V>,
-    pub storage: Rc<RefCell<V>>,
+    pub storage: FormStorage<V>,
     pub field: T,
     pub errors: Option<Rc<HashMap<T, Vec<Rc<Html>>>>>,
     pub options: Vec<(String, V)>,
@@ -32,7 +32,7 @@ where
 
 pub enum Message<V>
 where
-    V: Copy + Eq + 'static,
+    V: Default + std::fmt::Debug + Copy + Eq + 'static,
 {
     RadioSelected(V),
 }
@@ -40,7 +40,7 @@ where
 impl<T, V> Component for Radio<T, V>
 where
     T: Copy + std::hash::Hash + Eq + PartialEq + std::fmt::Debug + 'static,
-    V: Copy + Eq + 'static,
+    V: Default + std::fmt::Debug + Copy + Eq + 'static,
 {
     type Message = Message<V>;
     type Properties = Props<T, V>;
@@ -52,7 +52,7 @@ where
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Message::RadioSelected(value) => {
-                *self.props.storage.borrow_mut() = value;
+                self.props.storage.update(value);
                 self.props.on_value_changed.emit(value);
             }
         }
@@ -88,7 +88,7 @@ where
 impl<T, V> Radio<T, V>
 where
     T: Copy + std::hash::Hash + Eq + PartialEq + std::fmt::Debug + 'static,
-    V: Copy + Eq + 'static,
+    V: Default + std::fmt::Debug + Copy + Eq + 'static,
 {
     fn render_option(&self, label: &str, value: V) -> Html {
         html! {

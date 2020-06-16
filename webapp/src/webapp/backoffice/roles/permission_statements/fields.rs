@@ -8,6 +8,7 @@ pub enum PermissionStatementFields {
     ResourceId,
     Action,
     Allow,
+    Comment,
 }
 
 impl Namable for PermissionStatementFields {
@@ -20,6 +21,7 @@ impl Namable for PermissionStatementFields {
             ResourceId => "permission-statements-resource-id",
             Action => "permission-statements-action",
             Allow => "permission-statements-allow",
+            Comment => "permission-statements-comment",
         }
     }
 }

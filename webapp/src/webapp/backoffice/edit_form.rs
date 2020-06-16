@@ -35,7 +35,7 @@ pub trait Form: Default {
     fn read_claim(id: Option<i64>) -> Claim;
     fn update_claim(id: Option<i64>) -> Claim;
     fn create_claim() -> Claim;
-    fn route_for(id: EditingId) -> String;
+    fn route_for(id: EditingId, owning_id: Option<i64>) -> String;
 }
 
 pub struct EditForm<T>
@@ -60,6 +60,8 @@ pub struct Props {
     pub user: Option<Arc<LoggedInUser>>,
     pub editing_id: EditingId,
     pub set_title: Callback<String>,
+    #[prop_or_default]
+    pub owning_id: Option<i64>,
 }
 
 impl<T> Component for EditForm<T>
@@ -162,7 +164,7 @@ where
 {
     fn saved(&mut self, save_message: &'static str, new_id: i64) -> ShouldRender {
         let new_id = EditingId::Id(new_id);
-        let new_route = T::route_for(new_id);
+        let new_route = T::route_for(new_id, self.props.owning_id);
         let mut agent = RouteAgentBridge::new(Callback::noop());
         agent.send(RouteRequest::ReplaceRoute(Route::new_no_state(
             new_route.to_string(),

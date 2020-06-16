@@ -1,6 +1,9 @@
 use crate::webapp::{
     api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
-    backoffice::{entity_list::EntityList, roles::summary_list::default_action_buttons},
+    backoffice::{
+        entity_list::EntityList, render_heading_with_add_button,
+        roles::summary_list::default_action_buttons,
+    },
     AppRoute, EditingId, LoggedInUser,
 };
 use shared::{
@@ -9,7 +12,6 @@ use shared::{
 };
 use std::sync::Arc;
 use yew::prelude::*;
-use yew_router::prelude::*;
 
 pub struct RolesList {
     api: ApiBridge,
@@ -68,16 +70,7 @@ impl Component for RolesList {
         require_permission!(&self.props.user, roles_list_claim());
         html!(
             <div class="container">
-                <div class="level">
-                    <div class="level-left">
-                        <h2>{localize!("list-roles")}</h2>
-                    </div>
-                    <div class="level-right">
-                        <RouterButton<AppRoute> route=AppRoute::BackOfficeRoleEdit(EditingId::New) classes="button is-success" >
-                            <strong>{ localize!("add-role") }</strong>
-                        </RouterButton<AppRoute>>
-                    </div>
-                </div>
+                { render_heading_with_add_button("list-roles", AppRoute::BackOfficeRoleEdit(EditingId::New), "add-role") }
                 <EntityList<RoleSummary> entities=self.roles.clone() action_buttons=default_action_buttons() />
             </div>
         )
