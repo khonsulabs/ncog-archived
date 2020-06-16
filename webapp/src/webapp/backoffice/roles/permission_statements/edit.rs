@@ -1,18 +1,15 @@
 use crate::webapp::{
-    api::{AgentMessage, ApiBridge},
+    api::ApiBridge,
     backoffice::{
         edit_form::{EditForm, Form, Handled, Message, Props},
-        entity_list::EntityList,
         roles::permission_statements::fields::PermissionStatementFields,
     },
     strings::LocalizableName,
+    EditingId,
 };
 use khonsuweb::{flash, forms::prelude::*, validations::prelude::*};
 use shared::{
-    iam::{
-        roles_create_claim, roles_read_claim, roles_update_claim, IAMRequest, IAMResponse,
-        PermissionStatement, RoleSummary,
-    },
+    iam::{roles_create_claim, roles_read_claim, roles_update_claim, IAMRequest, IAMResponse},
     permissions::Claim,
     ServerRequest, ServerResponse,
 };
@@ -31,9 +28,17 @@ pub struct PermissionStatementForm {
 
 impl Form for PermissionStatementForm {
     type Fields = PermissionStatementFields;
-    fn title() -> &'static str {
-        "edit-permission-statement"
+    fn title(is_new: bool) -> &'static str {
+        match is_new {
+            true => "add-permission-statement",
+            false => "edit-permission-statement",
+        }
     }
+
+    fn route_for(id: EditingId) -> String {
+        format!("/backoffice/permissions/{}", id)
+    }
+
     fn load_request(&self, props: &Props) -> Option<ServerRequest> {
         props
             .editing_id
@@ -41,7 +46,7 @@ impl Form for PermissionStatementForm {
             .map(|id| ServerRequest::IAM(IAMRequest::PermissionStatementGet(id)))
     }
 
-    fn save(&mut self, props: &Props, api: &mut ApiBridge) {
+    fn save(&mut self, _props: &Props, _api: &mut ApiBridge) {
         todo!("Need to save permission statements")
     }
 

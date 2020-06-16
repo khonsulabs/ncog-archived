@@ -5,6 +5,7 @@ use crate::webapp::{
         {entity_list::EntityList, users::fields::UserFields},
     },
     strings::LocalizableName,
+    EditingId,
 };
 use khonsuweb::{flash, forms::prelude::*, validations::prelude::*};
 use shared::{
@@ -28,8 +29,15 @@ pub struct User {
 impl Form for User {
     type Fields = UserFields;
 
-    fn title() -> &'static str {
-        "edit-user"
+    fn title(is_new: bool) -> &'static str {
+        match is_new {
+            true => "add-user",
+            false => "edit-user",
+        }
+    }
+
+    fn route_for(id: EditingId) -> String {
+        format!("/backoffice/users/{}", id)
     }
 
     fn load_request(&self, props: &Props) -> Option<ServerRequest> {

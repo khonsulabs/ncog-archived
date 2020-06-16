@@ -1,7 +1,6 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
-use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
 pub struct Radio<T, V>
@@ -10,7 +9,6 @@ where
     V: Copy + Eq + 'static,
 {
     props: Props<T, V>,
-    input: NodeRef,
     link: ComponentLink<Self>,
 }
 
@@ -48,11 +46,7 @@ where
     type Properties = Props<T, V>;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        Self {
-            props,
-            link,
-            input: NodeRef::default(),
-        }
+        Self { props, link }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
@@ -73,13 +67,13 @@ where
             .map(|errors| errors.get(&self.props.field).map(|errors| errors.clone()));
         let css_class = match &errors {
             Some(errors) => match errors {
-                Some(_) => "input is-danger",
-                None => "input",
+                Some(_) => "control is-danger",
+                None => "control",
             },
-            None => "input",
+            None => "control",
         };
         html! {
-            <div class="control">
+            <div class=css_class>
                 { self.props.options.iter().map(|(label, value)| self.render_option(label, *value)).collect::<Html>() }
             </div>
         }

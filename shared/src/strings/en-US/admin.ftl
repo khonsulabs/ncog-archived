@@ -2,6 +2,7 @@
 -saved-item = {$type} was saved successfully.
 -edit-item = Edit {$type}
 -list-item = List {$type}
+-add-item = Add {$type}
 
 -user = {$count -> 
     *[one] User
@@ -27,6 +28,7 @@ list-users = {-list-item(type: {-user(count: 0)})}
 save-user = {-save-item(type: {-user})}
 saved-user = {-saved-item(type: {-user})}
 
+add-role = {-add-item(type: {-role})}
 edit-role = {-edit-item(type: {-role})}
 save-role = {-save-item(type: {-role})}
 saved-role = {-saved-item(type: {-role})}

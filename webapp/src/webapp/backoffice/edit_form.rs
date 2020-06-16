@@ -8,15 +8,19 @@ use khonsuweb::{flash, validations::prelude::*};
 use shared::{permissions::Claim, ServerRequest, ServerResponse};
 use std::{collections::HashMap, rc::Rc, sync::Arc, time::Duration};
 use yew::prelude::*;
+use yew_router::{
+    agent::{RouteAgentBridge, RouteRequest},
+    route::Route,
+};
 
 pub enum Handled {
-    Saved(&'static str),
+    Saved { label: &'static str, new_id: i64 },
     ShouldRender(ShouldRender),
 }
 pub trait Form: Default {
     type Fields: Namable + Copy + std::hash::Hash + Eq + PartialEq + std::fmt::Debug + 'static;
 
-    fn title() -> &'static str;
+    fn title(is_new: bool) -> &'static str;
     fn load_request(&self, props: &Props) -> Option<ServerRequest>;
     fn save(&mut self, props: &Props, api: &mut ApiBridge);
     fn handle_webserver_response(&mut self, response: ServerResponse) -> Handled;
@@ -31,6 +35,7 @@ pub trait Form: Default {
     fn read_claim(id: Option<i64>) -> Claim;
     fn update_claim(id: Option<i64>) -> Claim;
     fn create_claim() -> Claim;
+    fn route_for(id: EditingId) -> String;
 }
 
 pub struct EditForm<T>
@@ -38,8 +43,8 @@ where
     T: Form + Default + 'static,
 {
     api: ApiBridge,
-    props: Props,
     form: T,
+    pub props: Props,
     pub link: ComponentLink<Self>,
     pub flash_message: Option<flash::Message>,
     pub is_saving: bool,
@@ -99,7 +104,7 @@ where
                         true
                     }
                     other => match self.form.handle_webserver_response(other) {
-                        Handled::Saved(message) => self.saved(message),
+                        Handled::Saved { label, new_id } => self.saved(label, new_id),
                         Handled::ShouldRender(should_render) => should_render,
                     },
                 },
@@ -131,12 +136,11 @@ where
             })
         });
 
-        let can_update = self
-            .props
-            .editing_id
-            .existing_id()
-            .map(|id| has_permission(&self.props.user, T::update_claim(Some(id))))
-            .unwrap_or_default();
+        let update_claim = match self.props.editing_id {
+            EditingId::Id(id) => T::update_claim(Some(id)),
+            EditingId::New => T::create_claim(),
+        };
+        let can_update = has_permission(&self.props.user, update_claim);
         let readonly = self.is_saving || !can_update;
         let can_save = !readonly && !errors.is_some();
         self.form.render(self, readonly, can_save, errors)
@@ -146,7 +150,9 @@ where
         if first_render {
             self.initialize();
         }
-        self.props.set_title.emit(localize!(T::title()))
+        self.props
+            .set_title
+            .emit(localize!(T::title(self.props.editing_id.is_new())))
     }
 }
 
@@ -154,11 +160,17 @@ impl<T> EditForm<T>
 where
     T: Form + Default + 'static,
 {
-    fn saved(&mut self, save_message: &'static str) -> ShouldRender {
+    fn saved(&mut self, save_message: &'static str, new_id: i64) -> ShouldRender {
+        let new_id = EditingId::Id(new_id);
+        let new_route = T::route_for(new_id);
+        let mut agent = RouteAgentBridge::new(Callback::noop());
+        agent.send(RouteRequest::ReplaceRoute(Route::new_no_state(
+            new_route.to_string(),
+        )));
         self.flash_message = Some(flash::Message::new(
             flash::Kind::Success,
             localize!(save_message),
-            Duration::from_secs(5),
+            Duration::from_secs(3),
         ));
         self.is_saving = false;
         true

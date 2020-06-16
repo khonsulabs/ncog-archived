@@ -73,6 +73,15 @@ impl EditingId {
     }
 }
 
+impl std::fmt::Display for EditingId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::New => f.write_str("new"),
+            Self::Id(id) => f.write_str(&id.to_string()),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum Message {
     SetTitle(String),
@@ -109,6 +118,7 @@ pub enum AppRoute {
     #[to = "/"]
     NotFound,
 }
+
 impl AppRoute {
     pub fn render(&self, set_title: Callback<String>, user: Option<Arc<LoggedInUser>>) -> Html {
         match self {
