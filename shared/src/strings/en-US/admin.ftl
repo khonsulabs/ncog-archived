@@ -42,6 +42,7 @@ save-permission-statement = {-save-item(type: {-permission-statement})}
 saved-permission-statement = {-saved-item(type: {-permission-statement})}
 
 form-field-required = {$field} is required
+form-field-invalid-value = {$field} is not valid.
 
 user-fields-id = {-user(count:1)} Id
 user-fields-screenname = Screen Name

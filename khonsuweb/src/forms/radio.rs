@@ -93,7 +93,7 @@ where
     fn render_option(&self, label: &str, value: V) -> Html {
         html! {
             <label class="radio">
-                <input type="radio" onclick=self.link.callback(move |_| Message::RadioSelected(value)) checked=*self.props.storage.borrow() == value disabled=self.props.disabled />
+                <input type="radio" onclick=self.link.callback(move |_| Message::RadioSelected(value)) checked=self.props.storage.unchecked_value() == value disabled=self.props.disabled />
                 { label }
             </label>
         }

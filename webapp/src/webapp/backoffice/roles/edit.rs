@@ -24,8 +24,8 @@ use yew::prelude::*;
 
 #[derive(Debug, Default)]
 pub struct Role {
-    id: FormStorage<String>,
-    name: FormStorage<String>,
+    id: FormStorage<Option<i64>>,
+    name: FormStorage<Option<String>>,
     permission_statements: Vec<PermissionStatement>,
 }
 
@@ -52,7 +52,7 @@ impl Form for Role {
     fn save(&mut self, props: &Props, api: &mut ApiBridge) {
         let role = RoleSummary {
             id: props.editing_id.existing_id(),
-            name: self.name.value().clone(),
+            name: self.name.value().unwrap_or(None).unwrap_or_default(),
         };
 
         api.send(AgentMessage::Request(ServerRequest::IAM(
@@ -65,8 +65,8 @@ impl Form for Role {
             ServerResponse::IAM(response) => match response {
                 IAMResponse::Role(role) => {
                     if let Some(id) = &role.id {
-                        self.id.update(id.to_string());
-                        self.name.update(role.name);
+                        self.id.update(Some(*id));
+                        self.name.update(Some(role.name));
                         self.permission_statements = role.permission_statements;
                         Handled::ShouldRender(true)
                     } else {
@@ -96,7 +96,7 @@ impl Form for Role {
                 html! {
                     <Field<RoleFields> field=RoleFields::Id errors=errors.clone()>
                         <Label text=RoleFields::Id.localized_name() />
-                        <TextInput<RoleFields> field=RoleFields::Id storage=self.id.clone() readonly=true errors=errors.clone() />
+                        <TextInput<RoleFields, i64> field=RoleFields::Id storage=self.id.clone() readonly=true errors=errors.clone() />
                     </Field<RoleFields>>
                 }
             }
@@ -122,7 +122,7 @@ impl Form for Role {
                         { id }
                         <Field<RoleFields> field=RoleFields::Name errors=errors.clone()>
                             <Label text=RoleFields::Name.localized_name() />
-                            <TextInput<RoleFields> field=RoleFields::Name storage=self.name.clone() readonly=readonly on_value_changed=edit_form.link.callback(|_| Message::ValueChanged) placeholder="Type your message here..." errors=errors.clone() />
+                            <TextInput<RoleFields, String> field=RoleFields::Name storage=self.name.clone() readonly=readonly on_value_changed=edit_form.link.callback(|_| Message::ValueChanged) placeholder="Type your message here..." errors=errors.clone() />
                         </Field<RoleFields>>
                         <Button
                             label=localize!("save-role")

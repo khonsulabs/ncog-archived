@@ -95,6 +95,18 @@ impl Presentable for f64 {
     }
 }
 
+impl<T> Presentable for Option<T>
+where
+    T: Presentable,
+{
+    fn present(&self) -> bool {
+        match self {
+            Some(p) => p.present(),
+            None => false,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct PresentValidation<T>
 where
@@ -108,7 +120,7 @@ where
     T: Presentable + std::fmt::Debug,
 {
     fn validate(&self) -> Result<(), ValidationError> {
-        if self.value.borrow().present() {
+        if self.value.value()?.present() {
             Ok(())
         } else {
             Err(ValidationError::NotPresent)

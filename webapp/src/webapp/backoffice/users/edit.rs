@@ -21,8 +21,8 @@ use yew::prelude::*;
 
 #[derive(Debug, Default)]
 pub struct User {
-    id: FormStorage<String>,
-    screenname: FormStorage<String>,
+    id: FormStorage<Option<i64>>,
+    screenname: FormStorage<Option<String>>,
     roles: Option<Vec<RoleSummary>>,
 }
 
@@ -56,9 +56,8 @@ impl Form for User {
             ServerResponse::IAM(response) => match response {
                 IAMResponse::UserProfile(profile) => {
                     if let Some(id) = &profile.id {
-                        self.id.update(id.to_string());
-                        self.screenname
-                            .update(profile.screenname.unwrap_or_default());
+                        self.id.update(Some(*id));
+                        self.screenname.update(profile.screenname);
                         self.roles = Some(profile.roles);
                         Handled::ShouldRender(true)
                     } else {
@@ -86,11 +85,11 @@ impl Form for User {
                         <flash::Flash message=edit_form.flash_message.clone() />
                         <Field<UserFields> field=UserFields::Id errors=errors.clone()>
                             <Label text=UserFields::Id.localized_name() />
-                            <TextInput<UserFields> field=UserFields::Id storage=self.id.clone() readonly=true errors=errors.clone() />
+                            <TextInput<UserFields,i64> field=UserFields::Id storage=self.id.clone() readonly=true errors=errors.clone() />
                         </Field<UserFields>>
                         <Field<UserFields> field=UserFields::Screenname errors=errors.clone()>
                             <Label text=UserFields::Screenname.localized_name() />
-                            <TextInput<UserFields> field=UserFields::Screenname storage=self.screenname.clone() readonly=readonly on_value_changed=edit_form.link.callback(|_| Message::ValueChanged) placeholder="Type your message here..." errors=errors.clone() />
+                            <TextInput<UserFields,String> field=UserFields::Screenname storage=self.screenname.clone() readonly=readonly on_value_changed=edit_form.link.callback(|_| Message::ValueChanged) placeholder="Type your message here..." errors=errors.clone() />
                         </Field<UserFields>>
                         <Button
                             label=localize!("save-user")

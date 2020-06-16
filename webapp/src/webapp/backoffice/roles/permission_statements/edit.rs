@@ -21,13 +21,13 @@ use yew::prelude::*;
 
 #[derive(Debug, Default)]
 pub struct PermissionStatementForm {
-    id: FormStorage<String>,
-    service: FormStorage<String>,
-    resource_type: FormStorage<String>,
-    resource_id: FormStorage<String>,
-    action: FormStorage<String>,
+    id: FormStorage<Option<i64>>,
+    service: FormStorage<Option<String>>,
+    resource_type: FormStorage<Option<String>>,
+    resource_id: FormStorage<Option<i64>>,
+    action: FormStorage<Option<String>>,
     allow: FormStorage<bool>,
-    comment: FormStorage<String>,
+    comment: FormStorage<Option<String>>,
 }
 
 impl Form for PermissionStatementForm {
@@ -58,18 +58,13 @@ impl Form for PermissionStatementForm {
         let statement = PermissionStatement {
             id: props.editing_id.existing_id(),
             role_id: props.owning_id,
-            service: self.service.value_as_option(),
-            resource_type: self.resource_type.value_as_option(),
-            resource_id: self.resource_id.value_as_option().map(|id| {
-                id.parse()
-                    .expect("Need to catch invalid ints in validation")
-            }),
-            action: self.action.value_as_option(),
-            allow: self.allow.value(),
-            comment: self.comment.value_as_option(),
+            service: self.service.value().unwrap_or_default(),
+            resource_type: self.resource_type.value().unwrap_or_default(),
+            resource_id: self.resource_id.value().unwrap_or_default(),
+            action: self.action.value().unwrap_or_default(),
+            allow: self.allow.value().unwrap_or_default(),
+            comment: self.comment.value().unwrap_or_default(),
         };
-
-        info!("{:#?}", statement);
 
         api.send(AgentMessage::Request(ServerRequest::IAM(
             IAMRequest::PermissionStatementSave(statement),
@@ -81,18 +76,12 @@ impl Form for PermissionStatementForm {
             ServerResponse::IAM(response) => match response {
                 IAMResponse::PermissionStatement(statement) => {
                     if let Some(id) = &statement.id {
-                        self.id.update(id.to_string());
+                        self.id.update(Some(*id));
 
-                        self.service.update(statement.service.unwrap_or_default());
-                        self.resource_type
-                            .update(statement.resource_type.unwrap_or_default());
-                        self.resource_id.update(
-                            statement
-                                .resource_id
-                                .map(|id| id.to_string())
-                                .unwrap_or_default(),
-                        );
-                        self.action.update(statement.action.unwrap_or_default());
+                        self.service.update(statement.service);
+                        self.resource_type.update(statement.resource_type);
+                        self.resource_id.update(statement.resource_id);
+                        self.action.update(statement.action);
                         self.allow.update(statement.allow);
                         Handled::ShouldRender(true)
                     } else {
@@ -122,7 +111,7 @@ impl Form for PermissionStatementForm {
                 html! {
                     <Field<PermissionStatementFields> field=PermissionStatementFields::Id errors=errors.clone()>
                         <Label text=PermissionStatementFields::Id.localized_name() />
-                        <TextInput<PermissionStatementFields> field=PermissionStatementFields::Id storage=self.id.clone() readonly=true errors=errors.clone() />
+                        <TextInput<PermissionStatementFields, i64> field=PermissionStatementFields::Id storage=self.id.clone() readonly=true errors=errors.clone() />
                     </Field<PermissionStatementFields>>
                 }
             }
@@ -139,22 +128,22 @@ impl Form for PermissionStatementForm {
 
                     <Field<PermissionStatementFields> field=PermissionStatementFields::Service errors=errors.clone()>
                         <Label text=PermissionStatementFields::Service.localized_name() />
-                        <TextInput<PermissionStatementFields> field=PermissionStatementFields::Service storage=self.service.clone() readonly=readonly on_value_changed=edit_form.link.callback(|_| Message::ValueChanged) placeholder=localize!("any-service") errors=errors.clone() />
+                        <TextInput<PermissionStatementFields, String> field=PermissionStatementFields::Service storage=self.service.clone() readonly=readonly on_value_changed=edit_form.link.callback(|_| Message::ValueChanged) placeholder=localize!("any-service") errors=errors.clone() />
                     </Field<PermissionStatementFields>>
 
                     <Field<PermissionStatementFields> field=PermissionStatementFields::ResourceType errors=errors.clone()>
                         <Label text=PermissionStatementFields::ResourceType.localized_name() />
-                        <TextInput<PermissionStatementFields> field=PermissionStatementFields::ResourceType storage=self.resource_type.clone() readonly=readonly on_value_changed=edit_form.link.callback(|_| Message::ValueChanged) placeholder=localize!("any-resource-type") errors=errors.clone() />
+                        <TextInput<PermissionStatementFields, String> field=PermissionStatementFields::ResourceType storage=self.resource_type.clone() readonly=readonly on_value_changed=edit_form.link.callback(|_| Message::ValueChanged) placeholder=localize!("any-resource-type") errors=errors.clone() />
                     </Field<PermissionStatementFields>>
 
                     <Field<PermissionStatementFields> field=PermissionStatementFields::ResourceId errors=errors.clone()>
                         <Label text=PermissionStatementFields::ResourceId.localized_name() />
-                        <TextInput<PermissionStatementFields> field=PermissionStatementFields::ResourceId storage=self.resource_id.clone() readonly=readonly on_value_changed=edit_form.link.callback(|_| Message::ValueChanged) placeholder=localize!("any-resource-id") errors=errors.clone() />
+                        <TextInput<PermissionStatementFields, i64> field=PermissionStatementFields::ResourceId storage=self.resource_id.clone() readonly=readonly on_value_changed=edit_form.link.callback(|_| Message::ValueChanged) placeholder=localize!("any-resource-id") errors=errors.clone() />
                     </Field<PermissionStatementFields>>
 
                     <Field<PermissionStatementFields> field=PermissionStatementFields::Action errors=errors.clone()>
                         <Label text=PermissionStatementFields::Action.localized_name() />
-                        <TextInput<PermissionStatementFields> field=PermissionStatementFields::Action storage=self.action.clone() readonly=readonly on_value_changed=edit_form.link.callback(|_| Message::ValueChanged) placeholder=localize!("any-action") errors=errors.clone() />
+                        <TextInput<PermissionStatementFields, String> field=PermissionStatementFields::Action storage=self.action.clone() readonly=readonly on_value_changed=edit_form.link.callback(|_| Message::ValueChanged) placeholder=localize!("any-action") errors=errors.clone() />
                     </Field<PermissionStatementFields>>
 
                     <Radio<PermissionStatementFields, bool>
@@ -168,7 +157,7 @@ impl Form for PermissionStatementForm {
 
                     <Field<PermissionStatementFields> field=PermissionStatementFields::Comment errors=errors.clone()>
                         <Label text=PermissionStatementFields::Comment.localized_name() />
-                        <TextInput<PermissionStatementFields> field=PermissionStatementFields::Comment storage=self.comment.clone() readonly=readonly on_value_changed=edit_form.link.callback(|_| Message::ValueChanged) placeholder=localize!("permission-statement-comment-placeholder") errors=errors.clone() />
+                        <TextInput<PermissionStatementFields,String> field=PermissionStatementFields::Comment storage=self.comment.clone() readonly=readonly on_value_changed=edit_form.link.callback(|_| Message::ValueChanged) placeholder=localize!("permission-statement-comment-placeholder") errors=errors.clone() />
                     </Field<PermissionStatementFields>>
 
                     <Button
@@ -184,7 +173,13 @@ impl Form for PermissionStatementForm {
     }
 
     fn validate(&self) -> Option<Rc<ErrorSet<Self::Fields>>> {
-        ModelValidator::new().validate()
+        info!("Self.resource_id: {:#?}", self.resource_id);
+        ModelValidator::new()
+            .with_field(
+                PermissionStatementFields::ResourceId,
+                self.resource_id.clone(),
+            )
+            .validate()
     }
 
     fn read_claim(id: Option<i64>) -> Claim {

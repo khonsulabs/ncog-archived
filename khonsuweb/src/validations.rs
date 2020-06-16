@@ -13,6 +13,9 @@ use present::*;
 pub enum ValidationError {
     #[error("is required")]
     NotPresent,
+    /// For when converting from a string to another type fails. Should be validated in another way.
+    #[error("invalid value")]
+    InvalidValue,
 }
 
 pub trait Validator: std::fmt::Debug {

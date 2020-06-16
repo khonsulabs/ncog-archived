@@ -135,6 +135,9 @@ where
                 ValidationError::NotPresent => {
                     localize!("form-field-required", "field" => e.primary_field().localized_name())
                 }
+                ValidationError::InvalidValue => {
+                    localize!("form-field-invalid-value", "field" => e.primary_field().localized_name())
+                }
             })
         });
 
