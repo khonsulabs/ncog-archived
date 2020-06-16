@@ -1,4 +1,5 @@
 use super::{AppRoute, LoggedInUser};
+use khonsuweb::title::Title;
 use shared::permissions::Claim;
 use std::sync::Arc;
 use yew::prelude::*;
@@ -62,10 +63,12 @@ fn render_heading_with_add_button(
     html! {
         <div class="level">
             <div class="level-left">
-                <h2>{localize!(title)}</h2>
+                <div class="level-item">
+                    <Title size=3>{localize!(title)}</Title>
+                </div>
             </div>
             <div class="level-right">
-                <RouterButton<AppRoute> route=add_route classes="button is-success" >
+                <RouterButton<AppRoute> route=add_route classes="level-item button is-success" >
                     <strong>{ localize!(add_caption) }</strong>
                 </RouterButton<AppRoute>>
             </div>

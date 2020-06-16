@@ -69,10 +69,10 @@ impl Component for RolesList {
     fn view(&self) -> Html {
         require_permission!(&self.props.user, roles_list_claim());
         html!(
-            <div class="container">
+            <section class="section content">
                 { render_heading_with_add_button("list-roles", AppRoute::BackOfficeRoleEdit(EditingId::New), "add-role") }
                 <EntityList<RoleSummary> entities=self.roles.clone() action_buttons=default_action_buttons() />
-            </div>
+            </section>
         )
     }
 

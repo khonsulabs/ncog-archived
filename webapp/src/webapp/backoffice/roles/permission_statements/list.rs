@@ -58,7 +58,7 @@ fn render_property<T: Into<Html>>(value: Option<T>, default_label: &'static str)
     match value {
         Some(value) => value.into(),
         None => {
-            html! {<span class="tag is-primary is-medium">{ localize!(default_label)}</span>}
+            html! {<span class="tag is-success is-medium">{ localize!(default_label)}</span>}
         }
     }
 }

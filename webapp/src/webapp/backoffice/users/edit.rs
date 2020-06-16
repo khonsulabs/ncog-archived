@@ -80,28 +80,32 @@ impl Form for User {
     ) -> Html {
         html! {
             <div>
-                <h2>{localize_html!("edit-user")}</h2>
-                <form>
-                    <flash::Flash message=edit_form.flash_message.clone() />
-                    <Field<UserFields> field=UserFields::Id errors=errors.clone()>
-                        <Label text=UserFields::Id.localized_name() />
-                        <TextInput<UserFields> field=UserFields::Id storage=self.id.clone() readonly=true errors=errors.clone() />
-                    </Field<UserFields>>
-                    <Field<UserFields> field=UserFields::Screenname errors=errors.clone()>
-                        <Label text=UserFields::Screenname.localized_name() />
-                        <TextInput<UserFields> field=UserFields::Screenname storage=self.screenname.clone() readonly=readonly on_value_changed=edit_form.link.callback(|_| Message::ValueChanged) placeholder="Type your message here..." errors=errors.clone() />
-                    </Field<UserFields>>
-                    <Button
-                        label=localize!("save-user")
-                        disabled=!can_save
-                        css_class="is-primary"
-                        action=edit_form.link.callback(|e: web_sys::MouseEvent| {e.prevent_default(); Message::Save})
-                        processing=edit_form.is_saving
-                    />
-                </form>
+                <section class="section content">
+                    <Title>{localize!("edit-user")}</Title>
+                    <form>
+                        <flash::Flash message=edit_form.flash_message.clone() />
+                        <Field<UserFields> field=UserFields::Id errors=errors.clone()>
+                            <Label text=UserFields::Id.localized_name() />
+                            <TextInput<UserFields> field=UserFields::Id storage=self.id.clone() readonly=true errors=errors.clone() />
+                        </Field<UserFields>>
+                        <Field<UserFields> field=UserFields::Screenname errors=errors.clone()>
+                            <Label text=UserFields::Screenname.localized_name() />
+                            <TextInput<UserFields> field=UserFields::Screenname storage=self.screenname.clone() readonly=readonly on_value_changed=edit_form.link.callback(|_| Message::ValueChanged) placeholder="Type your message here..." errors=errors.clone() />
+                        </Field<UserFields>>
+                        <Button
+                            label=localize!("save-user")
+                            disabled=!can_save
+                            css_class="is-primary"
+                            action=edit_form.link.callback(|e: web_sys::MouseEvent| {e.prevent_default(); Message::Save})
+                            processing=edit_form.is_saving
+                        />
+                    </form>
+                </section>
 
-                <h2>{UserFields::AssignedRoles.localized_name()}</h2>
-                <EntityList<RoleSummary> entities=self.roles.clone() />
+                <section class="Section content">
+                    <Title size=3>{UserFields::AssignedRoles.localized_name()}</Title>
+                    <EntityList<RoleSummary> entities=self.roles.clone() />
+                </section>
             </div>
         }
     }

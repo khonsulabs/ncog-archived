@@ -7,6 +7,7 @@ use crate::webapp::{
     strings::{localize, localize_raw, LocalizableName},
     AppRoute, EditingId, LoggedInUser,
 };
+use khonsuweb::title::Title;
 use shared::{
     iam::{users_list_claim, IAMRequest, IAMResponse, User},
     ServerResponse,
@@ -72,7 +73,7 @@ impl Component for UsersList {
         require_permission!(&self.props.user, users_list_claim());
         html!(
             <div class="container">
-                <h2>{localize("list-users")}</h2>
+                <Title>{localize("list-users")}</Title>
                 <EntityList<Self> entities=self.users.clone() action_buttons=default_action_buttons() />
             </div>
         )

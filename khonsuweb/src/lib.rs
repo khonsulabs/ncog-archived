@@ -4,6 +4,7 @@ pub mod forms;
 pub mod localization;
 pub mod markdown;
 pub mod static_page;
+pub mod title;
 pub mod validations;
 
 use chrono::{naive::NaiveDateTime, DateTime, Utc};

@@ -133,7 +133,7 @@ where
         let errors = self.validate().map(|errors| {
             errors.translate(|e| match e.error {
                 ValidationError::NotPresent => {
-                    localize_html!("form-field-required", "field" => e.primary_field().localized_name())
+                    localize!("form-field-required", "field" => e.primary_field().localized_name())
                 }
             })
         });

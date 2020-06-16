@@ -10,4 +10,5 @@ pub mod prelude {
         button::Button, field::Field, label::Label, radio::Radio, storage::FormStorage,
         text_input::TextInput,
     };
+    pub use crate::title::Title;
 }

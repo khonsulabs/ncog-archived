@@ -131,7 +131,7 @@ impl Form for PermissionStatementForm {
 
         html! {
             <div>
-                <h2>{localize_html!(Self::title(is_new))}</h2>
+                <Title>{localize!(Self::title(is_new))}</Title>
                 <form>
                     <flash::Flash message=edit_form.flash_message.clone() />
 

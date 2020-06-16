@@ -106,31 +106,33 @@ impl Form for Role {
         let permission_statements = match is_new {
             true => Html::default(),
             false => html! {
-                <div>
+                <section class="section content">
                     { render_heading_with_add_button(RoleFields::PermissionStatements.name(), AppRoute::BackOfficeRolePermissionStatementEdit(edit_form.props.editing_id.existing_id().expect("Editing a permission without an role is not allowed"), EditingId::New), "add-permission-statement") }
                     <EntityList<PermissionStatement> entities=self.permission_statements.clone() action_buttons=permission_statements::list::default_action_buttons() />
-                </div>
+                </section>
             },
         };
 
         html! {
             <div>
-                <h2>{localize_html!(Self::title(is_new))}</h2>
-                <form>
-                    <flash::Flash message=edit_form.flash_message.clone() />
-                    { id }
-                    <Field<RoleFields> field=RoleFields::Name errors=errors.clone()>
-                        <Label text=RoleFields::Name.localized_name() />
-                        <TextInput<RoleFields> field=RoleFields::Name storage=self.name.clone() readonly=readonly on_value_changed=edit_form.link.callback(|_| Message::ValueChanged) placeholder="Type your message here..." errors=errors.clone() />
-                    </Field<RoleFields>>
-                    <Button
-                        label=localize!("save-role")
-                        disabled=!can_save
-                        css_class="is-primary"
-                        action=edit_form.link.callback(|e: web_sys::MouseEvent| {e.prevent_default(); Message::Save})
-                        processing=edit_form.is_saving
-                    />
-                </form>
+                <section class="section content">
+                    <Title>{localize!(Self::title(is_new))}</Title>
+                    <form>
+                        <flash::Flash message=edit_form.flash_message.clone() />
+                        { id }
+                        <Field<RoleFields> field=RoleFields::Name errors=errors.clone()>
+                            <Label text=RoleFields::Name.localized_name() />
+                            <TextInput<RoleFields> field=RoleFields::Name storage=self.name.clone() readonly=readonly on_value_changed=edit_form.link.callback(|_| Message::ValueChanged) placeholder="Type your message here..." errors=errors.clone() />
+                        </Field<RoleFields>>
+                        <Button
+                            label=localize!("save-role")
+                            disabled=!can_save
+                            css_class="is-primary"
+                            action=edit_form.link.callback(|e: web_sys::MouseEvent| {e.prevent_default(); Message::Save})
+                            processing=edit_form.is_saving
+                        />
+                    </form>
+                </section>
 
                 { permission_statements }
             </div>
