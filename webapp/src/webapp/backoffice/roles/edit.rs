@@ -38,8 +38,8 @@ impl Form for Role {
         }
     }
 
-    fn route_for(id: EditingId, _owning_id: Option<i64>) -> String {
-        format!("/backoffice/roles/{}", id)
+    fn route_for(id: EditingId, _owning_id: Option<i64>) -> AppRoute {
+        AppRoute::BackOfficeRoleEdit(id)
     }
 
     fn load_request(&self, props: &Props) -> Option<ServerRequest> {

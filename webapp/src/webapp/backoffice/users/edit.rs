@@ -5,7 +5,7 @@ use crate::webapp::{
         {entity_list::EntityList, users::fields::UserFields},
     },
     strings::LocalizableName,
-    EditingId,
+    AppRoute, EditingId,
 };
 use khonsuweb::{flash, forms::prelude::*, validations::prelude::*};
 use shared::{
@@ -36,8 +36,8 @@ impl Form for User {
         }
     }
 
-    fn route_for(id: EditingId, _owning_id: Option<i64>) -> String {
-        format!("/backoffice/users/{}", id)
+    fn route_for(id: EditingId, _owning_id: Option<i64>) -> AppRoute {
+        AppRoute::BackOfficeUserEdit(id)
     }
 
     fn load_request(&self, props: &Props) -> Option<ServerRequest> {

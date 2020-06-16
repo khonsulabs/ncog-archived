@@ -5,7 +5,7 @@ use crate::webapp::{
         roles::permission_statements::fields::PermissionStatementFields,
     },
     strings::LocalizableName,
-    EditingId,
+    AppRoute, EditingId,
 };
 use khonsuweb::{flash, forms::prelude::*, validations::prelude::*};
 use shared::{
@@ -39,12 +39,8 @@ impl Form for PermissionStatementForm {
         }
     }
 
-    fn route_for(id: EditingId, owning_id: Option<i64>) -> String {
-        format!(
-            "/backoffice/roles/{}/permissions/{}",
-            owning_id.expect("Need to have an owning_id"),
-            id
-        )
+    fn route_for(id: EditingId, owning_id: Option<i64>) -> AppRoute {
+        AppRoute::BackOfficeRolePermissionStatementEdit(owning_id.unwrap(), id)
     }
 
     fn load_request(&self, props: &Props) -> Option<ServerRequest> {
