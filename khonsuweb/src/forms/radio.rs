@@ -64,7 +64,7 @@ where
             .props
             .errors
             .as_ref()
-            .map(|errors| errors.get(&self.props.field).map(|errors| errors.clone()));
+            .map(|errors| errors.get(&self.props.field).cloned());
         let css_class = match &errors {
             Some(errors) => match errors {
                 Some(_) => "control is-danger",

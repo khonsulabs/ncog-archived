@@ -1,7 +1,7 @@
 use crate::webapp::{
     api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
     backoffice::{
-        entity_list::{EntityList, ListableEntity},
+        entity_list::{EntityList, ListableEntity, RenderFunction},
         users::fields::UserFields,
     },
     strings::{localize, localize_raw, LocalizableName},
@@ -36,7 +36,7 @@ impl Component for UsersList {
     type Message = Message;
     type Properties = Props;
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let callback = link.callback(|message| Message::WsMessage(message));
+        let callback = link.callback(Message::WsMessage);
         let api = ApiAgent::bridge(callback);
         Self {
             props,
@@ -113,7 +113,7 @@ impl ListableEntity for UsersList {
 
     fn render_entity(
         user: &Self::Entity,
-        action_buttons: Option<Rc<Box<dyn Fn(&Self::Entity) -> Html>>>,
+        action_buttons: Option<Rc<RenderFunction<Self::Entity>>>,
     ) -> Html {
         html! {
             <tr>
@@ -128,7 +128,7 @@ impl ListableEntity for UsersList {
     }
 }
 
-pub fn default_action_buttons() -> Option<Rc<Box<dyn Fn(&User) -> Html>>> {
+pub fn default_action_buttons() -> Option<Rc<RenderFunction<User>>> {
     Some(Rc::new(Box::new(render_default_action_buttons)))
 }
 

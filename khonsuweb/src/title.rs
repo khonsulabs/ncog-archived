@@ -45,9 +45,10 @@ impl Component for Title {
 
 impl Title {
     fn primary_class(&self) -> &'static str {
-        match self.props.subtitle {
-            true => "subtitle",
-            false => "title",
+        if self.props.subtitle {
+            "subtitle"
+        } else {
+            "title"
         }
     }
 
@@ -62,10 +63,11 @@ impl Title {
     }
 
     fn default_size(subtitle: bool) -> i8 {
-        match subtitle {
-            // Defaults chosen from bulma's defaults https://bulma.io/documentation/elements/title/
-            true => 5,
-            false => 3,
+        // Defaults chosen from bulma's defaults https://bulma.io/documentation/elements/title/
+        if subtitle {
+            5
+        } else {
+            3
         }
     }
 }

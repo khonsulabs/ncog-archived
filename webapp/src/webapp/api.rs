@@ -80,9 +80,8 @@ impl Agent for ApiAgent {
     fn create(link: AgentLink<Self>) -> Self {
         let storage = StorageService::new(Area::Local).expect("Error accessing storage service");
         let Json(login_state) = storage.restore("login_state");
-        let auth_state = login_state
-            .unwrap_or(EncryptedLoginInformation::default())
-            .auth_state();
+        let encrypted_login_info: EncryptedLoginInformation = login_state.unwrap_or_default();
+        let auth_state = encrypted_login_info.auth_state();
         let storage_enabled = auth_state != AuthState::Unauthenticated;
         Self {
             link,
@@ -386,7 +385,7 @@ impl AuthState {
         use aes_gcm::Aes256Gcm;
 
         let key = encryption_key();
-        let key = GenericArray::from_exact_iter(key.bytes().into_iter()).unwrap();
+        let key = GenericArray::from_exact_iter(key.bytes()).unwrap();
         let aead = Aes256Gcm::new(key);
 
         let mut rng = thread_rng();
@@ -425,7 +424,7 @@ struct EncryptedLoginInformation {
 
 impl EncryptedLoginInformation {
     pub fn auth_state(&self) -> AuthState {
-        if self.iv.len() > 0 && self.encrypted.len() > 0 {
+        if !self.iv.is_empty() && !self.encrypted.is_empty() {
             if let Ok(nonce) = base64::decode_config(&self.iv, base64::URL_SAFE_NO_PAD) {
                 if let Ok(ciphertext) =
                     base64::decode_config(&self.encrypted, base64::URL_SAFE_NO_PAD)
@@ -434,11 +433,10 @@ impl EncryptedLoginInformation {
                     use aes_gcm::Aes256Gcm;
 
                     let key = encryption_key();
-                    let key = GenericArray::from_exact_iter(key.bytes().into_iter())
-                        .expect("Invalid encryption key");
+                    let key =
+                        GenericArray::from_exact_iter(key.bytes()).expect("Invalid encryption key");
                     let aead = Aes256Gcm::new(key);
-                    let nonce =
-                        GenericArray::from_exact_iter(nonce.into_iter()).expect("Invalid nonce");
+                    let nonce = GenericArray::from_exact_iter(nonce).expect("Invalid nonce");
                     let ciphertext: &[u8] = &ciphertext;
                     if let Ok(plaintext) = aead.decrypt(&nonce, ciphertext) {
                         if let Ok(state) = serde_json::from_slice::<AuthState>(&plaintext) {

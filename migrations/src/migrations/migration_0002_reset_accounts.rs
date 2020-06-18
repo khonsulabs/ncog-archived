@@ -10,5 +10,5 @@ pub fn migration() -> Migration {
         .with_up("DELETE FROM installations")
         .with_up("DELETE FROM oauth_tokens")
         .with_up("DELETE FROM accounts WHERE id > 1")
-        .with_up(&format!("INSERT INTO accounts DEFAULT VALUES"))
+        .with_up("INSERT INTO accounts DEFAULT VALUES")
 }

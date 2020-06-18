@@ -40,12 +40,12 @@ where
     }
 
     fn view(&self) -> Html {
-        let label = if self.props.label.len() > 0 {
+        let label = if !self.props.label.is_empty() {
             html! {<Label text=self.props.label.clone()/>}
         } else {
             html! {}
         };
-        let help = if self.props.help.len() > 0 {
+        let help = if !self.props.help.is_empty() {
             html! {<p class="help">{ &self.props.help }</p>}
         } else {
             html! {}

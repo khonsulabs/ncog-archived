@@ -12,12 +12,12 @@ pub fn migration() -> Migration {
         )
         "#,
         )
-        .with_up(&format!(
+        .with_up(
             "INSERT INTO accounts DEFAULT VALUES"
-        ))
+        )
         .with_down(
             r#"
-        DROP TABLE IF EXISTS accounts
+            DROP TABLE IF EXISTS accounts
         "#,
         )
         .with_up(
@@ -78,9 +78,9 @@ pub fn migration() -> Migration {
         )
         "#,
         )
-        .with_up(&format!(
+        .with_up(
             "INSERT INTO roles (name) values ('Time Lord')"
-        ))
+        )
         .with_down(
             r#"
         DROP TABLE IF EXISTS roles

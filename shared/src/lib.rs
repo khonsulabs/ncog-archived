@@ -10,7 +10,7 @@ pub use fluent_templates;
 use permissions::PermissionSet;
 use websockets::WsBatchResponse;
 
-pub const PROTOCOL_VERSION: &'static str = "0.0.1";
+pub const PROTOCOL_VERSION: &str = "0.0.1";
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum ServerRequest {

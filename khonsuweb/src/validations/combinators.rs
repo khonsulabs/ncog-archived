@@ -16,7 +16,7 @@ where
     U: Validator + std::fmt::Debug,
 {
     fn validate(&self) -> Result<(), ValidationError> {
-        self.left.validate().or(self.right.validate())
+        self.left.validate().or_else(|_| self.right.validate())
     }
 }
 
@@ -36,6 +36,6 @@ where
     U: Validator + std::fmt::Debug,
 {
     fn validate(&self) -> Result<(), ValidationError> {
-        self.left.validate().or(self.right.validate())
+        self.left.validate().or_else(|_| self.right.validate())
     }
 }

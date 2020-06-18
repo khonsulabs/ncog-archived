@@ -1,6 +1,6 @@
 use crate::webapp::{
     backoffice::{
-        entity_list::ListableEntity,
+        entity_list::{ListableEntity, RenderFunction},
         roles::permission_statements::fields::PermissionStatementFields,
     },
     strings::LocalizableName,
@@ -30,7 +30,7 @@ impl ListableEntity for PermissionStatement {
 
     fn render_entity(
         permission_statement: &Self::Entity,
-        action_buttons: Option<Rc<Box<dyn Fn(&Self::Entity) -> Html>>>,
+        action_buttons: Option<Rc<RenderFunction<Self::Entity>>>,
     ) -> Html {
         let allowed = if permission_statement.allow {
             html! { <span class="tag is-success is-medium">{ localize!("action-allowed")}</span> }
@@ -63,7 +63,7 @@ fn render_property<T: Into<Html>>(value: Option<T>, default_label: &'static str)
     }
 }
 
-pub fn default_action_buttons() -> Option<Rc<Box<dyn Fn(&PermissionStatement) -> Html>>> {
+pub fn default_action_buttons() -> Option<Rc<RenderFunction<PermissionStatement>>> {
     Some(Rc::new(Box::new(render_default_action_buttons)))
 }
 

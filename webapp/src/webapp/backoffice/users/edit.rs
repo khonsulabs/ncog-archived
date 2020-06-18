@@ -1,7 +1,7 @@
 use crate::webapp::{
     api::ApiBridge,
     backoffice::{
-        edit_form::{EditForm, Form, Handled, Message, Props},
+        edit_form::{EditForm, ErrorMap, Form, Handled, Message, Props},
         {entity_list::EntityList, users::fields::UserFields},
     },
     strings::LocalizableName,
@@ -16,7 +16,7 @@ use shared::{
     permissions::Claim,
     ServerRequest, ServerResponse,
 };
-use std::{collections::HashMap, rc::Rc};
+use std::rc::Rc;
 use yew::prelude::*;
 
 #[derive(Debug, Default)]
@@ -30,9 +30,10 @@ impl Form for User {
     type Fields = UserFields;
 
     fn title(is_new: bool) -> &'static str {
-        match is_new {
-            true => "add-user",
-            false => "edit-user",
+        if is_new {
+            "add-user"
+        } else {
+            "edit-user"
         }
     }
 
@@ -75,7 +76,7 @@ impl Form for User {
         edit_form: &EditForm<Self>,
         readonly: bool,
         can_save: bool,
-        errors: Option<Rc<HashMap<Self::Fields, Vec<Rc<Html>>>>>,
+        errors: Option<Rc<ErrorMap<Self::Fields>>>,
     ) -> Html {
         html! {
             <div>
@@ -110,7 +111,7 @@ impl Form for User {
     }
 
     fn validate(&self) -> Option<Rc<ErrorSet<Self::Fields>>> {
-        ModelValidator::new().validate()
+        ModelValidator::default().validate()
     }
 
     fn read_claim(id: Option<i64>) -> Claim {

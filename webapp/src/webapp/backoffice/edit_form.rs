@@ -17,6 +17,9 @@ pub enum Handled {
     Saved { label: &'static str, new_id: i64 },
     ShouldRender(ShouldRender),
 }
+
+pub type ErrorMap<K> = HashMap<K, Vec<Rc<Html>>>;
+
 pub trait Form: Default {
     type Fields: Namable + Copy + std::hash::Hash + Eq + PartialEq + std::fmt::Debug + 'static;
 
@@ -29,7 +32,7 @@ pub trait Form: Default {
         edit_form: &EditForm<Self>,
         readonly: bool,
         can_save: bool,
-        errors: Option<Rc<HashMap<Self::Fields, Vec<Rc<Html>>>>>,
+        errors: Option<Rc<ErrorMap<Self::Fields>>>,
     ) -> Html;
     fn validate(&self) -> Option<Rc<ErrorSet<Self::Fields>>>;
     fn read_claim(id: Option<i64>) -> Claim;
@@ -72,7 +75,7 @@ where
     type Properties = Props;
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let form = T::default();
-        let callback = link.callback(|message| Message::WsMessage(message));
+        let callback = link.callback(Message::WsMessage);
         let api = ApiAgent::bridge(callback);
         Self {
             props,
@@ -147,7 +150,7 @@ where
         };
         let can_update = has_permission(&self.props.user, update_claim);
         let readonly = self.is_saving || !can_update;
-        let can_save = !readonly && !errors.is_some();
+        let can_save = !readonly && errors.is_none();
         self.form.render(self, readonly, can_save, errors)
     }
 
@@ -184,9 +187,8 @@ where
     }
 
     fn initialize(&mut self) {
-        match self.form.load_request(&self.props) {
-            Some(request) => self.api.send(AgentMessage::Request(request)),
-            None => {}
+        if let Some(request) = self.form.load_request(&self.props) {
+            self.api.send(AgentMessage::Request(request))
         }
     }
 }

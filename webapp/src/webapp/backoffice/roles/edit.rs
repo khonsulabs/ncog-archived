@@ -1,7 +1,7 @@
 use crate::webapp::{
     api::{AgentMessage, ApiBridge},
     backoffice::{
-        edit_form::{EditForm, Form, Handled, Message, Props},
+        edit_form::{EditForm, ErrorMap, Form, Handled, Message, Props},
         entity_list::EntityList,
         render_heading_with_add_button,
         roles::fields::RoleFields,
@@ -19,7 +19,7 @@ use shared::{
     permissions::Claim,
     ServerRequest, ServerResponse,
 };
-use std::{collections::HashMap, rc::Rc};
+use std::rc::Rc;
 use yew::prelude::*;
 
 #[derive(Debug, Default)]
@@ -32,9 +32,10 @@ pub struct Role {
 impl Form for Role {
     type Fields = RoleFields;
     fn title(is_new: bool) -> &'static str {
-        match is_new {
-            true => "add-role",
-            false => "edit-role",
+        if is_new {
+            "add-role"
+        } else {
+            "edit-role"
         }
     }
 
@@ -88,7 +89,7 @@ impl Form for Role {
         edit_form: &EditForm<Self>,
         readonly: bool,
         can_save: bool,
-        errors: Option<Rc<HashMap<Self::Fields, Vec<Rc<Html>>>>>,
+        errors: Option<Rc<ErrorMap<Self::Fields>>>,
     ) -> Html {
         let is_new = edit_form.props.editing_id.is_new();
         let id = match edit_form.props.editing_id {
@@ -103,14 +104,15 @@ impl Form for Role {
             EditingId::New => Html::default(),
         };
 
-        let permission_statements = match is_new {
-            true => Html::default(),
-            false => html! {
+        let permission_statements = if is_new {
+            Html::default()
+        } else {
+            html! {
                 <section class="section content">
                     { render_heading_with_add_button(RoleFields::PermissionStatements.name(), AppRoute::BackOfficeRolePermissionStatementEdit(edit_form.props.editing_id.existing_id().expect("Editing a permission without an role is not allowed"), EditingId::New), "add-permission-statement") }
                     <EntityList<PermissionStatement> entities=self.permission_statements.clone() action_buttons=permission_statements::list::default_action_buttons() />
                 </section>
-            },
+            }
         };
 
         html! {
@@ -140,7 +142,7 @@ impl Form for Role {
     }
 
     fn validate(&self) -> Option<Rc<ErrorSet<Self::Fields>>> {
-        ModelValidator::new()
+        ModelValidator::default()
             .with_field(RoleFields::Name, self.name.is_present())
             .validate()
     }

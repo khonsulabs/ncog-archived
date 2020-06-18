@@ -163,7 +163,7 @@ impl ResourceTypePermission {
 
     fn apply(&mut self, statement: &Statement) {
         self.resource_permissions
-            .entry(statement.resource_id.clone())
+            .entry(statement.resource_id)
             .and_modify(|rtp| rtp.apply(statement))
             .or_insert_with(|| ResourcePermission::from_statement(statement));
     }

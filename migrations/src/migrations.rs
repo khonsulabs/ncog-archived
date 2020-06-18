@@ -15,7 +15,7 @@ pub fn migrations() -> Vec<Migration> {
 }
 
 pub async fn run_all() -> Result<(), MigrationError> {
-    let mut pool = pg();
+    let pool = pg();
 
-    Migration::run_all(&mut pool, migrations()).await
+    Migration::run_all(&pool, migrations()).await
 }

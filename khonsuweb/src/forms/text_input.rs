@@ -65,7 +65,7 @@ where
             Message::KeyPressed => {
                 if let Some(input) = self.input.cast::<HtmlInputElement>() {
                     self.text_value = input.value();
-                    if self.text_value.len() == 0 {
+                    if self.text_value.is_empty() {
                         self.props.storage.update_with_invalid_hint(None, false);
                         self.props.storage.update_invalid_hint(false);
                         self.props.on_value_changed.emit(None);
@@ -92,7 +92,7 @@ where
             .props
             .errors
             .as_ref()
-            .map(|errors| errors.get(&self.props.field).map(|errors| errors.clone()));
+            .map(|errors| errors.get(&self.props.field).cloned());
         let css_class = match &errors {
             Some(errors) => match errors {
                 Some(_) => "input is-danger",

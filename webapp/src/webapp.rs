@@ -158,10 +158,9 @@ impl Component for App {
     type Properties = ();
 
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let callback = link.callback(|message| Message::WsMessage(message));
+        let callback = link.callback(Message::WsMessage);
         let api = ApiAgent::bridge(callback);
-        let mut route_agent =
-            RouteAgentBridge::new(link.callback(|message| Message::RouteMessage(message)));
+        let mut route_agent = RouteAgentBridge::new(link.callback(Message::RouteMessage));
         route_agent.send(RouteRequest::GetCurrentRoute);
         App {
             link,
@@ -271,13 +270,10 @@ impl Component for App {
 
 impl App {
     fn navbar_class(&self) -> &'static str {
-        match self.show_nav {
-            Some(state) => {
-                if state {
-                    return "navbar-menu is-active";
-                }
+        if let Some(state) = self.show_nav {
+            if state {
+                return "navbar-menu is-active";
             }
-            None => {}
         }
         "navbar-menu"
     }

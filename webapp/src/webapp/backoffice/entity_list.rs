@@ -1,17 +1,19 @@
 use std::rc::Rc;
 use yew::prelude::*;
 
+pub type RenderFunction<T> = Box<dyn Fn(&T) -> Html>;
+
 pub trait ListableEntity {
     type Entity: Clone;
 
     fn table_head() -> Html;
     fn render_entity(
         entity: &Self::Entity,
-        action_buttons: Option<Rc<Box<dyn Fn(&Self::Entity) -> Html>>>,
+        action_buttons: Option<Rc<RenderFunction<Self::Entity>>>,
     ) -> Html;
 
     fn render_action_buttons(
-        action_buttons: Option<Rc<Box<dyn Fn(&Self::Entity) -> Html>>>,
+        action_buttons: Option<Rc<RenderFunction<Self::Entity>>>,
         entity: &Self::Entity,
     ) -> Html {
         action_buttons
@@ -39,7 +41,7 @@ where
 pub struct Props<T: Clone> {
     pub entities: Option<Vec<T>>,
     #[prop_or_default]
-    pub action_buttons: Option<Rc<Box<dyn Fn(&T) -> Html>>>,
+    pub action_buttons: Option<Rc<RenderFunction<T>>>,
 }
 
 impl<T> Component for EntityList<T>

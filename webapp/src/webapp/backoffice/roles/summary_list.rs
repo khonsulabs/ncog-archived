@@ -1,5 +1,8 @@
 use crate::webapp::{
-    backoffice::{entity_list::ListableEntity, roles::fields::RoleFields},
+    backoffice::{
+        entity_list::{ListableEntity, RenderFunction},
+        roles::fields::RoleFields,
+    },
     strings::LocalizableName,
     AppRoute, EditingId,
 };
@@ -23,7 +26,7 @@ impl ListableEntity for RoleSummary {
 
     fn render_entity(
         role: &Self::Entity,
-        action_buttons: Option<Rc<Box<dyn Fn(&Self::Entity) -> Html>>>,
+        action_buttons: Option<Rc<RenderFunction<Self::Entity>>>,
     ) -> Html {
         html! {
             <tr>
@@ -37,7 +40,7 @@ impl ListableEntity for RoleSummary {
     }
 }
 
-pub fn default_action_buttons() -> Option<Rc<Box<dyn Fn(&RoleSummary) -> Html>>> {
+pub fn default_action_buttons() -> Option<Rc<RenderFunction<RoleSummary>>> {
     Some(Rc::new(Box::new(render_default_action_buttons)))
 }
 

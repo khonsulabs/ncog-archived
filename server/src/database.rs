@@ -73,7 +73,7 @@ where
             LEFT OUTER JOIN roles ON roles.id = account_roles.role_id ORDER BY accounts.id"#).fetch(executor);
     while let Some(row) = user_rows.next().await? {
         let id = row.get::<Option<i64>, _>(0);
-        if users.len() == 0 || users[users.len() - 1].id != id {
+        if users.is_empty() || users[users.len() - 1].id != id {
             users.push(User {
                 id,
                 screenname: row.get::<Option<String>, _>(1),
@@ -82,20 +82,17 @@ where
             });
         }
 
-        match row.get::<Option<i64>, _>(3) {
-            Some(role_id) => {
-                let role_name = row.get::<String, _>(4);
-                let users_count = users.len();
-                users
-                    .get_mut(users_count - 1)
-                    .unwrap()
-                    .roles
-                    .push(RoleSummary {
-                        id: Some(role_id),
-                        name: role_name,
-                    });
-            }
-            None => {}
+        if let Some(role_id) = row.get::<Option<i64>, _>(3) {
+            let role_name = row.get::<String, _>(4);
+            let users_count = users.len();
+            users
+                .get_mut(users_count - 1)
+                .unwrap()
+                .roles
+                .push(RoleSummary {
+                    id: Some(role_id),
+                    name: role_name,
+                });
         }
     }
 
@@ -123,15 +120,12 @@ where
             },
         });
 
-        match row.get::<Option<i64>, _>(3) {
-            Some(role_id) => {
-                let role_name = row.get::<String, _>(4);
-                user.as_mut().unwrap().roles.push(RoleSummary {
-                    id: Some(role_id),
-                    name: role_name,
-                });
-            }
-            None => {}
+        if let Some(role_id) = row.get::<Option<i64>, _>(3) {
+            let role_name = row.get::<String, _>(4);
+            user.as_mut().unwrap().roles.push(RoleSummary {
+                id: Some(role_id),
+                name: role_name,
+            });
         }
     }
 

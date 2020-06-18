@@ -103,7 +103,7 @@ impl ConnectedClients {
         let installations = data
             .installations_by_account
             .entry(account_id)
-            .or_insert_with(|| HashSet::new());
+            .or_insert_with(HashSet::new);
         installations.insert(installation_id);
         Ok(account)
     }
@@ -120,7 +120,7 @@ impl ConnectedClients {
         let remove_account =
             if let Some(installations) = data.installations_by_account.get_mut(&account_id) {
                 installations.remove(&installation_id);
-                installations.len() == 0
+                installations.is_empty()
             } else {
                 false
             };
@@ -268,7 +268,7 @@ impl ConnectedAccountHandle for Arc<RwLock<ConnectedAccount>> {
     async fn permission_allowed(&self, claim: &Claim) -> Result<(), anyhow::Error> {
         let account = self.read().await;
         if account.permissions.allowed(&claim) {
-            return Ok(());
+            Ok(())
         } else {
             permission_denied(claim)
         }
@@ -436,7 +436,7 @@ async fn handle_websocket_request(
             installation_id,
             version,
         } => {
-            if &version != shared::PROTOCOL_VERSION {
+            if version != shared::PROTOCOL_VERSION {
                 responder
                     .send(
                         ServerResponse::Error {
@@ -579,7 +579,7 @@ struct ItchioProfileResponse {
     pub user: ItchioProfile,
 }
 
-async fn login_itchio(installation_id: Uuid, access_token: &String) -> Result<(), anyhow::Error> {
+async fn login_itchio(installation_id: Uuid, access_token: &str) -> Result<(), anyhow::Error> {
     // Call itch.io API to get the user information
     let client = reqwest::Client::new();
     let response: ItchioProfileResponse = client

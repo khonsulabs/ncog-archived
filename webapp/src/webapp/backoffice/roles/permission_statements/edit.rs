@@ -1,7 +1,7 @@
 use crate::webapp::{
     api::{AgentMessage, ApiBridge},
     backoffice::{
-        edit_form::{EditForm, Form, Handled, Message, Props},
+        edit_form::{EditForm, ErrorMap, Form, Handled, Message, Props},
         roles::permission_statements::fields::PermissionStatementFields,
     },
     strings::LocalizableName,
@@ -16,7 +16,7 @@ use shared::{
     permissions::Claim,
     ServerRequest, ServerResponse,
 };
-use std::{collections::HashMap, rc::Rc};
+use std::rc::Rc;
 use yew::prelude::*;
 
 #[derive(Debug, Default)]
@@ -33,9 +33,10 @@ pub struct PermissionStatementForm {
 impl Form for PermissionStatementForm {
     type Fields = PermissionStatementFields;
     fn title(is_new: bool) -> &'static str {
-        match is_new {
-            true => "add-permission-statement",
-            false => "edit-permission-statement",
+        if is_new {
+            "add-permission-statement"
+        } else {
+            "edit-permission-statement"
         }
     }
 
@@ -99,7 +100,7 @@ impl Form for PermissionStatementForm {
         edit_form: &EditForm<Self>,
         readonly: bool,
         can_save: bool,
-        errors: Option<Rc<HashMap<Self::Fields, Vec<Rc<Html>>>>>,
+        errors: Option<Rc<ErrorMap<Self::Fields>>>,
     ) -> Html {
         let is_new = edit_form.props.editing_id.is_new();
         let id = match edit_form.props.editing_id {
@@ -170,7 +171,7 @@ impl Form for PermissionStatementForm {
 
     fn validate(&self) -> Option<Rc<ErrorSet<Self::Fields>>> {
         info!("Self.resource_id: {:#?}", self.resource_id);
-        ModelValidator::new()
+        ModelValidator::default()
             .with_field(
                 PermissionStatementFields::ResourceId,
                 self.resource_id.clone(),

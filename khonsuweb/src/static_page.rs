@@ -16,7 +16,7 @@ impl Component for StaticPage {
     type Message = ();
 
     fn create(props: Self::Properties, _link: ComponentLink<Self>) -> Self {
-        let component = Self { props: props };
+        let component = Self { props };
         component.update_title();
         component
     }

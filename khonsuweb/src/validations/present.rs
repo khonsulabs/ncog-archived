@@ -7,7 +7,7 @@ pub trait Presentable: Default + Clone + PartialEq {
 
 impl Presentable for String {
     fn present(&self) -> bool {
-        self.len() > 0
+        !self.is_empty()
     }
 }
 
@@ -85,13 +85,13 @@ impl Presentable for usize {
 
 impl Presentable for f32 {
     fn present(&self) -> bool {
-        self.is_finite() && self != &0.0
+        self.is_finite() && float_cmp::approx_eq!(f32, *self, 0.0)
     }
 }
 
 impl Presentable for f64 {
     fn present(&self) -> bool {
-        self.is_finite() && self != &0.0
+        self.is_finite() && float_cmp::approx_eq!(f64, *self, 0.0)
     }
 }
 

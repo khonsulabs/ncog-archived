@@ -157,55 +157,52 @@ async fn receive_loop(rx: &mut TokioReceiver<Msg>) -> bool {
     let mut average_server_timestamp_delta = 0f64;
     loop {
         match rx.try_recv() {
-            Ok(msg) => match msg {
-                Msg::Binary(bytes) => match bincode::deserialize::<ServerResponse>(&bytes) {
-                    Ok(response) => match response {
-                        ServerResponse::Error { message } => {
-                            Network::set_login_state(LoginState::Error { message }).await;
-                        }
-                        ServerResponse::AdoptInstallationId { installation_id } => {
-                            println!("Received app token {}", installation_id);
-                            UserConfig::set_installation_id(installation_id).await;
-                            Network::set_login_state(LoginState::Connected).await;
-                        }
-                        ServerResponse::Authenticated { profile, .. } => {
-                            println!("Authenticated as {:?}", profile.screenname);
-                            Network::set_login_state(LoginState::Authenticated { profile }).await;
-                            todo!("Store permissions");
-                        }
-                        ServerResponse::WorldUpdate {
-                            timestamp,
+            Ok(Msg::Binary(bytes)) => match bincode::deserialize::<ServerResponse>(&bytes) {
+                Ok(response) => match response {
+                    ServerResponse::Error { message } => {
+                        Network::set_login_state(LoginState::Error { message }).await;
+                    }
+                    ServerResponse::AdoptInstallationId { installation_id } => {
+                        println!("Received app token {}", installation_id);
+                        UserConfig::set_installation_id(installation_id).await;
+                        Network::set_login_state(LoginState::Connected).await;
+                    }
+                    ServerResponse::Authenticated { profile, .. } => {
+                        println!("Authenticated as {:?}", profile.screenname);
+                        Network::set_login_state(LoginState::Authenticated { profile }).await;
+                        todo!("Store permissions");
+                    }
+                    ServerResponse::WorldUpdate {
+                        timestamp,
+                        profiles,
+                    } => {
+                        Network::world_updated(
+                            timestamp - average_server_timestamp_delta,
                             profiles,
-                        } => {
-                            Network::world_updated(
-                                timestamp - average_server_timestamp_delta,
-                                profiles,
-                            )
-                            .await;
-                        }
-                        ServerResponse::AuthenticateAtUrl { url } => {
-                            Network::set_authentication_url(url).await;
-                        }
-                        ServerResponse::Ping {
-                            timestamp,
-                            average_server_timestamp_delta: delta,
-                            average_roundtrip,
-                        } => {
-                            average_server_timestamp_delta = delta;
-                            Network::ping_updated(average_roundtrip).await;
-                            Network::request(ServerRequest::Pong {
-                                original_timestamp: timestamp,
-                                timestamp: current_timestamp(),
-                            })
-                            .await;
-                        }
-                        unmatched_message => {
-                            println!("Ignoring message {:#?}", unmatched_message);
-                        }
-                    },
-                    Err(_) => println!("Error deserializing message."),
+                        )
+                        .await;
+                    }
+                    ServerResponse::AuthenticateAtUrl { url } => {
+                        Network::set_authentication_url(url).await;
+                    }
+                    ServerResponse::Ping {
+                        timestamp,
+                        average_server_timestamp_delta: delta,
+                        average_roundtrip,
+                    } => {
+                        average_server_timestamp_delta = delta;
+                        Network::ping_updated(average_roundtrip).await;
+                        Network::request(ServerRequest::Pong {
+                            original_timestamp: timestamp,
+                            timestamp: current_timestamp(),
+                        })
+                        .await;
+                    }
+                    unmatched_message => {
+                        println!("Ignoring message {:#?}", unmatched_message);
+                    }
                 },
-                _ => {}
+                Err(_) => println!("Error deserializing message."),
             },
             Err(err) => match err {
                 TokioTryRecvError::Closed => {
@@ -214,6 +211,8 @@ async fn receive_loop(rx: &mut TokioReceiver<Msg>) -> bool {
                 }
                 _ => return false,
             },
+
+            _ => {}
         }
     }
 }
@@ -222,15 +221,12 @@ async fn send_loop(receiver: &Receiver<ServerRequest>, tx: &mut TokioSender<Msg>
     loop {
         match receiver.try_recv() {
             Ok(request) => {
-                match tx
+                if let Err(err) = tx
                     .send(Msg::Binary(bincode::serialize(&request).unwrap()))
                     .await
                 {
-                    Err(err) => {
-                        println!("Error sending message: {}", err);
-                        return true;
-                    }
-                    _ => {}
+                    println!("Error sending message: {}", err);
+                    return true;
                 }
             }
             Err(err) => match err {

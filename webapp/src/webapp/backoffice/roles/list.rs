@@ -33,7 +33,7 @@ impl Component for RolesList {
     type Message = Message;
     type Properties = Props;
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let callback = link.callback(|message| Message::WsMessage(message));
+        let callback = link.callback(Message::WsMessage);
         let api = ApiAgent::bridge(callback);
         Self {
             props,

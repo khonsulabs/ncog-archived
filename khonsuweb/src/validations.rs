@@ -155,15 +155,21 @@ where
     validations: HashMap<F, Box<dyn Validator>>,
 }
 
+impl<F> Default for ModelValidator<F>
+where
+    F: std::fmt::Debug + std::hash::Hash + std::cmp::Eq,
+{
+    fn default() -> Self {
+        Self {
+            validations: HashMap::default(),
+        }
+    }
+}
+
 impl<F> ModelValidator<F>
 where
     F: Copy + std::fmt::Debug + std::hash::Hash + std::cmp::Eq,
 {
-    pub fn new() -> Self {
-        Self {
-            validations: HashMap::new(),
-        }
-    }
     pub fn with_field<V: Validator + 'static>(mut self, field: F, validator: V) -> Self {
         self.validations.insert(field, Box::new(validator));
         self
@@ -178,7 +184,7 @@ where
             }
         }
 
-        if errors.len() > 0 {
+        if !errors.is_empty() {
             Some(Rc::new(ErrorSet { errors }))
         } else {
             None

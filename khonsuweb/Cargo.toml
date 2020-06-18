@@ -13,6 +13,7 @@ include_dir = "0.6"
 yew="0.16"
 pulldown-cmark = "0.7"
 thiserror = "1"
+float-cmp = "0.8"
 
 
 [dependencies.chrono]
