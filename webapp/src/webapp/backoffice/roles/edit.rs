@@ -146,6 +146,7 @@ impl Form for Role {
                                         <Button
                                             label=localize!("delete")
                                             css_class="is-danger"
+                                            disabled=readonly
                                             action=link.callback(move |_| Message::FormMessage(RoleMessage::PermissionRequestDelete(id)))
                                         />
                                     </p>

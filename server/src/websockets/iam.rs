@@ -131,6 +131,8 @@ pub async fn handle_request(
                 ServerResponse::IAM(IAMResponse::PermissionStatementSaved(statement_id))
                     .into_ws_response(request_id),
             )?;
+
+            broadcast_role_changed(statement.role_id).await?;
         }
         IAMRequest::PermissionStatemenetDelete(id) => {
             let statement = database::iam_get_permission_statement(&migrations::pg(), id).await?;
@@ -145,8 +147,17 @@ pub async fn handle_request(
                 ServerResponse::IAM(IAMResponse::PermissionStatementDeleted(id))
                     .into_ws_response(request_id),
             )?;
+
+            broadcast_role_changed(statement.role_id).await?;
         }
     }
 
+    Ok(())
+}
+
+async fn broadcast_role_changed(role_id: Option<i64>) -> Result<(), anyhow::Error> {
+    if let Some(role_id) = role_id {
+        crate::pubsub::notify("role_updated", role_id).await?;
+    }
     Ok(())
 }

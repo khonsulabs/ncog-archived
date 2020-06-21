@@ -11,7 +11,6 @@ use shared::{
     websockets::{WsBatchResponse, WsRequest},
     Inputs, OAuthProvider, ServerRequest, ServerResponse, UserProfile,
 };
-use sqlx::prelude::*;
 use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
@@ -141,6 +140,21 @@ impl ConnectedClients {
         }
     }
 
+    pub async fn send_to_account_id(&self, account_id: i64, message: ServerResponse) {
+        let data = self.data.read().await;
+        if let Some(installation_ids) = data.installations_by_account.get(&account_id) {
+            for installation_id in installation_ids.iter() {
+                if let Some(client) = data.clients.get(&installation_id) {
+                    let client = client.read().await;
+                    client
+                        .sender
+                        .send(message.clone().into_ws_response(-1))
+                        .unwrap_or_default();
+                }
+            }
+        }
+    }
+
     // pub async fn world_updated(&self, update_timestamp: f64) -> Result<(), anyhow::Error> {
     //     todo!()s
     //     // let world_update = ServerResponse::WorldUpdate {
@@ -214,7 +228,7 @@ impl ConnectedAccounts {
     ) -> Result<Arc<RwLock<ConnectedAccount>>, anyhow::Error> {
         let mut accounts_by_id = self.accounts_by_id.write().await;
 
-        let profile = database::get_profile(&pg(), installation_id).await?;
+        let profile = database::get_profile_by_installation_id(&pg(), installation_id).await?;
 
         // TODO it'd be nice to not do this unless we need to do it, but I don't think it's possible without using a block_on.
         let permissions = database::load_permissions_for(&pg(), profile.id).await?;
@@ -234,6 +248,61 @@ impl ConnectedAccounts {
     pub async fn fully_disconnected(&self, account_id: i64) {
         let mut accounts_by_id = self.accounts_by_id.write().await;
         accounts_by_id.remove(&account_id);
+    }
+
+    pub async fn role_updated(&self, role_id: i64) -> Result<(), anyhow::Error> {
+        info!("Updating role: {}", role_id);
+        let accounts_to_refresh = {
+            let accounts_by_id = self.accounts_by_id.read().await;
+            let mut accounts_to_refresh = Vec::new();
+            for account_handle in accounts_by_id.values() {
+                let account = account_handle.read().await;
+                if account.permissions.role_ids.contains(&role_id) {
+                    accounts_to_refresh.push(account.profile.id);
+                }
+            }
+            accounts_to_refresh
+        };
+
+        for account_id in accounts_to_refresh {
+            tokio::spawn(async move {
+                info!("Updating account: {}", account_id);
+                Self::notify_account_updated(account_id)
+                    .await
+                    .unwrap_or_default()
+            });
+        }
+
+        Ok(())
+    }
+
+    async fn notify_account_updated(account_id: i64) -> Result<(), anyhow::Error> {
+        let pg = pg();
+        let profile = crate::database::get_profile_by_account_id(&pg, account_id).await?;
+        let permissions = crate::database::load_permissions_for(&pg, account_id).await?;
+        info!("Got new permissions: {:?}", permissions);
+        CONNECTED_ACCOUNTS
+            .update_account_permissions(account_id, permissions.clone())
+            .await;
+        CONNECTED_CLIENTS
+            .send_to_account_id(
+                account_id,
+                ServerResponse::Authenticated {
+                    permissions,
+                    profile,
+                },
+            )
+            .await;
+
+        Ok(())
+    }
+
+    async fn update_account_permissions(&self, account_id: i64, permissions: PermissionSet) {
+        let accounts_by_id = self.accounts_by_id.read().await;
+        if let Some(account_handle) = accounts_by_id.get(&account_id) {
+            let mut account = account_handle.write().await;
+            account.permissions = permissions;
+        }
     }
 
     // pub async fn all(&self) -> Vec<Arc<RwLock<ConnectedAccount>>> {
@@ -463,7 +532,9 @@ async fn handle_websocket_request(
 
             info!("Looking up account");
             let logged_in = if let Some(account_id) = installation.account_id {
-                if let Ok(profile) = database::get_profile(&pg(), installation.id).await {
+                if let Ok(profile) =
+                    database::get_profile_by_installation_id(&pg(), installation.id).await
+                {
                     let account = CONNECTED_CLIENTS
                         .associate_account(installation.id, account_id)
                         .await?;
@@ -650,12 +721,7 @@ async fn login_itchio(installation_id: Uuid, access_token: &str) -> Result<(), a
         tx.commit().await?;
     }
 
-    let mut connection = pg.acquire().await?;
-    connection
-        .execute(&*format!(
-            "NOTIFY installation_login, '{}'",
-            installation_id
-        ))
-        .await?;
+    crate::pubsub::notify("installation_login", installation_id.to_string()).await?;
+
     Ok(())
 }
