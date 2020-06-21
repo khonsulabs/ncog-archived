@@ -7,9 +7,10 @@ pub struct Modal {
 
 #[derive(Clone, Properties)]
 pub struct Props {
-    pub close_requested: Callback<()>,
     pub visible: bool,
 
+    #[prop_or_default]
+    pub close_requested: Callback<()>,
     #[prop_or_default]
     pub close_button: bool,
     #[prop_or_default]

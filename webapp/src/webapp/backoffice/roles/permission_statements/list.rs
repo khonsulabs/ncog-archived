@@ -26,7 +26,13 @@ pub fn standard_head() -> Html {
 }
 
 pub fn standard_row() -> EntityRenderer<PermissionStatement> {
-    EntityRenderer::new(|permission_statement: &PermissionStatement| {
+    row(standard_actions)
+}
+
+pub fn row<F: Fn(&PermissionStatement) -> Html + 'static>(
+    actions: F,
+) -> EntityRenderer<PermissionStatement> {
+    EntityRenderer::new(move |permission_statement: &PermissionStatement| {
         let allowed = if permission_statement.allow {
             html! { <span class="tag is-success is-medium">{ localize!("action-allowed")}</span> }
         } else {
@@ -42,13 +48,19 @@ pub fn standard_row() -> EntityRenderer<PermissionStatement> {
                 <td>{ render_property(permission_statement.action.as_ref(), "any-action") }</td>
                 <td>{ allowed }</td>
                 <td>
-                    <RouterButton<AppRoute> route=AppRoute::BackOfficeRolePermissionStatementEdit(permission_statement.role_id.unwrap(), EditingId::Id(permission_statement.id.unwrap())) classes="button is-primary" >
-                        <strong>{ localize!("edit") }</strong>
-                    </RouterButton<AppRoute>>
+                    { actions(permission_statement) }
                 </td>
             </tr>
         }
     })
+}
+
+fn standard_actions(permission_statement: &PermissionStatement) -> Html {
+    html! {
+        <RouterButton<AppRoute> route=AppRoute::BackOfficeRolePermissionStatementEdit(permission_statement.role_id.unwrap(), EditingId::Id(permission_statement.id.unwrap())) classes="button is-primary" >
+            <strong>{ localize!("edit") }</strong>
+        </RouterButton<AppRoute>>
+    }
 }
 
 fn render_property<T: Into<Html>>(value: Option<T>, default_label: &'static str) -> Html {

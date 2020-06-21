@@ -1,4 +1,5 @@
 pub use include_dir;
+pub mod alert;
 pub mod flash;
 pub mod forms;
 pub mod localization;
@@ -20,6 +21,7 @@ pub fn wasm_utc_now() -> DateTime<Utc> {
 
 pub mod prelude {
     pub use crate::{
+        alert::Alert,
         flash::{self, Flash},
         forms::prelude::*,
         modal::Modal,

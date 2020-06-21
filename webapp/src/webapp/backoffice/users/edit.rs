@@ -28,6 +28,7 @@ pub struct User {
 }
 
 impl Form for User {
+    type Message = ();
     type Fields = UserFields;
 
     fn title(is_new: bool) -> &'static str {

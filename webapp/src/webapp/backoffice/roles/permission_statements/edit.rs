@@ -31,6 +31,7 @@ pub struct PermissionStatementForm {
 }
 
 impl Form for PermissionStatementForm {
+    type Message = ();
     type Fields = PermissionStatementFields;
     fn title(is_new: bool) -> &'static str {
         if is_new {

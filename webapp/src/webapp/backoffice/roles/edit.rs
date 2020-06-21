@@ -2,6 +2,7 @@ use crate::webapp::{
     api::{AgentMessage, ApiBridge},
     backoffice::{
         edit_form::{EditForm, ErrorMap, Form, Handled, Message, Props},
+        entity_list::EntityList,
         render_heading_with_add_button,
         roles::fields::RoleFields,
         roles::permission_statements::{self},
@@ -9,7 +10,7 @@ use crate::webapp::{
     strings::{LocalizableName, Namable},
     AppRoute, EditingId,
 };
-use khonsuweb::{flash, forms::prelude::*, validations::prelude::*};
+use khonsuweb::prelude::*;
 use shared::{
     iam::{
         roles_create_claim, roles_read_claim, roles_update_claim, IAMRequest, IAMResponse,
@@ -20,15 +21,25 @@ use shared::{
 };
 use std::rc::Rc;
 use yew::prelude::*;
+use yew_router::prelude::*;
 
 #[derive(Debug, Default)]
 pub struct Role {
     id: FormStorage<Option<i64>>,
     name: FormStorage<Option<String>>,
     permission_statements: Option<Rc<Vec<PermissionStatement>>>,
+    pending_permission_deletion: Option<i64>,
+}
+
+#[derive(Debug, Clone)]
+pub enum RoleMessage {
+    PermissionRequestDelete(i64),
+    PermissionDelete,
+    PermissionCancelDelete,
 }
 
 impl Form for Role {
+    type Message = RoleMessage;
     type Fields = RoleFields;
     fn title(is_new: bool) -> &'static str {
         if is_new {
@@ -106,17 +117,50 @@ impl Form for Role {
         let permission_statements = if is_new {
             Html::default()
         } else {
+            let link = edit_form.link.clone();
             html! {
                 <section class="section content">
                     { render_heading_with_add_button(RoleFields::PermissionStatements.name(), AppRoute::BackOfficeRolePermissionStatementEdit(edit_form.props.editing_id.existing_id().expect("Editing a permission without an role is not allowed"), EditingId::New), "add-permission-statement") }
 
-                    { permission_statements::list::standard(self.permission_statements.clone())}
+                    <EntityList<PermissionStatement>
+                        header=permission_statements::list::standard_head()
+                        row=permission_statements::list::row(move |permission_statement| {
+                            let id = permission_statement.id.unwrap();
+                            html! {
+                                // TODO create a grouped control to make this easier
+                                <div class="field is-grouped">
+                                    <p class="control">
+                                        <RouterButton<AppRoute> route=AppRoute::BackOfficeRolePermissionStatementEdit(permission_statement.role_id.unwrap(), EditingId::Id(permission_statement.id.unwrap())) classes="button is-primary" >
+                                            <strong>{ localize!("edit") }</strong>
+                                        </RouterButton<AppRoute>>
+                                    </p>
+                                    <p class="control">
+                                        <Button
+                                            label=localize!("delete")
+                                            css_class="is-danger"
+                                            action=link.callback(move |_| Message::FormMessage(RoleMessage::PermissionRequestDelete(id)))
+                                        />
+                                    </p>
+                                </div>
+                            }
+                        })
+                        entities=self.permission_statements.clone()
+                        />
                 </section>
             }
         };
 
         html! {
             <div>
+                <Alert
+                    visible=self.pending_permission_deletion.is_some()
+                    title=localize!("delete-permission-statement")
+                    message=localize!("delete-irreversable")
+                    primary_button_action=edit_form.link.callback(|e: MouseEvent| {e.prevent_default(); Message::FormMessage(RoleMessage::PermissionDelete)})
+                    primary_button_label=localize!("delete")
+                    cancel_button_action=edit_form.link.callback(|e: MouseEvent| {e.prevent_default(); Message::FormMessage(RoleMessage::PermissionCancelDelete)})
+                    cancel_button_label=localize!("cancel")
+                    />
                 <section class="section content">
                     <Title>{localize!(Self::title(is_new))}</Title>
                     <form>
@@ -155,5 +199,21 @@ impl Form for Role {
     }
     fn create_claim() -> Claim {
         roles_create_claim()
+    }
+
+    fn update(&mut self, message: Self::Message) -> ShouldRender {
+        match message {
+            RoleMessage::PermissionRequestDelete(id) => {
+                self.pending_permission_deletion = Some(id);
+            }
+            RoleMessage::PermissionDelete => {
+                todo!();
+                self.pending_permission_deletion = None;
+            }
+            RoleMessage::PermissionCancelDelete => {
+                self.pending_permission_deletion = None;
+            }
+        }
+        true
     }
 }

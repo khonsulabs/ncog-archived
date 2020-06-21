@@ -22,6 +22,7 @@ pub type ErrorMap<K> = HashMap<K, Vec<Rc<Html>>>;
 
 pub trait Form: Default {
     type Fields: Namable + Copy + std::hash::Hash + Eq + PartialEq + std::fmt::Debug + 'static;
+    type Message: Clone + 'static;
 
     fn title(is_new: bool) -> &'static str;
     fn load_request(&self, props: &Props) -> Option<ServerRequest>;
@@ -39,6 +40,10 @@ pub trait Form: Default {
     fn update_claim(id: Option<i64>) -> Claim;
     fn create_claim() -> Claim;
     fn route_for(id: EditingId, owning_id: Option<i64>) -> AppRoute;
+
+    fn update(&mut self, _message: Self::Message) -> ShouldRender {
+        false
+    }
 }
 
 pub struct EditForm<T>
@@ -52,10 +57,11 @@ where
     pub flash_message: Option<flash::Message>,
     pub is_saving: bool,
 }
-pub enum Message {
+pub enum Message<T> {
     ValueChanged,
     Save,
     WsMessage(AgentResponse),
+    FormMessage(T),
 }
 
 #[derive(Clone, PartialEq, Properties)]
@@ -71,7 +77,7 @@ impl<T> Component for EditForm<T>
 where
     T: Form + Default + 'static,
 {
-    type Message = Message;
+    type Message = Message<T::Message>;
     type Properties = Props;
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let form = T::default();
@@ -115,6 +121,7 @@ where
                 },
                 _ => false,
             },
+            Message::FormMessage(form_message) => self.form.update(form_message),
         }
     }
 
