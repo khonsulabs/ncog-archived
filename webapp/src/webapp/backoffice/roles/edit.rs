@@ -2,10 +2,9 @@ use crate::webapp::{
     api::{AgentMessage, ApiBridge},
     backoffice::{
         edit_form::{EditForm, ErrorMap, Form, Handled, Message, Props},
-        entity_list::EntityList,
         render_heading_with_add_button,
         roles::fields::RoleFields,
-        roles::permission_statements,
+        roles::permission_statements::{self},
     },
     strings::{LocalizableName, Namable},
     AppRoute, EditingId,
@@ -26,7 +25,7 @@ use yew::prelude::*;
 pub struct Role {
     id: FormStorage<Option<i64>>,
     name: FormStorage<Option<String>>,
-    permission_statements: Vec<PermissionStatement>,
+    permission_statements: Option<Rc<Vec<PermissionStatement>>>,
 }
 
 impl Form for Role {
@@ -68,7 +67,7 @@ impl Form for Role {
                     if let Some(id) = &role.id {
                         self.id.update(Some(*id));
                         self.name.update(Some(role.name));
-                        self.permission_statements = role.permission_statements;
+                        self.permission_statements = Some(Rc::new(role.permission_statements));
                         Handled::ShouldRender(true)
                     } else {
                         Handled::ShouldRender(false)
@@ -110,7 +109,8 @@ impl Form for Role {
             html! {
                 <section class="section content">
                     { render_heading_with_add_button(RoleFields::PermissionStatements.name(), AppRoute::BackOfficeRolePermissionStatementEdit(edit_form.props.editing_id.existing_id().expect("Editing a permission without an role is not allowed"), EditingId::New), "add-permission-statement") }
-                    <EntityList<PermissionStatement> entities=self.permission_statements.clone() action_buttons=permission_statements::list::default_action_buttons() />
+
+                    { permission_statements::list::standard(self.permission_statements.clone())}
                 </section>
             }
         };

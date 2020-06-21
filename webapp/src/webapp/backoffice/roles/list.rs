@@ -1,22 +1,19 @@
 use crate::webapp::{
     api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
-    backoffice::{
-        entity_list::EntityList, render_heading_with_add_button,
-        roles::summary_list::default_action_buttons,
-    },
+    backoffice::{render_heading_with_add_button, roles::summary_list},
     AppRoute, EditingId, LoggedInUser,
 };
 use shared::{
     iam::{roles_list_claim, IAMRequest, IAMResponse, RoleSummary},
     ServerResponse,
 };
-use std::sync::Arc;
+use std::{rc::Rc, sync::Arc};
 use yew::prelude::*;
 
 pub struct RolesList {
     api: ApiBridge,
     props: Props,
-    roles: Option<Vec<RoleSummary>>,
+    roles: Option<Rc<Vec<RoleSummary>>>,
 }
 
 #[derive(Clone, PartialEq, Properties)]
@@ -48,7 +45,7 @@ impl Component for RolesList {
                 AgentResponse::Response(ws_response) => match ws_response.result {
                     ServerResponse::IAM(iam_response) => match iam_response {
                         IAMResponse::RolesList(users) => {
-                            self.roles = Some(users);
+                            self.roles = Some(Rc::new(users));
                             true
                         }
                         _ => false,
@@ -71,7 +68,8 @@ impl Component for RolesList {
         html!(
             <section class="section content">
                 { render_heading_with_add_button("list-roles", AppRoute::BackOfficeRoleEdit(EditingId::New), "add-role") }
-                <EntityList<RoleSummary> entities=self.roles.clone() action_buttons=default_action_buttons() />
+
+                { summary_list::standard(self.roles.clone()) }
             </section>
         )
     }

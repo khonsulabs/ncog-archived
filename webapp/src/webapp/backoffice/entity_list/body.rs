@@ -1,9 +1,34 @@
 use std::rc::Rc;
 use yew::prelude::*;
 
-pub mod body;
+pub trait RenderFunction<T>: Fn(&T) -> Html {}
+impl<F, T> RenderFunction<T> for F
+where
+    F: Fn(&T) -> Html,
+    T: Clone + 'static,
+{
+}
 
-pub struct EntityList<T>
+#[derive(Clone)]
+pub struct EntityRenderer<T>
+where
+    T: Clone + 'static,
+{
+    function: Rc<dyn RenderFunction<T>>,
+}
+
+impl<T> EntityRenderer<T>
+where
+    T: Clone + 'static,
+{
+    pub fn new<F: RenderFunction<T> + 'static>(function: F) -> Self {
+        Self {
+            function: Rc::new(function),
+        }
+    }
+}
+
+pub struct EntityListBody<T>
 where
     T: Clone + 'static,
 {
@@ -15,12 +40,11 @@ pub struct Props<T>
 where
     T: Clone + 'static,
 {
-    pub header: Html,
     pub entities: Option<Rc<Vec<T>>>,
-    pub row: body::EntityRenderer<T>,
+    pub render: EntityRenderer<T>,
 }
 
-impl<T> Component for EntityList<T>
+impl<T> Component for EntityListBody<T>
 where
     T: Clone + 'static,
 {
@@ -42,11 +66,9 @@ where
     fn view(&self) -> Html {
         match &self.props.entities {
             Some(entities) => html!(
-
-                <table class="table is-hoverable is-striped">
-                    { self.props.header.clone() }
-                    <body::EntityListBody<T> entities=entities.clone() render=self.props.row.clone() />
-                </table>
+                <tbody>
+                    { entities.iter().map(|u| self.props.render.function.as_ref()(u)).collect::<Html>() }
+                </tbody>
             ),
             None => {
                 html! {

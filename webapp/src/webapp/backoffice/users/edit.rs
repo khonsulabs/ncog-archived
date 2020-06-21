@@ -2,7 +2,8 @@ use crate::webapp::{
     api::ApiBridge,
     backoffice::{
         edit_form::{EditForm, ErrorMap, Form, Handled, Message, Props},
-        {entity_list::EntityList, users::fields::UserFields},
+        roles::summary_list,
+        users::fields::UserFields,
     },
     strings::LocalizableName,
     AppRoute, EditingId,
@@ -23,7 +24,7 @@ use yew::prelude::*;
 pub struct User {
     id: FormStorage<Option<i64>>,
     screenname: FormStorage<Option<String>>,
-    roles: Option<Vec<RoleSummary>>,
+    roles: Option<Rc<Vec<RoleSummary>>>,
 }
 
 impl Form for User {
@@ -59,7 +60,7 @@ impl Form for User {
                     if let Some(id) = &profile.id {
                         self.id.update(Some(*id));
                         self.screenname.update(profile.screenname);
-                        self.roles = Some(profile.roles);
+                        self.roles = Some(Rc::new(profile.roles));
                         Handled::ShouldRender(true)
                     } else {
                         Handled::ShouldRender(false)
@@ -104,7 +105,9 @@ impl Form for User {
 
                 <section class="Section content">
                     <Title size=3>{UserFields::AssignedRoles.localized_name()}</Title>
-                    <EntityList<RoleSummary> entities=self.roles.clone() />
+
+                    { summary_list::standard(self.roles.clone()) }
+
                 </section>
             </div>
         }

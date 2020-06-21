@@ -1,6 +1,6 @@
 use crate::webapp::{
     backoffice::{
-        entity_list::{ListableEntity, RenderFunction},
+        entity_list::{body::EntityRenderer, EntityList},
         roles::permission_statements::fields::PermissionStatementFields,
     },
     strings::LocalizableName,
@@ -11,27 +11,22 @@ use std::rc::Rc;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
-impl ListableEntity for PermissionStatement {
-    type Entity = Self;
-
-    fn table_head() -> Html {
-        html! {
-            <tr>
-                <td>{ PermissionStatementFields::Id.localized_name() }</td>
-                <td>{ PermissionStatementFields::Service.localized_name() }</td>
-                <td>{ PermissionStatementFields::ResourceType.localized_name() }</td>
-                <td>{ PermissionStatementFields::ResourceId.localized_name() }</td>
-                <td>{ PermissionStatementFields::Action.localized_name() }</td>
-                <td>{ PermissionStatementFields::Allow.localized_name() }</td>
-                <td></td>
-            </tr>
-        }
+pub fn standard_head() -> Html {
+    html! {
+        <tr>
+            <td>{ PermissionStatementFields::Id.localized_name() }</td>
+            <td>{ PermissionStatementFields::Service.localized_name() }</td>
+            <td>{ PermissionStatementFields::ResourceType.localized_name() }</td>
+            <td>{ PermissionStatementFields::ResourceId.localized_name() }</td>
+            <td>{ PermissionStatementFields::Action.localized_name() }</td>
+            <td>{ PermissionStatementFields::Allow.localized_name() }</td>
+            <td></td>
+        </tr>
     }
+}
 
-    fn render_entity(
-        permission_statement: &Self::Entity,
-        action_buttons: Option<Rc<RenderFunction<Self::Entity>>>,
-    ) -> Html {
+pub fn standard_row() -> EntityRenderer<PermissionStatement> {
+    EntityRenderer::new(|permission_statement: &PermissionStatement| {
         let allowed = if permission_statement.allow {
             html! { <span class="tag is-success is-medium">{ localize!("action-allowed")}</span> }
         } else {
@@ -47,11 +42,13 @@ impl ListableEntity for PermissionStatement {
                 <td>{ render_property(permission_statement.action.as_ref(), "any-action") }</td>
                 <td>{ allowed }</td>
                 <td>
-                    { Self::render_action_buttons(action_buttons, permission_statement) }
+                    <RouterButton<AppRoute> route=AppRoute::BackOfficeRolePermissionStatementEdit(permission_statement.role_id.unwrap(), EditingId::Id(permission_statement.id.unwrap())) classes="button is-primary" >
+                        <strong>{ localize!("edit") }</strong>
+                    </RouterButton<AppRoute>>
                 </td>
             </tr>
         }
-    }
+    })
 }
 
 fn render_property<T: Into<Html>>(value: Option<T>, default_label: &'static str) -> Html {
@@ -63,14 +60,12 @@ fn render_property<T: Into<Html>>(value: Option<T>, default_label: &'static str)
     }
 }
 
-pub fn default_action_buttons() -> Option<Rc<RenderFunction<PermissionStatement>>> {
-    Some(Rc::new(Box::new(render_default_action_buttons)))
-}
-
-fn render_default_action_buttons(stmt: &PermissionStatement) -> Html {
+pub fn standard(entities: Option<Rc<Vec<PermissionStatement>>>) -> Html {
     html! {
-        <RouterButton<AppRoute> route=AppRoute::BackOfficeRolePermissionStatementEdit(stmt.role_id.unwrap(), EditingId::Id(stmt.id.unwrap())) classes="button is-primary" >
-            <strong>{ localize!("edit") }</strong>
-        </RouterButton<AppRoute>>
+        <EntityList<PermissionStatement>
+            header=standard_head()
+            row=standard_row()
+            entities=entities
+            />
     }
 }
