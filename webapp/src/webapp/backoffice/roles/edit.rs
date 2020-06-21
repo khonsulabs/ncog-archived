@@ -19,7 +19,7 @@ use shared::{
     permissions::Claim,
     ServerRequest, ServerResponse,
 };
-use std::rc::Rc;
+use std::{rc::Rc, sync::RwLock};
 use yew::prelude::*;
 use yew_router::prelude::*;
 
@@ -27,7 +27,7 @@ use yew_router::prelude::*;
 pub struct Role {
     id: FormStorage<Option<i64>>,
     name: FormStorage<Option<String>>,
-    permission_statements: Option<Rc<Vec<PermissionStatement>>>,
+    permission_statements: Option<Rc<RwLock<Vec<PermissionStatement>>>>,
     pending_permission_deletion: Option<i64>,
 }
 
@@ -78,7 +78,8 @@ impl Form for Role {
                     if let Some(id) = &role.id {
                         self.id.update(Some(*id));
                         self.name.update(Some(role.name));
-                        self.permission_statements = Some(Rc::new(role.permission_statements));
+                        self.permission_statements =
+                            Some(Rc::new(RwLock::new(role.permission_statements)));
                         Handled::ShouldRender(true)
                     } else {
                         Handled::ShouldRender(false)
@@ -88,6 +89,13 @@ impl Form for Role {
                     label: "saved-role",
                     new_id,
                 },
+                IAMResponse::PermissionStatementDeleted(id) => {
+                    if let Some(permission_statements) = &self.permission_statements {
+                        let mut permission_statements = permission_statements.write().unwrap();
+                        permission_statements.retain(|stmt| stmt.id.unwrap() != id);
+                    }
+                    Handled::ShouldRender(true)
+                }
                 _ => Handled::ShouldRender(false),
             },
             _ => unreachable!("Unexpected message from server"),
@@ -201,13 +209,22 @@ impl Form for Role {
         roles_create_claim()
     }
 
-    fn update(&mut self, message: Self::Message) -> ShouldRender {
+    fn update(
+        &mut self,
+        message: Self::Message,
+        _props: &Props,
+        api: &mut ApiBridge,
+    ) -> ShouldRender {
         match message {
             RoleMessage::PermissionRequestDelete(id) => {
                 self.pending_permission_deletion = Some(id);
             }
             RoleMessage::PermissionDelete => {
-                todo!();
+                api.send(AgentMessage::Request(ServerRequest::IAM(
+                    IAMRequest::PermissionStatemenetDelete(
+                        self.pending_permission_deletion.unwrap(),
+                    ),
+                )));
                 self.pending_permission_deletion = None;
             }
             RoleMessage::PermissionCancelDelete => {

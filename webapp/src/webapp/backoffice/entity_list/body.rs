@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{rc::Rc, sync::RwLock};
 use yew::prelude::*;
 
 pub trait RenderFunction<T>: Fn(&T) -> Html {}
@@ -40,7 +40,7 @@ pub struct Props<T>
 where
     T: Clone + 'static,
 {
-    pub entities: Option<Rc<Vec<T>>>,
+    pub entities: Option<Rc<RwLock<Vec<T>>>>,
     pub render: EntityRenderer<T>,
 }
 
@@ -65,11 +65,14 @@ where
 
     fn view(&self) -> Html {
         match &self.props.entities {
-            Some(entities) => html!(
-                <tbody>
-                    { entities.iter().map(|u| self.props.render.function.as_ref()(u)).collect::<Html>() }
-                </tbody>
-            ),
+            Some(entities) => {
+                let entities = entities.read().unwrap();
+                html!(
+                    <tbody>
+                        { entities.iter().map(|u| self.props.render.function.as_ref()(u)).collect::<Html>() }
+                    </tbody>
+                )
+            }
             None => {
                 html! {
                     <progress class="progress is-primary" max="100"/>

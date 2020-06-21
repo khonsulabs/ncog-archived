@@ -7,7 +7,7 @@ use crate::webapp::{
     AppRoute, EditingId,
 };
 use shared::iam::PermissionStatement;
-use std::rc::Rc;
+use std::{rc::Rc, sync::RwLock};
 use yew::prelude::*;
 use yew_router::prelude::*;
 
@@ -72,7 +72,7 @@ fn render_property<T: Into<Html>>(value: Option<T>, default_label: &'static str)
     }
 }
 
-pub fn standard(entities: Option<Rc<Vec<PermissionStatement>>>) -> Html {
+pub fn standard(entities: Option<Rc<RwLock<Vec<PermissionStatement>>>>) -> Html {
     html! {
         <EntityList<PermissionStatement>
             header=standard_head()

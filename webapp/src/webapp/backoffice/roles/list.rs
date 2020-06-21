@@ -7,13 +7,16 @@ use shared::{
     iam::{roles_list_claim, IAMRequest, IAMResponse, RoleSummary},
     ServerResponse,
 };
-use std::{rc::Rc, sync::Arc};
+use std::{
+    rc::Rc,
+    sync::{Arc, RwLock},
+};
 use yew::prelude::*;
 
 pub struct RolesList {
     api: ApiBridge,
     props: Props,
-    roles: Option<Rc<Vec<RoleSummary>>>,
+    roles: Option<Rc<RwLock<Vec<RoleSummary>>>>,
 }
 
 #[derive(Clone, PartialEq, Properties)]
@@ -45,7 +48,7 @@ impl Component for RolesList {
                 AgentResponse::Response(ws_response) => match ws_response.result {
                     ServerResponse::IAM(iam_response) => match iam_response {
                         IAMResponse::RolesList(users) => {
-                            self.roles = Some(Rc::new(users));
+                            self.roles = Some(Rc::new(RwLock::new(users)));
                             true
                         }
                         _ => false,

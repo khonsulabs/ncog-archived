@@ -118,6 +118,8 @@ pub async fn handle_request(
             )?;
         }
         IAMRequest::PermissionStatementSave(statement) => {
+            // TODO Validate that the user can edit the currently assigned role
+
             client_handle
                 .permission_allowed(&roles_update_claim(statement.role_id))
                 .await?;
@@ -127,6 +129,20 @@ pub async fn handle_request(
 
             responder.send(
                 ServerResponse::IAM(IAMResponse::PermissionStatementSaved(statement_id))
+                    .into_ws_response(request_id),
+            )?;
+        }
+        IAMRequest::PermissionStatemenetDelete(id) => {
+            let statement = database::iam_get_permission_statement(&migrations::pg(), id).await?;
+
+            client_handle
+                .permission_allowed(&roles_update_claim(statement.role_id))
+                .await?;
+
+            database::iam_delete_permission_statement(&migrations::pg(), id).await?;
+
+            responder.send(
+                ServerResponse::IAM(IAMResponse::PermissionStatementDeleted(id))
                     .into_ws_response(request_id),
             )?;
         }

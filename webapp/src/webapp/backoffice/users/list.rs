@@ -12,14 +12,17 @@ use shared::{
     iam::{users_list_claim, IAMRequest, IAMResponse, User},
     ServerResponse,
 };
-use std::{rc::Rc, sync::Arc};
+use std::{
+    rc::Rc,
+    sync::{Arc, RwLock},
+};
 use yew::prelude::*;
 use yew_router::prelude::*;
 
 pub struct UsersList {
     api: ApiBridge,
     props: Props,
-    users: Option<Rc<Vec<User>>>,
+    users: Option<Rc<RwLock<Vec<User>>>>,
 }
 
 #[derive(Clone, PartialEq, Properties)]
@@ -51,7 +54,7 @@ impl Component for UsersList {
                 AgentResponse::Response(ws_response) => match ws_response.result {
                     ServerResponse::IAM(iam_response) => match iam_response {
                         IAMResponse::UsersList(users) => {
-                            self.users = Some(Rc::new(users));
+                            self.users = Some(Rc::new(RwLock::new(users)));
                             true
                         }
                         _ => false,
@@ -126,7 +129,7 @@ pub fn standard_row() -> EntityRenderer<User> {
     })
 }
 
-pub fn standard(entities: Option<Rc<Vec<User>>>) -> Html {
+pub fn standard(entities: Option<Rc<RwLock<Vec<User>>>>) -> Html {
     html! {
         <EntityList<User>
             header=standard_head()

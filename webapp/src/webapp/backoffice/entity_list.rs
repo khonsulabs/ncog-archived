@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{rc::Rc, sync::RwLock};
 use yew::prelude::*;
 
 pub mod body;
@@ -16,7 +16,7 @@ where
     T: Clone + 'static,
 {
     pub header: Html,
-    pub entities: Option<Rc<Vec<T>>>,
+    pub entities: Option<Rc<RwLock<Vec<T>>>>,
     pub row: body::EntityRenderer<T>,
 }
 

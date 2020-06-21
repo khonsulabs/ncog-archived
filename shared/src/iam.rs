@@ -11,6 +11,7 @@ pub enum IAMRequest {
     RoleSave(RoleSummary),
     PermissionStatementGet(i64),
     PermissionStatementSave(PermissionStatement),
+    PermissionStatemenetDelete(i64),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -22,6 +23,7 @@ pub enum IAMResponse {
     RoleSaved(i64),
     PermissionStatement(PermissionStatement),
     PermissionStatementSaved(i64),
+    PermissionStatementDeleted(i64),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

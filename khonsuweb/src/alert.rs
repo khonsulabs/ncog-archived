@@ -3,7 +3,6 @@ use yew::prelude::*;
 
 pub struct Alert {
     props: Props,
-    link: ComponentLink<Self>,
 }
 
 #[derive(Clone, Properties)]
@@ -23,19 +22,15 @@ pub struct Props {
     pub cancel_button_class: String,
 }
 
-pub enum Message {
-    CloseRequested,
-}
-
 impl Component for Alert {
-    type Message = Message;
+    type Message = ();
     type Properties = Props;
 
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        Self { props, link }
+    fn create(props: Self::Properties, _link: ComponentLink<Self>) -> Self {
+        Self { props }
     }
 
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+    fn update(&mut self, _msg: Self::Message) -> ShouldRender {
         false
     }
     fn change(&mut self, props: Self::Properties) -> ShouldRender {

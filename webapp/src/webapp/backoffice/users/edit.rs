@@ -17,14 +17,14 @@ use shared::{
     permissions::Claim,
     ServerRequest, ServerResponse,
 };
-use std::rc::Rc;
+use std::{rc::Rc, sync::RwLock};
 use yew::prelude::*;
 
 #[derive(Debug, Default)]
 pub struct User {
     id: FormStorage<Option<i64>>,
     screenname: FormStorage<Option<String>>,
-    roles: Option<Rc<Vec<RoleSummary>>>,
+    roles: Option<Rc<RwLock<Vec<RoleSummary>>>>,
 }
 
 impl Form for User {
@@ -61,7 +61,7 @@ impl Form for User {
                     if let Some(id) = &profile.id {
                         self.id.update(Some(*id));
                         self.screenname.update(profile.screenname);
-                        self.roles = Some(Rc::new(profile.roles));
+                        self.roles = Some(Rc::new(RwLock::new(profile.roles)));
                         Handled::ShouldRender(true)
                     } else {
                         Handled::ShouldRender(false)

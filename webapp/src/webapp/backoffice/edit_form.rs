@@ -41,7 +41,12 @@ pub trait Form: Default {
     fn create_claim() -> Claim;
     fn route_for(id: EditingId, owning_id: Option<i64>) -> AppRoute;
 
-    fn update(&mut self, _message: Self::Message) -> ShouldRender {
+    fn update(
+        &mut self,
+        _message: Self::Message,
+        _props: &Props,
+        _api: &mut ApiBridge,
+    ) -> ShouldRender {
         false
     }
 }
@@ -121,7 +126,9 @@ where
                 },
                 _ => false,
             },
-            Message::FormMessage(form_message) => self.form.update(form_message),
+            Message::FormMessage(form_message) => {
+                self.form.update(form_message, &self.props, &mut self.api)
+            }
         }
     }
 

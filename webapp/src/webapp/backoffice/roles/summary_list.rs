@@ -7,7 +7,7 @@ use crate::webapp::{
     AppRoute, EditingId,
 };
 use shared::iam::RoleSummary;
-use std::rc::Rc;
+use std::{rc::Rc, sync::RwLock};
 use yew::prelude::*;
 use yew_router::prelude::*;
 
@@ -37,7 +37,7 @@ pub fn standard_row() -> EntityRenderer<RoleSummary> {
     })
 }
 
-pub fn standard(entities: Option<Rc<Vec<RoleSummary>>>) -> Html {
+pub fn standard(entities: Option<Rc<RwLock<Vec<RoleSummary>>>>) -> Html {
     html! {
         <EntityList<RoleSummary>
             row=standard_row()

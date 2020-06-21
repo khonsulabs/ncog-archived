@@ -247,3 +247,18 @@ where
 
     Ok(id)
 }
+
+
+pub async fn iam_delete_permission_statement<E>(
+    executor: E,
+    id: i64
+) -> Result<(), sqlx::Error>
+where
+    E: Send + Executor<Database = Postgres>,
+{
+    sqlx::query!(
+        "DELETE FROM role_permission_statements WHERE id=$1", id)
+        .execute(executor).await?;
+
+    Ok(())
+}
