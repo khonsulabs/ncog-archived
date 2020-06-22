@@ -108,6 +108,7 @@ impl ConnectedClients {
     }
 
     pub async fn disconnect(&self, installation_id: Uuid) {
+        info!("Disconnecting installation {}", installation_id);
         let mut data = self.data.write().await;
 
         data.clients.remove(&installation_id);
@@ -246,6 +247,7 @@ impl ConnectedAccounts {
     }
 
     pub async fn fully_disconnected(&self, account_id: i64) {
+        info!("Disconnecting account {}", account_id);
         let mut accounts_by_id = self.accounts_by_id.write().await;
         accounts_by_id.remove(&account_id);
     }
@@ -426,12 +428,12 @@ pub async fn main(websocket: WebSocket) {
                 }
                 Err(err) => {
                     error!("Bincode error: {}", err);
-                    return;
+                    break;
                 }
             },
             Err(err) => {
                 error!("Error on websocket: {}", err);
-                return;
+                break;
             }
         }
     }
