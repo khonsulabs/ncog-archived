@@ -11,16 +11,14 @@ mod websockets;
 extern crate slog_scope;
 
 #[cfg(debug_assertions)]
-const SERVER_URL: &'static str = "http://localhost:7879";
+const SERVER_URL: &str = "http://localhost:7879";
 #[cfg(not(debug_assertions))]
-const SERVER_URL: &'static str = "https://ncog.link";
+const SERVER_URL: &str = "https://ncog.link";
 
 #[cfg(debug_assertions)]
-const STATIC_FOLDER_PATH: &'static str = "../webapp/static";
+const STATIC_FOLDER_PATH: &str = "../webapp/static";
 #[cfg(not(debug_assertions))]
-const STATIC_FOLDER_PATH: &'static str = "static";
-
-use shared::fluent_templates::loader::Loader;
+const STATIC_FOLDER_PATH: &str = "static";
 
 #[tokio::main]
 async fn main() {
@@ -28,7 +26,7 @@ async fn main() {
     let _log_guard = initialize_logging();
     info!("server starting up");
 
-    let base_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap_or(".".to_owned());
+    let base_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_owned());
     let base_dir = Path::new(&base_dir);
     info!("Running migrations");
     migrations::run_all()
@@ -54,7 +52,7 @@ async fn main() {
     let websockets = warp::path!("ws")
         .and(warp::path::end())
         .and(warp::ws())
-        .map(|ws: warp::ws::Ws| ws.on_upgrade(|websocket| websockets::main(websocket)));
+        .map(|ws: warp::ws::Ws| ws.on_upgrade(websockets::main));
 
     let custom_logger = warp::log::custom(|info| {
         if info.status().is_server_error() {

@@ -19,7 +19,7 @@ impl StringBundle {
             if let DirEntry::File(file) = entry {
                 let path = entry.path().to_str().unwrap().to_owned();
                 let source = String::from_utf8(file.contents().to_vec())
-                    .expect(&format!("Invalid UTF-8 in {}", path));
+                    .unwrap_or_else(|_| panic!("Invalid UTF-8 in {}", path));
                 markdown.insert(path.replace("\\", "/"), source);
             }
         }

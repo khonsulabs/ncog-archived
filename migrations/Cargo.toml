@@ -14,13 +14,11 @@ path = "src/main.rs"
 
 [dependencies]
 sqlx-simple-migrator = {git = "https://github.com/khonsulabs/sqlx-simple-migrator.git"}
-dotenv = "*"
 tokio = {version = "*", features = ["macros", "blocking"]}
 lazy_static="1"
 futures = "0.3"
 uuid={version = "*", features=["v4", "serde"]}
-shared = {path = "../shared"}
-anyhow = "1"
+dotenv="0.15"
 [dependencies.sqlx]
 version = "0.3"
 default-features = false

@@ -1,5 +1,6 @@
 use super::{database, env, SERVER_URL};
 use async_std::sync::RwLock;
+use async_trait::async_trait;
 use futures::{SinkExt, StreamExt};
 use lazy_static::lazy_static;
 use migrations::{pg, sqlx};
@@ -10,7 +11,6 @@ use shared::{
     websockets::{WsBatchResponse, WsRequest},
     Inputs, OAuthProvider, ServerRequest, ServerResponse, UserProfile,
 };
-use sqlx::prelude::*;
 use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
@@ -20,6 +20,7 @@ use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use url::Url;
 use uuid::Uuid;
 use warp::filters::ws::{Message, WebSocket};
+mod iam;
 
 #[derive(Default)]
 pub struct NetworkTiming {
@@ -101,12 +102,13 @@ impl ConnectedClients {
         let installations = data
             .installations_by_account
             .entry(account_id)
-            .or_insert_with(|| HashSet::new());
+            .or_insert_with(HashSet::new);
         installations.insert(installation_id);
         Ok(account)
     }
 
     pub async fn disconnect(&self, installation_id: Uuid) {
+        info!("Disconnecting installation {}", installation_id);
         let mut data = self.data.write().await;
 
         data.clients.remove(&installation_id);
@@ -118,7 +120,7 @@ impl ConnectedClients {
         let remove_account =
             if let Some(installations) = data.installations_by_account.get_mut(&account_id) {
                 installations.remove(&installation_id);
-                installations.len() == 0
+                installations.is_empty()
             } else {
                 false
             };
@@ -136,6 +138,21 @@ impl ConnectedClients {
                 .sender
                 .send(message.into_ws_response(-1))
                 .unwrap_or_default();
+        }
+    }
+
+    pub async fn send_to_account_id(&self, account_id: i64, message: ServerResponse) {
+        let data = self.data.read().await;
+        if let Some(installation_ids) = data.installations_by_account.get(&account_id) {
+            for installation_id in installation_ids.iter() {
+                if let Some(client) = data.clients.get(&installation_id) {
+                    let client = client.read().await;
+                    client
+                        .sender
+                        .send(message.clone().into_ws_response(-1))
+                        .unwrap_or_default();
+                }
+            }
         }
     }
 
@@ -212,7 +229,7 @@ impl ConnectedAccounts {
     ) -> Result<Arc<RwLock<ConnectedAccount>>, anyhow::Error> {
         let mut accounts_by_id = self.accounts_by_id.write().await;
 
-        let profile = database::get_profile(&pg(), installation_id).await?;
+        let profile = database::get_profile_by_installation_id(&pg(), installation_id).await?;
 
         // TODO it'd be nice to not do this unless we need to do it, but I don't think it's possible without using a block_on.
         let permissions = database::load_permissions_for(&pg(), profile.id).await?;
@@ -230,14 +247,103 @@ impl ConnectedAccounts {
     }
 
     pub async fn fully_disconnected(&self, account_id: i64) {
+        info!("Disconnecting account {}", account_id);
         let mut accounts_by_id = self.accounts_by_id.write().await;
         accounts_by_id.remove(&account_id);
+    }
+
+    pub async fn role_updated(&self, role_id: i64) -> Result<(), anyhow::Error> {
+        info!("Updating role: {}", role_id);
+        let accounts_to_refresh = {
+            let accounts_by_id = self.accounts_by_id.read().await;
+            let mut accounts_to_refresh = Vec::new();
+            for account_handle in accounts_by_id.values() {
+                let account = account_handle.read().await;
+                if account.permissions.role_ids.contains(&role_id) {
+                    accounts_to_refresh.push(account.profile.id);
+                }
+            }
+            accounts_to_refresh
+        };
+
+        for account_id in accounts_to_refresh {
+            tokio::spawn(async move {
+                info!("Updating account: {}", account_id);
+                Self::notify_account_updated(account_id)
+                    .await
+                    .unwrap_or_default()
+            });
+        }
+
+        Ok(())
+    }
+
+    async fn notify_account_updated(account_id: i64) -> Result<(), anyhow::Error> {
+        let pg = pg();
+        let profile = crate::database::get_profile_by_account_id(&pg, account_id).await?;
+        let permissions = crate::database::load_permissions_for(&pg, account_id).await?;
+        info!("Got new permissions: {:?}", permissions);
+        CONNECTED_ACCOUNTS
+            .update_account_permissions(account_id, permissions.clone())
+            .await;
+        CONNECTED_CLIENTS
+            .send_to_account_id(
+                account_id,
+                ServerResponse::Authenticated {
+                    permissions,
+                    profile,
+                },
+            )
+            .await;
+
+        Ok(())
+    }
+
+    async fn update_account_permissions(&self, account_id: i64, permissions: PermissionSet) {
+        let accounts_by_id = self.accounts_by_id.read().await;
+        if let Some(account_handle) = accounts_by_id.get(&account_id) {
+            let mut account = account_handle.write().await;
+            account.permissions = permissions;
+        }
     }
 
     // pub async fn all(&self) -> Vec<Arc<RwLock<ConnectedAccount>>> {
     //     let accounts_by_id = self.accounts_by_id.read().await;
     //     accounts_by_id.values().map(|v| v.clone()).collect()
     // }
+}
+
+#[async_trait]
+pub trait ConnectedAccountHandle {
+    async fn permission_allowed(&self, claim: &Claim) -> Result<(), anyhow::Error>;
+}
+
+fn permission_denied(claim: &Claim) -> Result<(), anyhow::Error> {
+    anyhow::bail!("permission denied for accessing {:?}", claim)
+}
+
+#[async_trait]
+impl ConnectedAccountHandle for Arc<RwLock<ConnectedClient>> {
+    async fn permission_allowed(&self, claim: &Claim) -> Result<(), anyhow::Error> {
+        let client = self.read().await;
+        if let Some(account) = &client.account {
+            return account.permission_allowed(claim).await;
+        }
+
+        permission_denied(claim)
+    }
+}
+
+#[async_trait]
+impl ConnectedAccountHandle for Arc<RwLock<ConnectedAccount>> {
+    async fn permission_allowed(&self, claim: &Claim) -> Result<(), anyhow::Error> {
+        let account = self.read().await;
+        if account.permissions.allowed(&claim) {
+            Ok(())
+        } else {
+            permission_denied(claim)
+        }
+    }
 }
 
 pub struct ConnectedAccount {
@@ -322,12 +428,12 @@ pub async fn main(websocket: WebSocket) {
                 }
                 Err(err) => {
                     error!("Bincode error: {}", err);
-                    return;
+                    break;
                 }
             },
             Err(err) => {
                 error!("Error on websocket: {}", err);
-                return;
+                break;
             }
         }
     }
@@ -401,7 +507,7 @@ async fn handle_websocket_request(
             installation_id,
             version,
         } => {
-            if &version != shared::PROTOCOL_VERSION {
+            if version != shared::PROTOCOL_VERSION {
                 responder
                     .send(
                         ServerResponse::Error {
@@ -428,7 +534,9 @@ async fn handle_websocket_request(
 
             info!("Looking up account");
             let logged_in = if let Some(account_id) = installation.account_id {
-                if let Ok(profile) = database::get_profile(&pg(), installation.id).await {
+                if let Ok(profile) =
+                    database::get_profile_by_installation_id(&pg(), installation.id).await
+                {
                     let account = CONNECTED_CLIENTS
                         .associate_account(installation.id, account_id)
                         .await?;
@@ -501,6 +609,9 @@ async fn handle_websocket_request(
             let mut client = client_handle.write().await;
             client.network_timing.update(original_timestamp, timestamp);
         }
+        ServerRequest::IAM(iam_request) => {
+            iam::handle_request(client_handle, iam_request, responder, request.id).await?;
+        }
     }
 
     Ok(())
@@ -541,7 +652,7 @@ struct ItchioProfileResponse {
     pub user: ItchioProfile,
 }
 
-async fn login_itchio(installation_id: Uuid, access_token: &String) -> Result<(), anyhow::Error> {
+async fn login_itchio(installation_id: Uuid, access_token: &str) -> Result<(), anyhow::Error> {
     // Call itch.io API to get the user information
     let client = reqwest::Client::new();
     let response: ItchioProfileResponse = client
@@ -612,12 +723,7 @@ async fn login_itchio(installation_id: Uuid, access_token: &String) -> Result<()
         tx.commit().await?;
     }
 
-    let mut connection = pg.acquire().await?;
-    connection
-        .execute(&*format!(
-            "NOTIFY installation_login, '{}'",
-            installation_id
-        ))
-        .await?;
+    crate::pubsub::notify("installation_login", installation_id.to_string()).await?;
+
     Ok(())
 }

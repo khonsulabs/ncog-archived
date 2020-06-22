@@ -1,10 +1,6 @@
-mod api;
-mod backoffice;
-mod loggedin;
-mod login;
+#[macro_use]
 mod strings;
 
-use api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge};
 use khonsuweb::static_page::StaticPage;
 use loggedin::LoggedIn;
 use login::Login;
@@ -15,13 +11,28 @@ use shared::{
 use std::sync::Arc;
 use strings::localize;
 use yew::prelude::*;
-use yew_router::prelude::*;
+use yew_router::{agent::RouteRequest, prelude::*};
+
+#[macro_export]
+macro_rules! require_permission {
+    ($user:expr, $claim:expr) => {{
+        if !crate::webapp::has_permission($user, $claim) {
+            return crate::webapp::invalid_permissions();
+        }
+    }};
+}
+
+mod api;
+mod backoffice;
+mod loggedin;
+mod login;
+use api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge};
 
 pub struct App {
     link: ComponentLink<Self>,
     show_nav: Option<bool>,
     api: ApiBridge,
-    route_agent: RouteAgentBridge,
+    _route_agent: RouteAgentBridge,
     connected: Option<bool>,
     user: Option<Arc<LoggedInUser>>,
     current_route: String,
@@ -31,6 +42,44 @@ pub struct App {
 pub struct LoggedInUser {
     pub profile: UserProfile,
     pub permissions: PermissionSet,
+}
+
+#[derive(Switch, Debug, Clone, Copy, PartialEq)]
+pub enum EditingId {
+    #[to = "/new"]
+    New,
+    #[to = "/{id}"]
+    Id(i64),
+}
+
+impl EditingId {
+    pub fn is_existing(&self) -> bool {
+        !self.is_new()
+    }
+
+    pub fn is_new(&self) -> bool {
+        if let EditingId::New = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn existing_id(&self) -> Option<i64> {
+        match self {
+            EditingId::Id(id) => Some(*id),
+            EditingId::New => None,
+        }
+    }
+}
+
+impl std::fmt::Display for EditingId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::New => f.write_str("new"),
+            Self::Id(id) => f.write_str(&id.to_string()),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -49,13 +98,27 @@ pub enum AppRoute {
     LogIn,
     #[to = "/auth/callback/{service}"]
     LoggedIn(String),
-    #[to = "/backoffice{*:rest}"]
-    BackOffice(backoffice::BackofficeAdmin),
+    #[to = "/backoffice/users"]
+    #[rest]
+    BackOfficeUserEdit(EditingId),
+    #[to = "/backoffice/users!"]
+    BackOfficeUsersList,
+    #[to = "/backoffice/roles/{id}/permissions"]
+    #[rest]
+    BackOfficeRolePermissionStatementEdit(i64, EditingId),
+    #[to = "/backoffice/roles"]
+    #[rest]
+    BackOfficeRoleEdit(EditingId),
+    #[to = "/backoffice/roles!"]
+    BackOfficeRolesList,
+    #[to = "/backoffice!"]
+    BackOfficeDashboard,
     #[to = "/!"]
     Index,
     #[to = "/"]
     NotFound,
 }
+
 impl AppRoute {
     pub fn render(&self, set_title: Callback<String>, user: Option<Arc<LoggedInUser>>) -> Html {
         match self {
@@ -68,8 +131,23 @@ impl AppRoute {
             AppRoute::StylesTest => style_test(),
             AppRoute::LogIn => html! {<Login />},
             AppRoute::LoggedIn(service) => html! {<LoggedIn service=service.clone() />},
-            AppRoute::BackOffice(admin) => {
-                html! { <backoffice::Dashboard set_title=set_title.clone() user=user.clone() admin=admin.clone() />}
+            AppRoute::BackOfficeDashboard => {
+                html! { <backoffice::Dashboard set_title=set_title.clone() user=user.clone() />}
+            }
+            AppRoute::BackOfficeUsersList => {
+                html! { <backoffice::users::list::UsersList set_title=set_title.clone() user=user.clone() />}
+            }
+            AppRoute::BackOfficeUserEdit(id) => {
+                html! { <backoffice::edit_form::EditForm<backoffice::users::edit::User> set_title=set_title.clone() user=user.clone() editing_id=*id /> }
+            }
+            AppRoute::BackOfficeRolesList => {
+                html! { <backoffice::roles::list::RolesList set_title=set_title.clone() user=user.clone() />}
+            }
+            AppRoute::BackOfficeRoleEdit(id) => {
+                html! { <backoffice::edit_form::EditForm<backoffice::roles::edit::Role> set_title=set_title.clone() user=user.clone() editing_id=*id /> }
+            }
+            AppRoute::BackOfficeRolePermissionStatementEdit(role_id, id) => {
+                html! { <backoffice::edit_form::EditForm<backoffice::roles::permission_statements::edit::PermissionStatementForm> set_title=set_title.clone() user=user.clone() editing_id=id owning_id=role_id /> }
             }
         }
     }
@@ -80,17 +158,17 @@ impl Component for App {
     type Properties = ();
 
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let callback = link.callback(|message| Message::WsMessage(message));
+        let callback = link.callback(Message::WsMessage);
         let api = ApiAgent::bridge(callback);
-        let route_agent =
-            RouteAgentBridge::new(link.callback(|message| Message::RouteMessage(message)));
+        let mut route_agent = RouteAgentBridge::new(link.callback(Message::RouteMessage));
+        route_agent.send(RouteRequest::GetCurrentRoute);
         App {
             link,
             show_nav: None,
             api,
             user: None,
             connected: None,
-            route_agent,
+            _route_agent: route_agent,
             current_route: "/".to_owned(),
         }
     }
@@ -104,7 +182,7 @@ impl Component for App {
             Message::SetTitle(title) => {
                 if let Some(window) = web_sys::window() {
                     if let Some(document) = window.document() {
-                        document.set_title(&title);
+                        document.set_title(&format!("{} - ncog.link", title));
                     }
                 }
                 false
@@ -129,6 +207,7 @@ impl Component for App {
                         profile,
                         permissions,
                     } => {
+                        info!("Current Permissions: {:#?}", permissions);
                         self.user = Some(Arc::new(LoggedInUser {
                             profile,
                             permissions,
@@ -141,6 +220,7 @@ impl Component for App {
             },
             Message::RouteMessage(route) => {
                 self.current_route = route.route;
+                info!("New route: {}", self.current_route);
                 true
             }
             Message::LogOut => {
@@ -191,13 +271,10 @@ impl Component for App {
 
 impl App {
     fn navbar_class(&self) -> &'static str {
-        match self.show_nav {
-            Some(state) => {
-                if state {
-                    return "navbar-menu is-active";
-                }
+        if let Some(state) = self.show_nav {
+            if state {
+                return "navbar-menu is-active";
             }
-            None => {}
         }
         "navbar-menu"
     }
@@ -218,10 +295,10 @@ impl App {
         let backoffice_links = if has_permission(&self.user, backoffice::read_claim()) {
             html! {
                 <div class="navbar-item has-dropdown is-hoverable">
-                    <RouterAnchor<AppRoute> route=AppRoute::BackOffice(backoffice::BackofficeAdmin::Dashboard) classes=self.navbar_class_for("navbar-link", "/backoffice") >{ localize("backoffice") } </RouterAnchor<AppRoute>>
+                    <RouterAnchor<AppRoute> route=AppRoute::BackOfficeDashboard classes=self.navbar_class_for("navbar-link", "/backoffice") >{ localize("backoffice") }</RouterAnchor<AppRoute>>
                     <div class="navbar-dropdown is-boxed">
-                        <RouterAnchor<AppRoute> route=AppRoute::BackOffice(backoffice::BackofficeAdmin::Users) classes=self.navbar_class_for("navbar-item", "/backoffice/users") >{ localize("users") } </RouterAnchor<AppRoute>>
-                        <RouterAnchor<AppRoute> route=AppRoute::BackOffice(backoffice::BackofficeAdmin::Roles) classes=self.navbar_class_for("navbar-item", "/backoffice/roles") >{ localize("roles") } </RouterAnchor<AppRoute>>
+                        <RouterAnchor<AppRoute> route=AppRoute::BackOfficeUsersList classes=self.navbar_class_for("navbar-item", "/backoffice/users") >{ localize("users") }</RouterAnchor<AppRoute>>
+                        <RouterAnchor<AppRoute> route=AppRoute::BackOfficeRolesList classes=self.navbar_class_for("navbar-item", "/backoffice/roles") >{ localize("roles") } </RouterAnchor<AppRoute>>
                     </div>
                 </div>
             }
@@ -368,13 +445,4 @@ fn invalid_permissions() -> Html {
             {localize("no-permission")}
         </div>
     }
-}
-
-#[macro_export]
-macro_rules! require_permission {
-    ($user:expr, $claim:expr) => {{
-        if !crate::webapp::has_permission($user, $claim) {
-            return crate::webapp::invalid_permissions();
-        }
-    }};
 }

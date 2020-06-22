@@ -1,5 +1,6 @@
 mod migration_0001_accounts;
 mod migration_0002_reset_accounts;
+mod migration_0003_prevent_timelord_changes;
 use crate::connection::pg;
 use sqlx_simple_migrator::{Migration, MigrationError};
 
@@ -11,11 +12,12 @@ pub fn migrations() -> Vec<Migration> {
     vec![
         migration_0001_accounts::migration(),
         migration_0002_reset_accounts::migration(),
+        migration_0003_prevent_timelord_changes::migration(),
     ]
 }
 
 pub async fn run_all() -> Result<(), MigrationError> {
-    let mut pool = pg();
+    let pool = pg();
 
-    Migration::run_all(&mut pool, migrations()).await
+    Migration::run_all(&pool, migrations()).await
 }

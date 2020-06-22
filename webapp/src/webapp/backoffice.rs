@@ -1,29 +1,23 @@
-use super::LoggedInUser;
-use crate::require_permission;
+use super::{AppRoute, LoggedInUser};
+use khonsuweb::title::Title;
 use shared::permissions::Claim;
 use std::sync::Arc;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
+pub mod edit_form;
+pub mod entity_list;
+pub mod roles;
+pub mod users;
+
 pub struct Dashboard {
     props: Props,
-}
-
-#[derive(Switch, Clone, Debug, PartialEq)]
-pub enum BackofficeAdmin {
-    #[to = "/"]
-    Dashboard,
-    #[to = "/users"]
-    Users,
-    #[to = "/roles"]
-    Roles,
 }
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {
     pub user: Option<Arc<LoggedInUser>>,
     pub set_title: Callback<String>,
-    pub admin: BackofficeAdmin,
 }
 
 pub enum Message {}
@@ -59,4 +53,26 @@ impl Component for Dashboard {
 
 pub fn read_claim() -> Claim {
     Claim::new("backoffice", Some("dashboard"), None, "read")
+}
+
+fn render_heading_with_add_button(
+    title: &'static str,
+    add_route: AppRoute,
+    add_caption: &'static str,
+    disabled: bool,
+) -> Html {
+    html! {
+        <div class="level">
+            <div class="level-left">
+                <div class="level-item">
+                    <Title size=3>{localize!(title)}</Title>
+                </div>
+            </div>
+            <div class="level-right">
+                <RouterButton<AppRoute> route=add_route classes="level-item button is-success" disabled=disabled >
+                    <strong>{ localize!(add_caption) }</strong>
+                </RouterButton<AppRoute>>
+            </div>
+        </div>
+    }
 }

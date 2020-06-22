@@ -43,19 +43,22 @@ impl Component for Button {
     }
 
     fn view(&self) -> Html {
-        let content = if self.props.processing {
-            html! {
-                <img src="/loader.svg" width=20 height="30" />
-            }
-        } else {
-            html! { { &self.props.label } }
-        };
         html! {
             <div class="control">
-                <button class=format!("button {}", self.props.css_class) disabled=self.props.disabled onclick=self.link.callback(|e: MouseEvent| Message::Action(e))>
-                    { content }
+                <button class=format!("button {} {}", self.props.css_class, self.is_loading()) disabled=self.props.disabled onclick=self.link.callback(|e: MouseEvent| Message::Action(e))>
+                    { &self.props.label }
                 </button>
             </div>
+        }
+    }
+}
+
+impl Button {
+    fn is_loading(&self) -> &'static str {
+        if self.props.processing {
+            "is-loading"
+        } else {
+            ""
         }
     }
 }

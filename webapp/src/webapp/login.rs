@@ -20,7 +20,7 @@ impl Component for Login {
     type Message = Message;
     type Properties = ();
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let mut api = ApiAgent::bridge(link.callback(|msg| Message::ApiMessage(msg)));
+        let mut api = ApiAgent::bridge(link.callback(Message::ApiMessage));
         api.send(AgentMessage::QueryStorageStatus);
         Self {
             link,

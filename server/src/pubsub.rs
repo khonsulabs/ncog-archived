@@ -1,14 +1,14 @@
 use super::websockets::{CONNECTED_ACCOUNTS, CONNECTED_CLIENTS};
 use migrations::{pg, sqlx};
 use shared::ServerResponse;
-use sqlx::postgres::PgListener;
+use sqlx::{executor::Executor, postgres::PgListener};
 use uuid::Uuid;
 
 pub async fn pg_notify_loop() -> Result<(), anyhow::Error> {
     let pool = pg();
     let mut listener = PgListener::from_pool(&pool).await?;
     listener
-        .listen_all(vec!["installation_login", "world_update"])
+        .listen_all(vec!["installation_login", "world_update", "role_updated"])
         .await?;
     while let Ok(notification) = listener.recv().await {
         info!(
@@ -35,6 +35,9 @@ pub async fn pg_notify_loop() -> Result<(), anyhow::Error> {
                     },
                 )
                 .await;
+        } else if notification.channel() == "role_updated" {
+            let role_id = notification.payload().parse::<i64>()?;
+            CONNECTED_ACCOUNTS.role_updated(role_id).await?;
             // } else if notification.channel() == "world_update" {
             //     // The payload is the timestamp of when the world was updated
             //     let timestamp = notification.payload().parse::<f64>()?;
@@ -43,4 +46,12 @@ pub async fn pg_notify_loop() -> Result<(), anyhow::Error> {
         }
     }
     panic!("Error on postgres listening");
+}
+
+pub async fn notify<S: ToString>(channel: &'static str, payload: S) -> Result<(), sqlx::Error> {
+    let mut connection = pg().acquire().await?;
+    connection
+        .execute(&*format!("NOTIFY {}, '{}'", channel, payload.to_string()))
+        .await?;
+    Ok(())
 }

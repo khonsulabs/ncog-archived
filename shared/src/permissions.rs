@@ -1,6 +1,7 @@
 use serde_derive::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
+#[derive(Debug)]
 pub struct Claim {
     service: String,
     resource_type: Option<String>,
@@ -25,6 +26,7 @@ impl Claim {
 }
 
 pub struct Statement {
+    pub role_id: Option<i64>,
     pub service: Option<String>,
     pub resource_type: Option<String>,
     pub resource_id: Option<i64>,
@@ -37,6 +39,7 @@ pub struct Statement {
 impl Statement {
     #[cfg(test)]
     fn new<S: Into<String>>(
+        role_id: Option<i64>,
         service: Option<S>,
         resource_type: Option<S>,
         resource_id: Option<i64>,
@@ -46,6 +49,7 @@ impl Statement {
         allow: bool,
     ) -> Self {
         Self {
+            role_id,
             service: service.map(|s| s.into()),
             resource_type: resource_type.map(|s| s.into()),
             resource_id,
@@ -58,6 +62,7 @@ impl Statement {
 #[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct PermissionSet {
     service_permissions: HashMap<Option<String>, ServicePermission>,
+    pub role_ids: HashSet<i64>,
 }
 
 impl From<Vec<Statement>> for PermissionSet {
@@ -65,6 +70,10 @@ impl From<Vec<Statement>> for PermissionSet {
         let mut set = PermissionSet::default();
 
         for statement in statements {
+            if let Some(role_id) = statement.role_id {
+                set.role_ids.insert(role_id);
+            }
+
             set.service_permissions
                 .entry(statement.service.clone())
                 .and_modify(|service_permission| service_permission.apply(&statement))
@@ -162,7 +171,7 @@ impl ResourceTypePermission {
 
     fn apply(&mut self, statement: &Statement) {
         self.resource_permissions
-            .entry(statement.resource_id.clone())
+            .entry(statement.resource_id)
             .and_modify(|rtp| rtp.apply(statement))
             .or_insert_with(|| ResourcePermission::from_statement(statement));
     }
@@ -207,19 +216,19 @@ mod tests {
     fn test_permissions() -> PermissionSet {
         PermissionSet::from(vec![
             // Allow read for everyhing
-            Statement::new(None, None, None, Some("read"), true),
+            Statement::new(None, None, None, None, Some("read"), true),
             // Allow everything for id 1
-            Statement::new(Option::<String>::None, None, Some(1i64), None, true),
+            Statement::new(None, Option::<String>::None, None, Some(1i64), None, true),
             // Allow everything for resource type 'always-type'
-            Statement::new(None, Some("always-type"), None, None, true),
+            Statement::new(None, None, Some("always-type"), None, None, true),
             // Allow everything for resource type 'always-type'
-            Statement::new(Some("always-service"), None, None, None, true),
+            Statement::new(None, Some("always-service"), None, None, None, true),
             // Deny reading for a specific id
-            Statement::new(None, None, Some(13i64), Some("read"), false),
+            Statement::new(None, None, None, Some(13i64), Some("read"), false),
             // Deny reading for a specific type
-            Statement::new(None, Some("deny-type"), None, Some("read"), false),
+            Statement::new(None, None, Some("deny-type"), None, Some("read"), false),
             // Deny reading for a specific service
-            Statement::new(Some("deny-service"), None, None, Some("read"), false),
+            Statement::new(None, Some("deny-service"), None, None, Some("read"), false),
         ])
     }
 

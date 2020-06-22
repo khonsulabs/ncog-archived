@@ -9,3 +9,7 @@ log-out = Log Out
 log-in = Sign up/Log in
 
 no-permission = You do not have the required permissions to view this.
+
+not-set = <Not Set>
+
+edit = Edit

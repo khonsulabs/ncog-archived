@@ -46,3 +46,4 @@ The webserver is running at `localhost:7878`
 # Contributing
 
 This project is in its infancy. If you want to contribute, please reach out to [@ecton](https://github.com/ecton) before attempting any major pull requests or minor ones that change existing functionality (without first determining if it's a bug or by design).
+=> 

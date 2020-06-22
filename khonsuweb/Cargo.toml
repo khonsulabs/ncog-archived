@@ -8,6 +8,14 @@ edition = "2018"
 
 [dependencies]
 web-sys = "0.3"
+js-sys = "0.3"
 include_dir = "0.6"
 yew="0.16"
 pulldown-cmark = "0.7"
+thiserror = "1"
+float-cmp = "0.8"
+
+
+[dependencies.chrono]
+version="*"
+features = ["serde", "js-sys"]
