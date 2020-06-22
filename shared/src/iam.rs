@@ -9,6 +9,7 @@ pub enum IAMRequest {
     RolesList,
     RoleGet(i64),
     RoleSave(RoleSummary),
+    RoleDelete(i64),
     PermissionStatementGet(i64),
     PermissionStatementSave(PermissionStatement),
     PermissionStatemenetDelete(i64),
@@ -21,6 +22,7 @@ pub enum IAMResponse {
     UserProfile(User),
     Role(Role),
     RoleSaved(i64),
+    RoleDeleted(i64),
     PermissionStatement(PermissionStatement),
     PermissionStatementSaved(i64),
     PermissionStatementDeleted(i64),
@@ -70,6 +72,10 @@ pub fn roles_update_claim(id: Option<i64>) -> Claim {
 
 pub fn roles_create_claim() -> Claim {
     Claim::new("iam", Some("roles"), None, "create")
+}
+
+pub fn roles_delete_claim(id: Option<i64>) -> Claim {
+    Claim::new("iam", Some("roles"), id, "delete")
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]

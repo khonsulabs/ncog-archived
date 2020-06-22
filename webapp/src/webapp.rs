@@ -207,6 +207,7 @@ impl Component for App {
                         profile,
                         permissions,
                     } => {
+                        info!("Current Permissions: {:#?}", permissions);
                         self.user = Some(Arc::new(LoggedInUser {
                             profile,
                             permissions,

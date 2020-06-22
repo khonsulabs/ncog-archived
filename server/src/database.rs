@@ -69,9 +69,8 @@ where
     let results  = sqlx::query_as!(Statement, r#"SELECT roles.id as role_id, service, resource_type, resource_id, action, allow FROM role_permission_statements 
             LEFT OUTER JOIN roles ON role_permission_statements.role_id = roles.id
             LEFT OUTER JOIN account_roles ON account_roles.role_id = roles.id
-            LEFT OUTER JOIN accounts ON accounts.id = account_roles.account_id
             WHERE 
-                (accounts.id IS NULL OR accounts.id = $1)
+                (role_permission_statements.role_id IS NULL OR account_roles.account_id = $1)
         "#, account_id).fetch_all(executor).await?;
 
     Ok(results.into())
@@ -210,6 +209,21 @@ where
     .id;
 
     Ok(id)
+}
+
+
+pub async fn iam_delete_role<E>(
+    executor: E,
+    id: i64
+) -> Result<(), sqlx::Error>
+where
+    E: Send + Executor<Database = Postgres>,
+{
+    sqlx::query!(
+        "DELETE FROM roles WHERE id=$1", id)
+        .execute(executor).await?;
+
+    Ok(())
 }
 
 pub async fn iam_get_permission_statement<'e, E>(

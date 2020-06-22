@@ -39,6 +39,7 @@ edit-role = {-edit-item(type: {-role})}
 save-role = {-save-item(type: {-role})}
 saved-role = {-saved-item(type: {-role})}
 list-roles = {-list-item(type: {-role(count: 0)})}
+delete-role = {-delete-item(type: {-role})}
 
 add-permission-statement = {-add-item(type: {-permission-statement})}
 edit-permission-statement = {-edit-item(type: {-permission-statement})}

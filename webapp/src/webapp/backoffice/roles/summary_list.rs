@@ -21,22 +21,6 @@ pub fn standard_head() -> Html {
     }
 }
 
-pub fn standard_row() -> EntityRenderer<RoleSummary> {
-    EntityRenderer::new(|role: &RoleSummary| {
-        html! {
-            <tr>
-                <td>{ role.id.unwrap() }</td>
-                <td>{ &role.name }</td>
-                <td>
-                    <RouterButton<AppRoute> route=AppRoute::BackOfficeRoleEdit(EditingId::Id(role.id.unwrap())) classes="button is-primary" >
-                        <strong>{ localize!("edit") }</strong>
-                    </RouterButton<AppRoute>>
-                </td>
-            </tr>
-        }
-    })
-}
-
 pub fn standard(entities: Option<Rc<RwLock<Vec<RoleSummary>>>>) -> Html {
     html! {
         <EntityList<RoleSummary>
@@ -44,5 +28,31 @@ pub fn standard(entities: Option<Rc<RwLock<Vec<RoleSummary>>>>) -> Html {
             header=standard_head()
             entities=entities
             />
+    }
+}
+
+pub fn standard_row() -> EntityRenderer<RoleSummary> {
+    row(standard_actions)
+}
+
+pub fn row<F: Fn(&RoleSummary) -> Html + 'static>(actions: F) -> EntityRenderer<RoleSummary> {
+    EntityRenderer::new(move |role: &RoleSummary| {
+        html! {
+            <tr>
+                <td>{ role.id.unwrap() }</td>
+                <td>{ &role.name }</td>
+                <td>
+                    { actions(role) }
+                </td>
+            </tr>
+        }
+    })
+}
+
+fn standard_actions(role: &RoleSummary) -> Html {
+    html! {
+        <RouterButton<AppRoute> route=AppRoute::BackOfficeRoleEdit(EditingId::Id(role.id.unwrap())) classes="button is-primary" >
+            <strong>{ localize!("edit") }</strong>
+        </RouterButton<AppRoute>>
     }
 }
