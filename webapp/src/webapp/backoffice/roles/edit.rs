@@ -7,7 +7,7 @@ use crate::webapp::{
         roles::fields::RoleFields,
         roles::permission_statements::{self},
     },
-    strings::{LocalizableName, Namable},
+    strings::Namable,
     AppRoute, EditingId,
 };
 use khonsuweb::prelude::*;

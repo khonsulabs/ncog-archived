@@ -3,7 +3,7 @@ use crate::webapp::{
         entity_list::{body::EntityRenderer, EntityList},
         roles::permission_statements::fields::PermissionStatementFields,
     },
-    strings::LocalizableName,
+    strings::Namable,
     AppRoute, EditingId,
 };
 use shared::iam::PermissionStatement;

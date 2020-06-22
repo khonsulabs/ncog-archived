@@ -4,7 +4,7 @@ use crate::webapp::{
         entity_list::{body::EntityRenderer, EntityList},
         users::fields::UserFields,
     },
-    strings::{localize, localize_raw, LocalizableName},
+    strings::{localize, localize_raw, Namable},
     AppRoute, EditingId, LoggedInUser,
 };
 use khonsuweb::title::Title;

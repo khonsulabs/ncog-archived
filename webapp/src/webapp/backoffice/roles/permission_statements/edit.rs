@@ -4,7 +4,7 @@ use crate::webapp::{
         edit_form::{EditForm, ErrorMap, Form, Handled, Message, Props},
         roles::permission_statements::fields::PermissionStatementFields,
     },
-    strings::LocalizableName,
+    strings::Namable,
     AppRoute, EditingId,
 };
 use khonsuweb::{flash, forms::prelude::*, validations::prelude::*};

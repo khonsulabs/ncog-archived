@@ -1,7 +1,7 @@
 use crate::webapp::{
     api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
     has_permission,
-    strings::{LocalizableName, Namable},
+    strings::Namable,
     AppRoute, EditingId, LoggedInUser,
 };
 use khonsuweb::{flash, validations::prelude::*};

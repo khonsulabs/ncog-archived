@@ -3,7 +3,7 @@ use crate::webapp::{
         entity_list::{body::EntityRenderer, EntityList},
         roles::fields::RoleFields,
     },
-    strings::LocalizableName,
+    strings::Namable,
     AppRoute, EditingId,
 };
 use shared::iam::RoleSummary;

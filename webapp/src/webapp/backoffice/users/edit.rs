@@ -5,7 +5,7 @@ use crate::webapp::{
         roles::summary_list,
         users::fields::UserFields,
     },
-    strings::LocalizableName,
+    strings::Namable,
     AppRoute, EditingId,
 };
 use khonsuweb::{flash, forms::prelude::*, validations::prelude::*};
