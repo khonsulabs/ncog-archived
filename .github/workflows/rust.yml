@@ -64,13 +64,13 @@ jobs:
           NCOG_CLIENT_ENCRYPTION_KEY: ${{ secrets.NCOG_CLIENT_ENCRYPTION_KEY }}
 
       - name: Configure Production
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/production'
         env:
           DOTENVFILE: ${{ secrets.DOTENVFILE }}
         run: echo "$DOTENVFILE" > .env
 
       - uses: kciter/aws-ecr-action@v1
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/production'
         with:
           access_key_id: ${{ secrets.ECR_ACCESS_KEY_ID }}
           secret_access_key: ${{ secrets.ECR_SECRET_KEY }}
@@ -80,7 +80,7 @@ jobs:
           tags: latest,sha-${{ github.sha }}
 
       - name: Deploy SPA
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/production'
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.ECR_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.ECR_SECRET_KEY }}
@@ -91,7 +91,7 @@ jobs:
           aws cloudfront create-invalidation --distribution-id E2RBPV8J4SLHOW --paths "/*"
 
       - name: Deploy API
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/production'
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.ECR_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.ECR_SECRET_KEY }}
