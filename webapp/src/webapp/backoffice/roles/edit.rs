@@ -128,7 +128,13 @@ impl Form for Role {
             let link = edit_form.link.clone();
             html! {
                 <section class="section content">
-                    { render_heading_with_add_button(RoleFields::PermissionStatements.name(), AppRoute::BackOfficeRolePermissionStatementEdit(edit_form.props.editing_id.existing_id().expect("Editing a permission without an role is not allowed"), EditingId::New), "add-permission-statement") }
+                    { render_heading_with_add_button(
+                        RoleFields::PermissionStatements.name(),
+                        AppRoute::BackOfficeRolePermissionStatementEdit(edit_form.props.editing_id.existing_id().expect("Editing a permission without an role is not allowed"),
+                            EditingId::New
+                        ),
+                        "add-permission-statement",
+                        readonly) }
 
                     <EntityList<PermissionStatement>
                         header=permission_statements::list::standard_head()

@@ -59,6 +59,7 @@ fn render_heading_with_add_button(
     title: &'static str,
     add_route: AppRoute,
     add_caption: &'static str,
+    disabled: bool,
 ) -> Html {
     html! {
         <div class="level">
@@ -68,7 +69,7 @@ fn render_heading_with_add_button(
                 </div>
             </div>
             <div class="level-right">
-                <RouterButton<AppRoute> route=add_route classes="level-item button is-success" >
+                <RouterButton<AppRoute> route=add_route classes="level-item button is-success" disabled=disabled >
                     <strong>{ localize!(add_caption) }</strong>
                 </RouterButton<AppRoute>>
             </div>

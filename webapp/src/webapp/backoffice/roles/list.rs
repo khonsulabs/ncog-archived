@@ -1,10 +1,10 @@
 use crate::webapp::{
     api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
     backoffice::{render_heading_with_add_button, roles::summary_list},
-    AppRoute, EditingId, LoggedInUser,
+    has_permission, AppRoute, EditingId, LoggedInUser,
 };
 use shared::{
-    iam::{roles_list_claim, IAMRequest, IAMResponse, RoleSummary},
+    iam::{roles_create_claim, roles_list_claim, IAMRequest, IAMResponse, RoleSummary},
     ServerResponse,
 };
 use std::{
@@ -68,9 +68,10 @@ impl Component for RolesList {
 
     fn view(&self) -> Html {
         require_permission!(&self.props.user, roles_list_claim());
+        let can_create = has_permission(&self.props.user, roles_create_claim());
         html!(
             <section class="section content">
-                { render_heading_with_add_button("list-roles", AppRoute::BackOfficeRoleEdit(EditingId::New), "add-role") }
+                { render_heading_with_add_button("list-roles", AppRoute::BackOfficeRoleEdit(EditingId::New), "add-role", !can_create) }
 
                 { summary_list::standard(self.roles.clone()) }
             </section>
