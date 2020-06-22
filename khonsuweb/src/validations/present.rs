@@ -145,10 +145,10 @@ where
     T: Presentable + std::fmt::Debug,
 {
     fn validate(&self) -> Result<(), ValidationError> {
-        if self.value.value()?.present() {
+        if self.value.value()?.absent() {
             Ok(())
         } else {
-            Err(ValidationError::NotPresent)
+            Err(ValidationError::NotAbsent)
         }
     }
 }

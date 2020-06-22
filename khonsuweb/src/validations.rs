@@ -13,6 +13,8 @@ use present::*;
 pub enum ValidationError {
     #[error("is required")]
     NotPresent,
+    #[error("should be blank")]
+    NotAbsent,
     /// For when converting from a string to another type fails. Should be validated in another way.
     #[error("invalid value")]
     InvalidValue,

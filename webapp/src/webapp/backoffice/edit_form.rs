@@ -148,16 +148,16 @@ where
         }
 
         let errors = self.validate().map(|errors| {
-            errors.translate(|e| match e.error {
-                ValidationError::NotPresent => {
-                    localize!("form-field-required", "field" => e.primary_field().localized_name())
-                }
-                ValidationError::InvalidValue => {
-                    localize!("form-field-invalid-value", "field" => e.primary_field().localized_name())
-                }
-                ValidationError::Custom(message) => {
-                    localize!(message)
-                }
+            errors.translate(|e| {
+                let key = match e.error {
+                    ValidationError::NotPresent => "form-field-required",
+                    ValidationError::InvalidValue => "form-field-invalid-value",
+                    ValidationError::NotAbsent => {
+                        unreachable!("NotAbsent should be covered with a custom error message")
+                    }
+                    ValidationError::Custom(message) => message,
+                };
+                localize!(key, "field" => e.primary_field().localized_name())
             })
         });
 

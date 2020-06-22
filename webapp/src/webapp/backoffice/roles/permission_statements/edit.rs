@@ -171,7 +171,6 @@ impl Form for PermissionStatementForm {
     }
 
     fn validate(&self) -> Option<Rc<ErrorSet<Self::Fields>>> {
-        info!("Self.resource_id: {:#?}", self.resource_id);
         ModelValidator::default()
             .with_field(
                 PermissionStatementFields::ResourceId,
