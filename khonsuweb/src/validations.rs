@@ -16,6 +16,8 @@ pub enum ValidationError {
     /// For when converting from a string to another type fails. Should be validated in another way.
     #[error("invalid value")]
     InvalidValue,
+    #[error("custom error: {0}")]
+    Custom(&'static str),
 }
 
 pub trait Validator: std::fmt::Debug {
@@ -38,31 +40,54 @@ pub trait ValidatorCombinators: Sized + Validator {
     }
 }
 
+impl<T> ValidatorCombinators for T where T: Validator {}
+
+pub trait ValidatableStorage<T>
+where
+    T: Clone + Default + PartialEq + std::fmt::Debug,
+{
+    fn as_form_storage(&self) -> FormStorage<T>;
+}
+
+impl<T> ValidatableStorage<T> for T
+where
+    T: Clone + Default + PartialEq + std::fmt::Debug,
+{
+    fn as_form_storage(&self) -> FormStorage<T> {
+        FormStorage::new(self.clone())
+    }
+}
+
+impl<T> ValidatableStorage<T> for FormStorage<T>
+where
+    T: Clone + Default + PartialEq + std::fmt::Debug,
+{
+    fn as_form_storage(&self) -> FormStorage<T> {
+        self.clone()
+    }
+}
+
 pub trait Validatable<T>
 where
     T: Clone + Default + PartialEq + std::fmt::Debug,
 {
     fn is_present(&self) -> PresentValidation<T>;
+    fn is_absent(&self) -> AbsentValidation<T>;
 }
 
-impl<T> Validatable<T> for T
+impl<T, S> Validatable<T> for S
 where
     T: Presentable + Clone + std::fmt::Debug,
+    S: ValidatableStorage<T>,
 {
     fn is_present(&self) -> PresentValidation<T> {
         PresentValidation {
-            value: FormStorage::new(self.clone()),
+            value: self.as_form_storage(),
         }
     }
-}
-
-impl<T> Validatable<T> for FormStorage<T>
-where
-    T: Presentable + std::fmt::Debug,
-{
-    fn is_present(&self) -> PresentValidation<T> {
-        PresentValidation {
-            value: self.clone(),
+    fn is_absent(&self) -> AbsentValidation<T> {
+        AbsentValidation {
+            value: self.as_form_storage(),
         }
     }
 }
@@ -148,11 +173,20 @@ where
     }
 }
 
+struct FieldValidator<F>
+where
+    F: std::fmt::Debug + std::hash::Hash + std::cmp::Eq,
+{
+    error_message: Option<&'static str>,
+    fields: HashSet<F>,
+    validator: Box<dyn Validator>,
+}
+
 pub struct ModelValidator<F>
 where
     F: std::fmt::Debug + std::hash::Hash + std::cmp::Eq,
 {
-    validations: HashMap<F, Box<dyn Validator>>,
+    validations: Vec<FieldValidator<F>>,
 }
 
 impl<F> Default for ModelValidator<F>
@@ -161,7 +195,7 @@ where
 {
     fn default() -> Self {
         Self {
-            validations: HashMap::default(),
+            validations: Vec::default(),
         }
     }
 }
@@ -171,16 +205,50 @@ where
     F: Copy + std::fmt::Debug + std::hash::Hash + std::cmp::Eq,
 {
     pub fn with_field<V: Validator + 'static>(mut self, field: F, validator: V) -> Self {
-        self.validations.insert(field, Box::new(validator));
+        self.validations.push(FieldValidator {
+            fields: vec![field].into_iter().collect(),
+            validator: Box::new(validator),
+            error_message: None,
+        });
+        self
+    }
+    pub fn with_custom<V: Validator + 'static>(
+        mut self,
+        field: F,
+        validator: V,
+        message: &'static str,
+    ) -> Self {
+        self.validations.push(FieldValidator {
+            fields: vec![field].into_iter().collect(),
+            validator: Box::new(validator),
+            error_message: Some(message),
+        });
+        self
+    }
+    pub fn with_fields<V: Validator + 'static, I: std::iter::Iterator<Item = F>>(
+        mut self,
+        fields: I,
+        validator: V,
+        error_message: &'static str,
+    ) -> Self {
+        self.validations.push(FieldValidator {
+            fields: fields.collect(),
+            validator: Box::new(validator),
+            error_message: Some(error_message),
+        });
         self
     }
     pub fn validate(self) -> Option<Rc<ErrorSet<F>>> {
         let mut errors = Vec::new();
-        for (field, validation) in self.validations.into_iter() {
-            if let Err(error) = validation.validate() {
-                let mut fields = HashSet::new();
-                fields.insert(field);
-                errors.push(FieldError { fields, error });
+        for validation in self.validations.into_iter() {
+            if let Err(error) = validation.validator.validate() {
+                errors.push(FieldError {
+                    fields: validation.fields,
+                    error: validation
+                        .error_message
+                        .map(|m| ValidationError::Custom(m))
+                        .unwrap_or(error),
+                });
             }
         }
 
@@ -197,5 +265,6 @@ pub mod prelude {
     pub use super::present::*;
     pub use super::{
         ErrorSet, FieldError, ModelValidator, Validatable, ValidationError, Validator,
+        ValidatorCombinators,
     };
 }

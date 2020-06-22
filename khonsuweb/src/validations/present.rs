@@ -3,6 +3,10 @@ use crate::forms::storage::FormStorage;
 
 pub trait Presentable: Default + Clone + PartialEq {
     fn present(&self) -> bool;
+
+    fn absent(&self) -> bool {
+        !self.present()
+    }
 }
 
 impl Presentable for String {
@@ -116,6 +120,27 @@ where
 }
 
 impl<T> Validator for PresentValidation<T>
+where
+    T: Presentable + std::fmt::Debug,
+{
+    fn validate(&self) -> Result<(), ValidationError> {
+        if self.value.value()?.present() {
+            Ok(())
+        } else {
+            Err(ValidationError::NotPresent)
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct AbsentValidation<T>
+where
+    T: Default + Clone + PartialEq + std::fmt::Debug,
+{
+    pub value: FormStorage<T>,
+}
+
+impl<T> Validator for AbsentValidation<T>
 where
     T: Presentable + std::fmt::Debug,
 {

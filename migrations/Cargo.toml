@@ -18,6 +18,7 @@ tokio = {version = "*", features = ["macros", "blocking"]}
 lazy_static="1"
 futures = "0.3"
 uuid={version = "*", features=["v4", "serde"]}
+dotenv="0.15"
 [dependencies.sqlx]
 version = "0.3"
 default-features = false

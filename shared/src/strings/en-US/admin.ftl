@@ -69,6 +69,7 @@ permission-statements-action = Action
 permission-statements-allow = Allow / Deny
 permission-statements-comment = Comment
 permission-statement-comment-placeholder = Describe what this permission statement is for
+permission-statements-error-resource-id-without-type = {permission-statements-resource-id} cannot be specified if a {permission-statements-resource-type} is not provided
 
 any-service = Any Service
 any-resource-type = Any Resource Type

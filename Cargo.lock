@@ -1990,6 +1990,7 @@ dependencies = [
 name = "migrations"
 version = "0.1.0"
 dependencies = [
+ "dotenv",
  "futures",
  "lazy_static",
  "sqlx",

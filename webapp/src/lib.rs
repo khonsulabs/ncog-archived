@@ -20,6 +20,17 @@ mod internal_macros {
             map
         }};
     }
+
+    #[macro_export]
+    macro_rules! hash_set {
+        ($($value:expr),+) => {{
+            let mut set = std::collections::HashSet::new();
+            $(
+                set.insert($value);
+            )+
+            set
+        }};
+    }
 }
 
 #[macro_use]

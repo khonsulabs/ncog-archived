@@ -155,6 +155,9 @@ where
                 ValidationError::InvalidValue => {
                     localize!("form-field-invalid-value", "field" => e.primary_field().localized_name())
                 }
+                ValidationError::Custom(message) => {
+                    localize!(message)
+                }
             })
         });
 

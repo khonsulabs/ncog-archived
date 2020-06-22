@@ -177,6 +177,13 @@ impl Form for PermissionStatementForm {
                 PermissionStatementFields::ResourceId,
                 self.resource_id.clone(),
             )
+            .with_custom(
+                PermissionStatementFields::ResourceId,
+                self.resource_id
+                    .is_absent()
+                    .or(self.resource_type.is_present()),
+                "permission-statements-error-resource-id-without-type",
+            )
             .validate()
     }
 
