@@ -34,18 +34,13 @@ jobs:
         with:
           submodules: true
 
-      # - name: Restore Cargo Cache
-      #   env:
-      #     AWS_ACCESS_KEY_ID: ${{ secrets.GAC_ACCESS_KEY_ID }}
-      #     AWS_SECRET_ACCESS_KEY: ${{ secrets.GAC_SECRET_KEY }}
-      #   run: |
-      #     aws s3 cp --region us-west-1 s3://khonsulabs-gac/ncog/cache-target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}.tar.bz2 . || true
-      #     tar -xjf cache-target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}.tar.bz2 || true
-
       - name: Build
         env:
           POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
           NCOG_CLIENT_ENCRYPTION_KEY: ${{ secrets.NCOG_CLIENT_ENCRYPTION_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.GAC_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.GAC_SECRET_KEY }}
+          SCCACHE_BUCKET: khonsulabs-gac
         run: |
           echo "DATABASE_URL=postgres://postgres:postgres@postgres:$POSTGRES_PORT/postgres" >> .env
 
@@ -62,6 +57,9 @@ jobs:
         run: cargo test --release --verbose
         env:
           NCOG_CLIENT_ENCRYPTION_KEY: ${{ secrets.NCOG_CLIENT_ENCRYPTION_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.GAC_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.GAC_SECRET_KEY }}
+          SCCACHE_BUCKET: khonsulabs-gac
 
       - name: Configure Production
         if: github.ref == 'refs/heads/production'
@@ -99,11 +97,3 @@ jobs:
         run: |
           aws cloudformation wait stack-update-complete --stack-name ncog
           aws cloudformation update-stack --stack-name ncog --use-previous-template --capabilities CAPABILITY_NAMED_IAM --parameters ParameterKey=VpcId,UsePreviousValue=true ParameterKey=PrivateSubnetIds,UsePreviousValue=true ParameterKey=PublicSubnetIds,UsePreviousValue=true ParameterKey=DeployedTag,ParameterValue=sha-${{ github.sha }}
-      # - name: Cache Cargo
-      #   env:
-      #     AWS_ACCESS_KEY_ID: ${{ secrets.GAC_ACCESS_KEY_ID }}
-      #     AWS_SECRET_ACCESS_KEY: ${{ secrets.GAC_SECRET_KEY }}
-      #   run: |
-      #     rm cache-*.tar.bz2 || true
-      #     tar -cjf cache-target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}.tar.bz2 target
-      #     aws s3 cp --region us-west-1 cache-target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}.tar.bz2 s3://khonsulabs-gac/ncog/
