@@ -41,7 +41,7 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.GAC_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.GAC_SECRET_KEY }}
           SCCACHE_BUCKET: khonsulabs-gac
-          RUSTC_WRAPPER: /root/.cargo/bin/sccache cargo build
+          RUSTC_WRAPPER: /root/.cargo/bin/sccache
         run: |
           echo "DATABASE_URL=postgres://postgres:postgres@postgres:$POSTGRES_PORT/postgres" >> .env
 
