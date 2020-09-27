@@ -19,7 +19,7 @@ script = ["sass sass/styles.sass static/styles.css"]
 
 [tasks.build-wasm]
 clear = true # For this project we don't want the default build command
-run_task = { name = ["wasm-pack", "rollup"] }
+run_task = { name = ["wasm-pack"] }
 
 [tasks.build]
 clear = true # For this project we don't want the default build command
