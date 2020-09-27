@@ -40,10 +40,8 @@ pub enum AgentResponse {
 
 pub struct ApiAgent {
     link: AgentLink<Self>,
-    web_socket_service: WebSocketService,
     web_socket_task: Option<WebSocketTask>,
     ws_request_id: i64,
-    timeout: TimeoutService,
     reconnect_timer: Option<TimeoutTask>,
     reconnect_sleep_ms: u32,
     callbacks: HashMap<i64, HandlerId>,
@@ -71,7 +69,7 @@ pub enum AgentMessage {
 }
 
 impl Agent for ApiAgent {
-    type Reach = Context; // Spawn only one instance on the main thread (all components can share this agent)
+    type Reach = Context<Self>; // Spawn only one instance on the main thread (all components can share this agent)
     type Message = Message;
     type Input = AgentMessage;
     type Output = AgentResponse;
@@ -85,11 +83,9 @@ impl Agent for ApiAgent {
         let storage_enabled = auth_state != AuthState::Unauthenticated;
         Self {
             link,
-            web_socket_service: WebSocketService::new(),
             web_socket_task: None,
             ws_request_id: 0,
             reconnect_sleep_ms: DEFAULT_RECONNECT_TIMEOUT,
-            timeout: TimeoutService::new(),
             reconnect_timer: None,
             callbacks: HashMap::new(),
             broadcasts: HashSet::new(),
@@ -143,7 +139,7 @@ impl Agent for ApiAgent {
                 self.web_socket_task = None;
                 self.ready_for_messages = false;
                 self.reconnect_sleep_ms = std::cmp::min(self.reconnect_sleep_ms * 2, 30_000);
-                self.reconnect_timer = Some(self.timeout.spawn(
+                self.reconnect_timer = Some(TimeoutService::spawn(
                     std::time::Duration::from_millis(self.reconnect_sleep_ms as u64),
                     self.link.callback(|_| Message::Initialize),
                 ));
@@ -259,9 +255,7 @@ impl ApiAgent {
             WebSocketStatus::Closed | WebSocketStatus::Error => Message::Reset,
         });
         self.web_socket_task = Some(
-            self.web_socket_service
-                .connect(&Self::websocket_url(), callback, notification)
-                .unwrap(),
+            WebSocketService::connect(&Self::websocket_url(), callback, notification).unwrap(),
         );
     }
 
@@ -271,7 +265,7 @@ impl ApiAgent {
     }
     #[cfg(not(debug_assertions))]
     fn websocket_url() -> &'static str {
-        "wss://api.ncog.link/v1/ws"
+        "wss://api.ncog.id/v1/ws"
     }
 
     fn ws_send(&mut self, request: ServerRequest, who: Option<HandlerId>) {

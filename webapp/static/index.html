@@ -10,7 +10,16 @@
       src="https://kit.fontawesome.com/cc8e1dce70.js"
       crossorigin="anonymous"
     ></script>
-    <script src="/pkg/bundle.js?CACHEBUSTER" defer></script>
+    <script type="module">
+      import init, { run_app } from "/pkg/webapp.js";
+
+      async function run() {
+        await init();
+        run_app();
+      }
+
+      run();
+    </script>
     <base href="/index.html" />
   </head>
 

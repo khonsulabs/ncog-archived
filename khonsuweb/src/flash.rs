@@ -72,7 +72,7 @@ impl Component for Flash {
         Self {
             link,
             props,
-            timeout: TimeoutService::new(),
+            timeout: TimeoutService::default(),
             hide_task: None,
         }
     }
@@ -86,7 +86,7 @@ impl Component for Flash {
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
         if props.message != self.props.message {
             if let Some(new_message) = &props.message {
-                self.hide_task = Some(self.timeout.spawn(
+                self.hide_task = Some(TimeoutService::spawn(
                     new_message.duration,
                     self.link.callback(|_| ComponentMessage::Hide),
                 ));

@@ -8,3 +8,6 @@ members = [
     "khonsuweb",
     "webapp"
 ]
+
+[patch.crates-io]
+# kludgine = { path = "../kludgine" }

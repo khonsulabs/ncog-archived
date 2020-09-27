@@ -69,7 +69,7 @@ where
         html! {
             <div class="field">
                 { label }
-                { self.props.children.render() }
+                { self.props.children.clone() }
                 { error_message }
                 { help }
             </div>

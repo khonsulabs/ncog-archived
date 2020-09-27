@@ -47,7 +47,7 @@ impl Component for Modal {
             <div class=self.css_class()>
                 <div class="modal-background" onclick=self.link.callback(|e: MouseEvent| {e.prevent_default(); Message::CloseRequested}) />
                 <div class="modal-content">
-                    { self.props.children.render() }
+                    { self.props.children.clone() }
                 </div>
                 { self.close_button() }
             </div>

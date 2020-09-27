@@ -1,9 +1,10 @@
+use async_handle::Handle;
 use atomicwrites::{AllowOverwrite, AtomicFile};
-use kludgine::prelude::*;
+use lazy_static::lazy_static;
 use std::{fs, io::Write, path::PathBuf};
 
 lazy_static! {
-    static ref CONFIG: KludgineHandle<UserConfig> = KludgineHandle::new(UserConfig::load());
+    static ref CONFIG: Handle<UserConfig> = Handle::new(UserConfig::load());
 }
 
 use serde_derive::{Deserialize, Serialize};

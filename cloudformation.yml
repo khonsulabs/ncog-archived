@@ -141,7 +141,7 @@ Resources:
           AcmCertificateArn: !Ref certificate
           SslSupportMethod: sni-only
         Aliases:
-          - "ncog.link"
+          - "ncog.id"
 
   assetsBucket:
     Type: AWS::S3::Bucket
@@ -375,10 +375,10 @@ Resources:
   certificate:
     Type: AWS::CertificateManager::Certificate
     Properties:
-      DomainName: "ncog.link"
+      DomainName: "ncog.id"
       ValidationMethod: DNS
       SubjectAlternativeNames:
-        - "api.ncog.link"
+        - "api.ncog.id"
 
   httpsListener:
     Type: AWS::ElasticLoadBalancingV2::Listener

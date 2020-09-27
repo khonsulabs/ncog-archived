@@ -38,7 +38,7 @@ impl Component for Title {
 
         let mut heading = VTag::new(format!("h{}", size));
         heading.add_attribute("class", &css_class);
-        heading.add_child(self.props.children.render());
+        heading.add_child(self.props.children.iter().collect::<Html>());
         heading.into()
     }
 }

@@ -13,7 +13,7 @@ extern crate slog_scope;
 #[cfg(debug_assertions)]
 const SERVER_URL: &str = "http://localhost:7879";
 #[cfg(not(debug_assertions))]
-const SERVER_URL: &str = "https://ncog.link";
+const SERVER_URL: &str = "https://ncog.id";
 
 #[cfg(debug_assertions)]
 const STATIC_FOLDER_PATH: &str = "../webapp/static";
