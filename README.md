@@ -1,12 +1,12 @@
-# What is ncog?
+# ncog
 
-ncog is the engine behind [ncog.link](https://ncog.link). It is [open source under the MIT License](/LICENSE). For more information about the service, please see the [vision page on ncog.link](https://ncog.link/about/vision).
+ncog is the engine behind [ncog.id](https://ncog.id). It is [open source under the MIT License](/LICENSE). For more information about the service, please see the [vision page on ncog.id](https://ncog.id/about/vision).
 
 ncog is written in [rust](https://rust-lang.org). The webserver is written using [warp](https://lib.rs/warp). The webapp is a [wasm](https://webassembly.org/) application built with [yew](https://yew.rs/). The game client is written built with [Kludgine](../kludgine), a custom game engine.
 
-# Running the code yourself
+## Running the code yourself
 
-## Initial Setup
+### Initial Setup
 
 - Install [wasm-pack](https://github.com/rustwasm/wasm-pack): `cargo install wasm-pack`
 - Install [rollup](https://rollupjs.org/): `npm install -g rollup`
@@ -21,29 +21,28 @@ ncog is written in [rust](https://rust-lang.org). The webserver is written using
   ```
 - Run migrations: `cargo run --bin migrator`
 
-## Building:
+### Building:
 
 - `cargo make build` (add `-p release` to make release builds)
 
-## Running
+### Running
 
-### Webapp
+#### Webapp
 
 There's no such thing as "running" this, but if you're actively developing it, you can start a watch command that the server will automatically serve (no auto-reloading):
 
 `cd webapp && cargo make watch`
 
-### Server
+#### Server
 
 - `cargo run --package server`
 
 The webserver is running at `localhost:7878`
 
-### Client
+#### Client
 
 - `cargo run --package client`
 
-# Contributing
+## Contributing
 
 This project is in its infancy. If you want to contribute, please reach out to [@ecton](https://github.com/ecton) before attempting any major pull requests or minor ones that change existing functionality (without first determining if it's a bug or by design).
-=> 

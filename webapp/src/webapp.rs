@@ -182,7 +182,7 @@ impl Component for App {
             Message::SetTitle(title) => {
                 if let Some(window) = web_sys::window() {
                     if let Some(document) = window.document() {
-                        document.set_title(&format!("{} - ncog.link", title));
+                        document.set_title(&format!("{} - ncog.id", title));
                     }
                 }
                 false
@@ -314,7 +314,7 @@ impl App {
         html! {
             <nav class="navbar is-dark" role="navigation" aria-label="main navigation">
                 <div class="navbar-brand">
-                <RouterAnchor<AppRoute> route=AppRoute::Index classes="navbar-item" ><h1 class="is-size-3 has-text-primary">{ "ncog.link" }</h1></RouterAnchor<AppRoute>>
+                <RouterAnchor<AppRoute> route=AppRoute::Index classes="navbar-item" ><h1 class="is-size-3 has-text-primary">{ "ncog.id" }</h1></RouterAnchor<AppRoute>>
                 <a role="button" class="navbar-burger burger" aria-label="menu" aria-expanded="false" data-target="navbarMenu" onclick=toggle_navbar.clone()>
                     <span aria-hidden="true"></span>
                     <span aria-hidden="true"></span>

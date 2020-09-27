@@ -1,4 +1,4 @@
-early-warning = ncog.link is extremely early in development. Nothing is set in stone. To join in on the discussion, head over to [the forums](https://community.khonsulabs.com/).
+early-warning = ncog.id is extremely early in development. Nothing is set in stone. To join in on the discussion, head over to [the forums](https://community.khonsulabs.com/).
 
 home = Home
 backoffice = Backoffice
