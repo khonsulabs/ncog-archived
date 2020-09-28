@@ -349,8 +349,7 @@ impl ApiAgent {
 
                 let window = web_sys::window().expect("Need a window");
                 if let Ok(path) = window.location().pathname() {
-                    info!("{}", path);
-                    if path.contains("/auth/callback/") || path.contains("/login") {
+                    if path.contains("/login") {
                         let mut agent = RouteAgentBridge::new(Callback::noop());
                         agent.send(RouteRequest::ReplaceRoute(Route::new_no_state("/")));
                     }

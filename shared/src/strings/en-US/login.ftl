@@ -6,6 +6,6 @@ storage-agreement = Signing in requires that ncog.id utilize Local Storage which
 
 i-agree = I Agree
 
-log-in-with-itchio = Log in with ![itch.io](/providers/itchio.svg)
+log-in-with-twitch = Log in with ![Twitch](/providers/twitch.svg)
 
 logging-in = Logging in...

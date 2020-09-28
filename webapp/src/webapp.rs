@@ -2,7 +2,6 @@
 mod strings;
 
 use khonsuweb::static_page::StaticPage;
-use loggedin::LoggedIn;
 use login::Login;
 use shared::{
     permissions::{Claim, PermissionSet},
@@ -24,7 +23,6 @@ macro_rules! require_permission {
 
 mod api;
 mod backoffice;
-mod loggedin;
 mod login;
 use api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge};
 
@@ -96,8 +94,6 @@ pub enum AppRoute {
     StylesTest,
     #[to = "/login!"]
     LogIn,
-    #[to = "/auth/callback/{service}"]
-    LoggedIn(String),
     #[to = "/backoffice/users"]
     #[rest]
     BackOfficeUserEdit(EditingId),
@@ -130,7 +126,6 @@ impl AppRoute {
             }
             AppRoute::StylesTest => style_test(),
             AppRoute::LogIn => html! {<Login />},
-            AppRoute::LoggedIn(service) => html! {<LoggedIn service=service.clone() />},
             AppRoute::BackOfficeDashboard => {
                 html! { <backoffice::Dashboard set_title=set_title.clone() user=user.clone() />}
             }

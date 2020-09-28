@@ -52,11 +52,29 @@ where
 {
     sqlx::query_as!(
         Installation,
-        "INSERT INTO installations (id) VALUES ($1) ON CONFLICT (id) DO UPDATE SET id=$1 RETURNING id, account_id",
+        "INSERT INTO installations (id) VALUES ($1) ON CONFLICT (id) DO UPDATE SET id=$1 RETURNING id, account_id, nonce",
         installation_id
     )
     .fetch_one(executor)
     .await
+}
+
+pub async fn set_installation_nonce<'e, E>(
+    executor: E,
+    installation_id: Uuid,
+    nonce: Option<Vec<u8>>,
+) -> Result<(), sqlx::Error>
+where
+    E: Send + Executor<Database = Postgres>,
+{
+    sqlx::query!(
+        "UPDATE installations SET nonce=$2 WHERE id = $1",
+        installation_id,
+        nonce
+    )
+    .execute(executor)
+    .await?;
+    Ok(())
 }
 
 pub async fn load_permissions_for<'e, E>(
