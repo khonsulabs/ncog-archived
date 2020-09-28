@@ -18,10 +18,6 @@ pub enum ServerRequest {
         version: String,
         installation_id: Option<Uuid>,
     },
-    ReceiveItchIOAuth {
-        access_token: String,
-        state: String,
-    },
     AuthenticationUrl(OAuthProvider),
     // Update {
     //     new_inputs: Option<Inputs>,
@@ -36,7 +32,7 @@ pub enum ServerRequest {
 }
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum OAuthProvider {
-    ItchIO,
+    Twitch,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

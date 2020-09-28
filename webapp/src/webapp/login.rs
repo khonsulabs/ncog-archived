@@ -75,8 +75,8 @@ impl Component for Login {
                             {localize_raw("i-agree")}
                         </label>
                     </div>
-                    <button class="button is-primary itchio-button" disabled=!self.current_storage_status onclick=self.link.callback(|_| Message::LogInWith(OAuthProvider::ItchIO))>
-                        {localize("log-in-with-itchio")}
+                    <button class="button twitch-button" disabled=!self.current_storage_status onclick=self.link.callback(|_| Message::LogInWith(OAuthProvider::Twitch))>
+                        {localize("log-in-with-twitch")}
                     </button>
                 </div>
             </div>

@@ -4,6 +4,7 @@ use warp::{Filter, Reply};
 
 mod database;
 mod pubsub;
+mod twitch;
 // mod randomnames;
 mod websockets;
 
@@ -11,7 +12,7 @@ mod websockets;
 extern crate slog_scope;
 
 #[cfg(debug_assertions)]
-const SERVER_URL: &str = "http://localhost:7879";
+const SERVER_URL: &str = "http://localhost:7878";
 #[cfg(not(debug_assertions))]
 const SERVER_URL: &str = "https://ncog.id";
 
@@ -62,7 +63,9 @@ async fn main() {
         }
     });
 
-    let api = warp::path("v1").and(websockets);
+    let auth = twitch::callback();
+
+    let api = warp::path("v1").and(websockets.or(auth));
     let routes = healthcheck
         .or(api)
         .with(custom_logger)

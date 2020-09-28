@@ -52,7 +52,7 @@ async fn authenticate() -> Result<(), anyhow::Error> {
                 }
                 LoginState::Connected => {
                     println!("Connection established.");
-                    Network::request(ServerRequest::AuthenticationUrl(OAuthProvider::ItchIO)).await;
+                    Network::request(ServerRequest::AuthenticationUrl(OAuthProvider::Twitch)).await;
                 }
                 LoginState::Authenticated { profile } => {
                     println!("Sucessfully logged in: {:?}", profile);

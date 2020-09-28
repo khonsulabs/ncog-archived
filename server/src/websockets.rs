@@ -1,4 +1,4 @@
-use super::{database, env, SERVER_URL};
+use super::{database, env, twitch, SERVER_URL};
 use async_std::sync::RwLock;
 use async_trait::async_trait;
 use futures::{SinkExt, StreamExt};
@@ -477,32 +477,6 @@ async fn handle_websocket_request(
         //             .await?;
         //     }
         // }
-        ServerRequest::ReceiveItchIOAuth {
-            access_token,
-            state,
-        } => {
-            let installation_id = match Uuid::parse_str(&state) {
-                Ok(uuid) => uuid,
-                Err(_) => {
-                    error!("Invalid UUID in state");
-                    todo!("Report error back to client");
-                }
-            };
-            if let Err(err) = login_itchio(installation_id, &access_token).await {
-                error!(
-                    "Error logging into itch.io; {}, {}: {}",
-                    installation_id, access_token, err
-                );
-                responder
-                    .send(ServerResponse::Error {
-                        message: Some(
-                            "An error occurred while talking to itch.io. Please try again later."
-                                .to_owned(),
-                        ),
-                    }.into_ws_response(request.id))
-                    .unwrap_or_default();
-            }
-        }
         ServerRequest::Authenticate {
             installation_id,
             version,
@@ -588,13 +562,13 @@ async fn handle_websocket_request(
             }
         }
         ServerRequest::AuthenticationUrl(provider) => match provider {
-            OAuthProvider::ItchIO => {
+            OAuthProvider::Twitch => {
                 let client = client_handle.read().await;
                 if let Some(installation_id) = client.installation_id {
                     responder
                         .send(
                             ServerResponse::AuthenticateAtUrl {
-                                url: itchio_authorization_url(installation_id),
+                                url: twitch::authorization_url(installation_id),
                             }
                             .into_ws_response(request.id),
                         )
@@ -617,24 +591,6 @@ async fn handle_websocket_request(
     Ok(())
 }
 
-fn itchio_authorization_url(installation_id: Uuid) -> String {
-    Url::parse_with_params(
-        "https://itch.io/user/oauth",
-        &[
-            ("client_id", env("ITCHIO_CLIENT_ID")),
-            ("scope", "profile:me".to_owned()),
-            ("response_type", "token".to_owned()),
-            (
-                "redirect_uri",
-                format!("{}/auth/callback/itchio", SERVER_URL),
-            ),
-            ("state", installation_id.to_string()),
-        ],
-    )
-    .unwrap()
-    .to_string()
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 struct ItchioProfile {
     pub cover_url: Option<String>,
@@ -648,80 +604,123 @@ struct ItchioProfile {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct ItchioProfileResponse {
-    pub user: ItchioProfile,
+struct TwitchTokenResponse {
+    pub access_token: String,
+    pub refresh_token: Option<String>,
+    pub expires_in: Option<usize>,
+    pub scope: Vec<String>,
+    pub id_token: String,
+    pub token_type: String,
 }
 
-async fn login_itchio(installation_id: Uuid, access_token: &str) -> Result<(), anyhow::Error> {
+#[derive(Debug, Serialize, Deserialize)]
+struct TwitchUserInfo {
+    pub id: String,
+    pub login: String,
+    // pub display_name: Option<String>,
+    // pub type: Option<String>,
+    // pub broadcaster_type: String,
+    // pub description: Option<String>,
+    // pub profile_image_url: Option<String>,
+    // pub offline_image_url: Option<String>,
+}
+#[derive(Debug, Serialize, Deserialize)]
+struct TwitchUsersResponse {
+    pub data: Vec<TwitchUserInfo>,
+}
+
+pub async fn login_twitch(installation_id: Uuid, code: String) -> Result<(), anyhow::Error> {
     // Call itch.io API to get the user information
     let client = reqwest::Client::new();
-    let response: ItchioProfileResponse = client
-        .get("https://itch.io/api/1/key/me")
-        .header(
-            reqwest::header::AUTHORIZATION,
-            format!("Bearer {}", access_token),
-        )
+    let tokens: TwitchTokenResponse = client
+        .post("https://id.twitch.tv/oauth2/token")
+        .query(&[
+            ("code", code),
+            ("client_id", env("TWITCH_CLIENT_ID")),
+            ("client_secret", env("TWITCH_CLIENT_SECRET")),
+            ("grant_type", "authorization_code".to_owned()),
+            (
+                "redirect_uri",
+                format!("{}/v1/auth/callback/twitch", SERVER_URL),
+            ),
+        ])
         .send()
         .await?
         .json()
         .await?;
 
-    let pg = pg();
-    {
-        let mut tx = pg.begin().await?;
-
-        // Create an account if it doesn't exist yet for this installation
-        let account_id = if let Some(account_id) = sqlx::query!(
-            "SELECT account_id FROM installations WHERE id = $1",
-            installation_id
+    let response: TwitchUsersResponse = client
+        .get("https://api.twitch.tv/helix/users")
+        .header(
+            reqwest::header::AUTHORIZATION,
+            format!("Bearer {}", tokens.access_token),
         )
-        .fetch_one(&mut tx)
+        .header("client-id", env("TWITCH_CLIENT_ID"))
+        .send()
         .await?
-        .account_id
-        {
-            account_id
-        } else {
-            let account_id = if let Ok(row) = sqlx::query!(
-                "SELECT account_id FROM itchio_profiles WHERE id = $1",
-                response.user.id
-            )
-            .fetch_one(&mut tx)
-            .await
-            {
-                row.account_id
-            } else {
-                sqlx::query!("INSERT INTO accounts DEFAULT VALUES RETURNING id")
-                    .fetch_one(&mut tx)
-                    .await?
-                    .id
-            };
-            sqlx::query!(
-                "UPDATE installations SET account_id = $1 WHERE id = $2",
-                account_id,
-                installation_id
-            )
-            .execute(&mut tx)
-            .await?;
-            account_id
-        };
+        .json()
+        .await?;
 
-        // Create an itchio profile
-        sqlx::query!("INSERT INTO itchio_profiles (id, account_id, username, url) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO UPDATE SET account_id = $2, username = $3, url = $4 ",
-            response.user.id,
-            account_id,
-            response.user.username,
-            response.user.url
-        ).execute(&mut tx).await?;
+    info!("Response: {:#?}", response);
 
-        // Create an oauth_token
-        sqlx::query!("INSERT INTO oauth_tokens (account_id, service, access_token) VALUES ($1, $2, $3) ON CONFLICT (account_id, service) DO UPDATE SET access_token = $3",
-            account_id,
-            "itchio",
-            access_token
-        ).execute(&mut tx).await?;
+    // TODO validate the id_token https://dev.twitch.tv/docs/authentication/getting-tokens-oidc
 
-        tx.commit().await?;
-    }
+    // let pg = pg();
+    // {
+    //     let mut tx = pg.begin().await?;
+
+    //     // Create an account if it doesn't exist yet for this installation
+    //     let account_id = if let Some(account_id) = sqlx::query!(
+    //         "SELECT account_id FROM installations WHERE id = $1",
+    //         installation_id
+    //     )
+    //     .fetch_one(&mut tx)
+    //     .await?
+    //     .account_id
+    //     {
+    //         account_id
+    //     } else {
+    //         let account_id = if let Ok(row) = sqlx::query!(
+    //             "SELECT account_id FROM itchio_profiles WHERE id = $1",
+    //             response.user.id
+    //         )
+    //         .fetch_one(&mut tx)
+    //         .await
+    //         {
+    //             row.account_id
+    //         } else {
+    //             sqlx::query!("INSERT INTO accounts DEFAULT VALUES RETURNING id")
+    //                 .fetch_one(&mut tx)
+    //                 .await?
+    //                 .id
+    //         };
+    //         sqlx::query!(
+    //             "UPDATE installations SET account_id = $1 WHERE id = $2",
+    //             account_id,
+    //             installation_id
+    //         )
+    //         .execute(&mut tx)
+    //         .await?;
+    //         account_id
+    //     };
+
+    //     // Create an itchio profile
+    //     sqlx::query!("INSERT INTO itchio_profiles (id, account_id, username, url) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO UPDATE SET account_id = $2, username = $3, url = $4 ",
+    //         response.user.id,
+    //         account_id,
+    //         response.user.username,
+    //         response.user.url
+    //     ).execute(&mut tx).await?;
+
+    //     // Create an oauth_token
+    //     sqlx::query!("INSERT INTO oauth_tokens (account_id, service, access_token) VALUES ($1, $2, $3) ON CONFLICT (account_id, service) DO UPDATE SET access_token = $3",
+    //         account_id,
+    //         "itchio",
+    //         access_token
+    //     ).execute(&mut tx).await?;
+
+    //     tx.commit().await?;
+    // }
 
     crate::pubsub::notify("installation_login", installation_id.to_string()).await?;
 
