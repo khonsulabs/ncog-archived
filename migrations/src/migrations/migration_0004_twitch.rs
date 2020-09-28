@@ -25,5 +25,4 @@ pub fn migration() -> Migration {
         .with_down("DROP TABLE IF EXISTS twitch_profiles")
         .with_up("ALTER TABLE installations ADD COLUMN nonce BYTEA")
         .with_down("ALTER TABLE installations DROP COLUMN IF EXISTS nonce")
-        .debug()
 }
