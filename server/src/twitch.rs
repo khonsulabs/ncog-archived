@@ -1,4 +1,4 @@
-use crate::{env, SERVER_URL};
+use crate::{api_server_base_url, env, webserver_base_url};
 use serde::Deserialize;
 use std::convert::Infallible;
 use url::Url;
@@ -9,7 +9,15 @@ use warp::{Filter, Rejection};
 struct TwitchCallback {
     code: String,
     state: String,
-    scope: String,
+    // scope: String,
+}
+
+pub fn callback_uri() -> String {
+    api_server_base_url()
+        .path_and_query("/v1/auth/callback/twitch")
+        .build()
+        .unwrap()
+        .to_string()
 }
 
 pub fn callback() -> impl warp::Filter<Extract = (impl warp::Reply,), Error = Rejection> + Copy {
@@ -25,7 +33,9 @@ impl TwitchCallback {
             .await
             .unwrap();
 
-        Ok("Yay")
+        Ok(warp::redirect::redirect(
+            webserver_base_url().path_and_query("/").build().unwrap(),
+        ))
     }
 }
 
@@ -36,10 +46,7 @@ pub fn authorization_url(installation_id: Uuid) -> String {
             ("client_id", env("TWITCH_CLIENT_ID")),
             ("scope", "openid".to_owned()),
             ("response_type", "code".to_owned()),
-            (
-                "redirect_uri",
-                format!("{}/v1/auth/callback/twitch", SERVER_URL),
-            ),
+            ("redirect_uri", callback_uri()),
             ("state", installation_id.to_string()),
             // TODO add NONCE
         ],

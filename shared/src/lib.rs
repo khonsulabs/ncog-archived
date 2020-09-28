@@ -88,6 +88,7 @@ pub struct UserProfile {
 pub struct Installation {
     pub id: Uuid,
     pub account_id: Option<i64>,
+    pub nonce: Option<Vec<u8>>,
 }
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash)]

@@ -1,4 +1,4 @@
-use super::{database, env, twitch, SERVER_URL};
+use super::{database, env, twitch};
 use async_std::sync::RwLock;
 use async_trait::async_trait;
 use futures::{SinkExt, StreamExt};
@@ -17,7 +17,6 @@ use std::{
     time::Duration,
 };
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
-use url::Url;
 use uuid::Uuid;
 use warp::filters::ws::{Message, WebSocket};
 mod iam;
@@ -639,15 +638,14 @@ pub async fn login_twitch(installation_id: Uuid, code: String) -> Result<(), any
             ("client_id", env("TWITCH_CLIENT_ID")),
             ("client_secret", env("TWITCH_CLIENT_SECRET")),
             ("grant_type", "authorization_code".to_owned()),
-            (
-                "redirect_uri",
-                format!("{}/v1/auth/callback/twitch", SERVER_URL),
-            ),
+            ("redirect_uri", twitch::callback_uri()),
         ])
         .send()
         .await?
         .json()
         .await?;
+
+    // TODO validate the id_token https://dev.twitch.tv/docs/authentication/getting-tokens-oidc
 
     let response: TwitchUsersResponse = client
         .get("https://api.twitch.tv/helix/users")
@@ -661,66 +659,68 @@ pub async fn login_twitch(installation_id: Uuid, code: String) -> Result<(), any
         .json()
         .await?;
 
-    info!("Response: {:#?}", response);
+    let user = response
+        .data
+        .first()
+        .ok_or_else(|| anyhow::anyhow!("Expected a user response, but got no users"))?;
 
-    // TODO validate the id_token https://dev.twitch.tv/docs/authentication/getting-tokens-oidc
+    let pg = pg();
+    {
+        let mut tx = pg.begin().await?;
 
-    // let pg = pg();
-    // {
-    //     let mut tx = pg.begin().await?;
+        // Create an account if it doesn't exist yet for this installation
+        let account_id = if let Some(account_id) = sqlx::query!(
+            "SELECT account_id FROM installations WHERE id = $1",
+            installation_id
+        )
+        .fetch_one(&mut tx)
+        .await?
+        .account_id
+        {
+            account_id
+        } else {
+            let account_id = if let Ok(row) = sqlx::query!(
+                "SELECT account_id FROM twitch_profiles WHERE id = $1",
+                user.id
+            )
+            .fetch_one(&mut tx)
+            .await
+            {
+                row.account_id
+            } else {
+                sqlx::query!("INSERT INTO accounts DEFAULT VALUES RETURNING id")
+                    .fetch_one(&mut tx)
+                    .await?
+                    .id
+            };
+            sqlx::query!(
+                "UPDATE installations SET account_id = $1, nonce = NULL WHERE id = $2",
+                account_id,
+                installation_id
+            )
+            .execute(&mut tx)
+            .await?;
+            account_id
+        };
 
-    //     // Create an account if it doesn't exist yet for this installation
-    //     let account_id = if let Some(account_id) = sqlx::query!(
-    //         "SELECT account_id FROM installations WHERE id = $1",
-    //         installation_id
-    //     )
-    //     .fetch_one(&mut tx)
-    //     .await?
-    //     .account_id
-    //     {
-    //         account_id
-    //     } else {
-    //         let account_id = if let Ok(row) = sqlx::query!(
-    //             "SELECT account_id FROM itchio_profiles WHERE id = $1",
-    //             response.user.id
-    //         )
-    //         .fetch_one(&mut tx)
-    //         .await
-    //         {
-    //             row.account_id
-    //         } else {
-    //             sqlx::query!("INSERT INTO accounts DEFAULT VALUES RETURNING id")
-    //                 .fetch_one(&mut tx)
-    //                 .await?
-    //                 .id
-    //         };
-    //         sqlx::query!(
-    //             "UPDATE installations SET account_id = $1 WHERE id = $2",
-    //             account_id,
-    //             installation_id
-    //         )
-    //         .execute(&mut tx)
-    //         .await?;
-    //         account_id
-    //     };
+        // Create an twitch profile
+        sqlx::query!("INSERT INTO twitch_profiles (id, account_id, username) VALUES ($1, $2, $3) ON CONFLICT (id) DO UPDATE SET account_id = $2, username = $3 ",
+            user.id,
+            account_id,
+            user.login,
+        ).execute(&mut tx).await?;
 
-    //     // Create an itchio profile
-    //     sqlx::query!("INSERT INTO itchio_profiles (id, account_id, username, url) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO UPDATE SET account_id = $2, username = $3, url = $4 ",
-    //         response.user.id,
-    //         account_id,
-    //         response.user.username,
-    //         response.user.url
-    //     ).execute(&mut tx).await?;
+        // Create an oauth_token
+        sqlx::query!("INSERT INTO oauth_tokens (account_id, service, access_token, refresh_token) VALUES ($1, $2, $3, $4) ON CONFLICT (account_id, service) DO UPDATE SET access_token = $3, refresh_token = $4",
+            account_id,
+            "twitch",
+            tokens.access_token,
+            tokens.refresh_token,
 
-    //     // Create an oauth_token
-    //     sqlx::query!("INSERT INTO oauth_tokens (account_id, service, access_token) VALUES ($1, $2, $3) ON CONFLICT (account_id, service) DO UPDATE SET access_token = $3",
-    //         account_id,
-    //         "itchio",
-    //         access_token
-    //     ).execute(&mut tx).await?;
+        ).execute(&mut tx).await?;
 
-    //     tx.commit().await?;
-    // }
+        tx.commit().await?;
+    }
 
     crate::pubsub::notify("installation_login", installation_id.to_string()).await?;
 

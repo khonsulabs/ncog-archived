@@ -12,9 +12,30 @@ mod websockets;
 extern crate slog_scope;
 
 #[cfg(debug_assertions)]
-const SERVER_URL: &str = "http://localhost:7878";
+fn webserver_base_url() -> warp::http::uri::Builder {
+    warp::http::uri::Uri::builder()
+        .scheme("http")
+        .authority("localhost:7879")
+}
 #[cfg(not(debug_assertions))]
-const SERVER_URL: &str = "https://ncog.id";
+fn webserver_base_url() -> warp::http::uri::Builder {
+    warp::http::uri::Uri::builder()
+        .scheme("https")
+        .authority("ncog.id")
+}
+
+#[cfg(debug_assertions)]
+fn api_server_base_url() -> warp::http::uri::Builder {
+    warp::http::uri::Uri::builder()
+        .scheme("http")
+        .authority("localhost:7878")
+}
+#[cfg(not(debug_assertions))]
+fn api_server_base_url() -> warp::http::uri::Builder {
+    warp::http::uri::Uri::builder()
+        .scheme("https")
+        .authority("api.ncog.id")
+}
 
 #[cfg(debug_assertions)]
 const STATIC_FOLDER_PATH: &str = "../webapp/static";
