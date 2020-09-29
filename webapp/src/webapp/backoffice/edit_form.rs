@@ -107,7 +107,7 @@ where
                 true
             }
             Message::WsMessage(agent_response) => match agent_response {
-                AgentResponse::Response(ws_response) => match ws_response.result {
+                AgentResponse::Response(ws_response) => match ws_response {
                     ServerResponse::Error { message } => {
                         if let Some(message) = message {
                             self.flash_message = Some(flash::Message::new(

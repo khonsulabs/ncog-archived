@@ -1,3 +1,4 @@
+use basws_shared::{Version, VersionReq};
 use chrono::Utc;
 use serde_derive::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -5,29 +6,20 @@ use uuid::Uuid;
 pub mod iam;
 pub mod localization;
 pub mod permissions;
-pub mod websockets;
 pub use fluent_templates;
 use permissions::PermissionSet;
-use websockets::WsBatchResponse;
 
-pub const PROTOCOL_VERSION: &str = "0.0.1";
+pub fn ncog_protocol_version() -> Version {
+    Version::parse("0.0.1").unwrap()
+}
+
+pub fn ncog_protocol_version_requirements() -> VersionReq {
+    VersionReq::parse("=0.0.1").unwrap()
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum ServerRequest {
-    Authenticate {
-        version: String,
-        installation_id: Option<Uuid>,
-    },
     AuthenticationUrl(OAuthProvider),
-    // Update {
-    //     new_inputs: Option<Inputs>,
-    //     x_offset: f32,
-    //     timestamp: f64,
-    // },
-    Pong {
-        original_timestamp: f64,
-        timestamp: f64,
-    },
     IAM(iam::IAMRequest),
 }
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -44,9 +36,6 @@ pub struct Inputs {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum ServerResponse {
-    AdoptInstallationId {
-        installation_id: Uuid,
-    },
     AuthenticateAtUrl {
         url: String,
     },
@@ -54,28 +43,11 @@ pub enum ServerResponse {
         profile: UserProfile,
         permissions: PermissionSet,
     },
+    Unauthenticated,
     Error {
         message: Option<String>,
     },
-    WorldUpdate {
-        timestamp: f64,
-        profiles: Vec<UserProfile>,
-    },
-    Ping {
-        timestamp: f64,
-        average_roundtrip: f64,
-        average_server_timestamp_delta: f64,
-    },
     IAM(iam::IAMResponse),
-}
-
-impl ServerResponse {
-    pub fn into_ws_response(self, request_id: i64) -> WsBatchResponse {
-        WsBatchResponse {
-            request_id,
-            results: vec![self],
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
@@ -89,6 +61,7 @@ pub struct Installation {
     pub id: Uuid,
     pub account_id: Option<i64>,
     pub nonce: Option<Vec<u8>>,
+    pub private_key: Option<Vec<u8>>,
 }
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash)]

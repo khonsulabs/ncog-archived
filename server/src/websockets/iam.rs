@@ -2,25 +2,20 @@ use crate::{
     database,
     websockets::{ConnectedAccountHandle, ConnectedClient},
 };
-use async_std::sync::RwLock;
+use basws_server::RequestHandling;
 use migrations::pg;
 use shared::{
     iam::{
         roles_delete_claim, roles_list_claim, roles_read_claim, roles_update_claim,
         users_list_claim, users_read_claim, IAMRequest, IAMResponse,
     },
-    websockets::WsBatchResponse,
     ServerResponse,
 };
-use std::sync::Arc;
-use tokio::sync::mpsc::UnboundedSender;
 
 pub async fn handle_request(
-    client_handle: &Arc<RwLock<ConnectedClient>>,
+    client_handle: &ConnectedClient<super::NcogServer>,
     request: IAMRequest,
-    responder: UnboundedSender<WsBatchResponse>,
-    request_id: i64,
-) -> Result<(), anyhow::Error> {
+) -> anyhow::Result<RequestHandling<ServerResponse>> {
     match request {
         IAMRequest::UsersList => {
             client_handle
@@ -39,9 +34,9 @@ pub async fn handle_request(
                 }
             }
 
-            responder.send(
-                ServerResponse::IAM(IAMResponse::UsersList(users)).into_ws_response(request_id),
-            )?;
+            Ok(RequestHandling::Respond(ServerResponse::IAM(
+                IAMResponse::UsersList(users),
+            )))
         }
         IAMRequest::UsersGetProfile(account_id) => {
             client_handle
@@ -51,12 +46,9 @@ pub async fn handle_request(
             let user = database::iam_get_user(&pg(), account_id).await?;
 
             match user {
-                Some(user) => {
-                    responder.send(
-                        ServerResponse::IAM(IAMResponse::UserProfile(user))
-                            .into_ws_response(request_id),
-                    )?;
-                }
+                Some(user) => Ok(RequestHandling::Respond(ServerResponse::IAM(
+                    IAMResponse::UserProfile(user),
+                ))),
                 None => anyhow::bail!("Unknown user id {}", account_id),
             }
         }
@@ -77,9 +69,9 @@ pub async fn handle_request(
                 }
             }
 
-            responder.send(
-                ServerResponse::IAM(IAMResponse::RolesList(roles)).into_ws_response(request_id),
-            )?;
+            Ok(RequestHandling::Respond(ServerResponse::IAM(
+                IAMResponse::RolesList(roles),
+            )))
         }
         IAMRequest::RoleGet(role_id) => {
             client_handle
@@ -89,11 +81,9 @@ pub async fn handle_request(
             let role = database::iam_get_role(&pg(), role_id).await?;
 
             match role {
-                Some(role) => {
-                    responder.send(
-                        ServerResponse::IAM(IAMResponse::Role(role)).into_ws_response(request_id),
-                    )?;
-                }
+                Some(role) => Ok(RequestHandling::Respond(ServerResponse::IAM(
+                    IAMResponse::Role(role),
+                ))),
                 None => anyhow::bail!("Unknown role id {}", role_id),
             }
         }
@@ -104,9 +94,9 @@ pub async fn handle_request(
 
             let role_id = database::iam_update_role(&pg(), &role).await?;
 
-            responder.send(
-                ServerResponse::IAM(IAMResponse::RoleSaved(role_id)).into_ws_response(request_id),
-            )?;
+            Ok(RequestHandling::Respond(ServerResponse::IAM(
+                IAMResponse::RoleSaved(role_id),
+            )))
         }
         IAMRequest::RoleDelete(role_id) => {
             client_handle
@@ -116,19 +106,19 @@ pub async fn handle_request(
             let mut tx = pg().begin().await?;
             database::iam_delete_role(&mut tx, role_id).await?;
 
-            responder.send(
-                ServerResponse::IAM(IAMResponse::RoleDeleted(role_id)).into_ws_response(request_id),
-            )?;
+            Ok(RequestHandling::Respond(ServerResponse::IAM(
+                IAMResponse::RoleDeleted(role_id),
+            )))
         }
         IAMRequest::PermissionStatementGet(id) => {
             let statement = database::iam_get_permission_statement(&pg(), id).await?;
             client_handle
                 .permission_allowed(&roles_read_claim(statement.role_id))
                 .await?;
-            responder.send(
-                ServerResponse::IAM(IAMResponse::PermissionStatement(statement))
-                    .into_ws_response(request_id),
-            )?;
+
+            Ok(RequestHandling::Respond(ServerResponse::IAM(
+                IAMResponse::PermissionStatement(statement),
+            )))
         }
         IAMRequest::PermissionStatementSave(statement) => {
             // TODO Validate that the user can edit the currently assigned role
@@ -139,12 +129,11 @@ pub async fn handle_request(
 
             let statement_id = database::iam_update_permission_statement(&pg(), &statement).await?;
 
-            responder.send(
-                ServerResponse::IAM(IAMResponse::PermissionStatementSaved(statement_id))
-                    .into_ws_response(request_id),
-            )?;
-
             broadcast_role_changed(statement.role_id).await?;
+
+            Ok(RequestHandling::Respond(ServerResponse::IAM(
+                IAMResponse::PermissionStatementSaved(statement_id),
+            )))
         }
         IAMRequest::PermissionStatemenetDelete(id) => {
             let statement = database::iam_get_permission_statement(&pg(), id).await?;
@@ -155,16 +144,13 @@ pub async fn handle_request(
 
             database::iam_delete_permission_statement(&pg(), id).await?;
 
-            responder.send(
-                ServerResponse::IAM(IAMResponse::PermissionStatementDeleted(id))
-                    .into_ws_response(request_id),
-            )?;
-
             broadcast_role_changed(statement.role_id).await?;
+
+            Ok(RequestHandling::Respond(ServerResponse::IAM(
+                IAMResponse::PermissionStatementDeleted(id),
+            )))
         }
     }
-
-    Ok(())
 }
 
 async fn broadcast_role_changed(role_id: Option<i64>) -> Result<(), anyhow::Error> {

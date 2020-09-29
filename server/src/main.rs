@@ -1,3 +1,4 @@
+#![type_length_limit = "8273194"]
 use std::convert::Infallible;
 use std::path::Path;
 use warp::{Filter, Reply};
@@ -56,10 +57,11 @@ async fn main() {
         .expect("Error running migrations");
 
     info!("Done running migrations");
-    websockets::initialize().await;
+    let websocket_server = websockets::initialize();
+    let notify_server = websocket_server.clone();
 
     tokio::spawn(async {
-        pubsub::pg_notify_loop()
+        pubsub::pg_notify_loop(notify_server)
             .await
             .expect("Error on pubsub thread")
     });
@@ -71,10 +73,13 @@ async fn main() {
     let static_path = base_dir.join(STATIC_FOLDER_PATH);
     let index_path = static_path.join("index.html");
 
-    let websockets = warp::path!("ws")
+    let websocket_route = warp::path!("ws")
         .and(warp::path::end())
         .and(warp::ws())
-        .map(|ws: warp::ws::Ws| ws.on_upgrade(websockets::main));
+        .map(move |ws: warp::ws::Ws| {
+            let websocket_server = websocket_server.clone();
+            ws.on_upgrade(|ws| async move { websocket_server.incoming_connection(ws).await })
+        });
 
     let custom_logger = warp::log::custom(|info| {
         if info.status().is_server_error() {
@@ -86,7 +91,7 @@ async fn main() {
 
     let auth = twitch::callback();
 
-    let api = warp::path("v1").and(websockets.or(auth));
+    let api = warp::path("v1").and(websocket_route.or(auth));
     let routes = healthcheck
         .or(api)
         .with(custom_logger)

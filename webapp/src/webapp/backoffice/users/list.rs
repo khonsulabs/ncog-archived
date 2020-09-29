@@ -51,7 +51,7 @@ impl Component for UsersList {
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Message::WsMessage(agent_response) => match agent_response {
-                AgentResponse::Response(ws_response) => match ws_response.result {
+                AgentResponse::Response(ws_response) => match ws_response {
                     ServerResponse::IAM(iam_response) => match iam_response {
                         IAMResponse::UsersList(users) => {
                             self.users = Some(Rc::new(RwLock::new(users)));

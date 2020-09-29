@@ -57,7 +57,7 @@ impl Component for RolesList {
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             RolesListMessage::WsMessage(agent_response) => match agent_response {
-                AgentResponse::Response(ws_response) => match ws_response.result {
+                AgentResponse::Response(ws_response) => match ws_response {
                     ServerResponse::IAM(iam_response) => match iam_response {
                         IAMResponse::RolesList(users) => {
                             self.roles = Some(Rc::new(RwLock::new(users)));

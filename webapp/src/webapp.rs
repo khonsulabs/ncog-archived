@@ -197,7 +197,7 @@ impl Component for App {
                     self.connected = Some(true);
                     true
                 }
-                AgentResponse::Response(response) => match response.result {
+                AgentResponse::Response(response) => match response {
                     ServerResponse::Authenticated {
                         profile,
                         permissions,
