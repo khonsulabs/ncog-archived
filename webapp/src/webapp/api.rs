@@ -1,10 +1,8 @@
+use basws_shared::{challenge, prelude::InstallationConfig, protocol};
 use khonsuweb::wasm_utc_now;
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
-use shared::{
-    websockets::{WsBatchResponse, WsRequest, WsResponse},
-    ServerRequest, ServerResponse, UserProfile,
-};
+use shared::{ncog_protocol_version, ServerRequest, ServerResponse, UserProfile};
 use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 use uuid::Uuid;
@@ -26,7 +24,7 @@ use yew_router::{
 pub enum Message {
     Initialize,
     Reset,
-    Message(WsBatchResponse),
+    Message(protocol::WsBatchResponse<ServerResponse>),
     Connected,
 }
 
@@ -34,17 +32,17 @@ pub enum Message {
 pub enum AgentResponse {
     Connected,
     Disconnected,
-    Response(WsResponse),
+    Response(ServerResponse),
     StorageStatus(bool),
 }
 
 pub struct ApiAgent {
     link: AgentLink<Self>,
     web_socket_task: Option<WebSocketTask>,
-    ws_request_id: i64,
+    ws_request_id: u64,
     reconnect_timer: Option<TimeoutTask>,
     reconnect_sleep_ms: u32,
-    callbacks: HashMap<i64, HandlerId>,
+    callbacks: HashMap<u64, HandlerId>,
     broadcasts: HashSet<HandlerId>,
     ready_for_messages: bool,
     storage: StorageService,
@@ -107,28 +105,59 @@ impl Agent for ApiAgent {
                 self.reconnect_sleep_ms = DEFAULT_RECONNECT_TIMEOUT;
                 self.ready_for_messages = true;
                 self.ws_send(
-                    ServerRequest::Authenticate {
-                        version: shared::PROTOCOL_VERSION.to_owned(),
-                        installation_id: self.installation_id(),
+                    protocol::ServerRequest::Greetings {
+                        server_version: ncog_protocol_version().to_string(),
+                        protocol_version: protocol::protocol_version().to_string(),
+                        installation_id: self.installation().map(|config| config.id),
                     },
                     None,
                 );
                 self.broadcast(AgentResponse::Connected);
             }
             Message::Message(ws_response) => {
-                let request_id = ws_response.request_id;
-                for individual_result in ws_response.results.iter() {
-                    self.handle_ws_message(&individual_result);
-                    let individual_result = AgentResponse::Response(WsResponse {
-                        request_id,
-                        result: individual_result.clone(),
-                    });
-                    self.broadcast(individual_result.clone());
-                    if let Some(who) = self.callbacks.get(&request_id) {
-                        self.link.respond(*who, individual_result);
-                    };
+                for response in ws_response.results {
+                    match response {
+                        protocol::ServerResponse::Challenge { nonce } => self.ws_send(
+                            protocol::ServerRequest::ChallengeResponse(
+                                challenge::compute_challenge(
+                                    &self.installation().unwrap().private_key,
+                                    &nonce,
+                                ),
+                            ),
+                            None,
+                        ),
+                        protocol::ServerResponse::Ping { timestamp, .. } => self.ws_send(
+                            protocol::ServerRequest::Pong {
+                                original_timestamp: timestamp,
+                                timestamp: wasm_utc_now().timestamp_millis() as f64 / 1_000_000.0,
+                            },
+                            None,
+                        ),
+                        protocol::ServerResponse::NewInstallation(config) => {
+                            self.auth_state = match &self.auth_state {
+                                AuthState::Unauthenticated | AuthState::PreviouslyAuthenticated(_) => {
+                                    AuthState::PreviouslyAuthenticated(config)
+                                }
+                                AuthState::Authenticated(_) => unreachable!(
+                                    "Adopted an installation id even though we were already authenticated"
+                                ),
+                            };
+                            self.save_login_state();
+                        }
+                        protocol::ServerResponse::Connected { .. } => {
+                        }
+                        protocol::ServerResponse::Response(response) => {
+                            self.handle_response(response, ws_response.request_id)
+                        }
+                        protocol::ServerResponse::Error(err) => {
+                            error!("Error from server: {:?}", err)
+                        }
+                    }
                 }
-                self.callbacks.remove(&request_id);
+
+                if let Some(request_id) = ws_response.request_id {
+                    self.callbacks.remove(&request_id);
+                }
             }
             Message::Reset => {
                 self.broadcast(AgentResponse::Disconnected);
@@ -156,7 +185,7 @@ impl Agent for ApiAgent {
                 }
             }
             AgentMessage::Request(req) => {
-                self.ws_send(req, Some(who));
+                self.ws_send(protocol::ServerRequest::Request(req), Some(who));
             }
             AgentMessage::Reset => {
                 self.update(Message::Reset);
@@ -207,7 +236,7 @@ impl Agent for ApiAgent {
     }
 }
 
-use yew::format::{Binary, Bincode, Text};
+use yew::format::{Binary, Cbor, Text};
 #[derive(Debug)]
 pub struct WsMessageProxy<T>(pub T);
 
@@ -223,7 +252,7 @@ where
 #[derive(Debug, Error)]
 enum WsMessageError {
     #[error("error decoding bincode")]
-    Serialization(#[from] Box<bincode::ErrorKind>),
+    Serialization(#[from] serde_cbor::Error),
 }
 
 impl<T> From<Binary> for WsMessageProxy<Result<T, anyhow::Error>>
@@ -232,7 +261,7 @@ where
 {
     fn from(bytes: Binary) -> Self {
         match bytes {
-            Ok(bytes) => WsMessageProxy(match bincode::deserialize(bytes.as_slice()) {
+            Ok(bytes) => WsMessageProxy(match serde_cbor::from_slice(bytes.as_slice()) {
                 Ok(result) => Ok(result),
                 Err(err) => Err(WsMessageError::Serialization(err).into()),
             }),
@@ -268,14 +297,14 @@ impl ApiAgent {
         "wss://api.ncog.id/v1/ws"
     }
 
-    fn ws_send(&mut self, request: ServerRequest, who: Option<HandlerId>) {
-        self.ws_request_id += 1;
+    fn ws_send(&mut self, request: protocol::ServerRequest<ServerRequest>, who: Option<HandlerId>) {
+        self.ws_request_id = self.ws_request_id.wrapping_add(1);
         if self.ready_for_messages {
             if let Some(websocket) = self.web_socket_task.as_mut() {
                 if let Some(who) = who {
                     self.callbacks.insert(self.ws_request_id, who);
                 }
-                websocket.send_binary(Bincode(&WsRequest {
+                websocket.send_binary(Cbor(&protocol::WsRequest {
                     id: self.ws_request_id,
                     request,
                 }));
@@ -301,28 +330,28 @@ impl ApiAgent {
         }
     }
 
-    fn installation_id(&self) -> Option<Uuid> {
+    fn installation(&self) -> Option<&'_ InstallationConfig> {
         match &self.auth_state {
-            AuthState::PreviouslyAuthenticated(uuid) => Some(*uuid),
-            AuthState::Authenticated(state) => Some(state.installation_id),
+            AuthState::PreviouslyAuthenticated(config) => Some(config),
+            AuthState::Authenticated(state) => Some(&state.installation),
             AuthState::Unauthenticated => None,
+        }
+    }
+
+    fn handle_response(&mut self, response: ServerResponse, request_id: Option<u64>) {
+        self.handle_ws_message(&response);
+
+        self.broadcast(AgentResponse::Response(response.clone()));
+        if let Some(request_id) = request_id {
+            if let Some(who) = self.callbacks.get(&request_id) {
+                self.link.respond(*who, AgentResponse::Response(response));
+            };
         }
     }
 
     fn handle_ws_message(&mut self, response: &ServerResponse) {
         trace!("Received response: {:?}", response);
         match response {
-            ServerResponse::AdoptInstallationId { installation_id } => {
-                self.auth_state = match &self.auth_state {
-                    AuthState::Unauthenticated | AuthState::PreviouslyAuthenticated(_) => {
-                        AuthState::PreviouslyAuthenticated(*installation_id)
-                    }
-                    AuthState::Authenticated(_) => unreachable!(
-                        "Adopted an installation id even though we were already authenticated"
-                    ),
-                };
-                self.save_login_state();
-            }
             ServerResponse::AuthenticateAtUrl { url } => {
                 let window = web_sys::window().expect("Need a window");
                 window
@@ -331,17 +360,10 @@ impl ApiAgent {
                     .expect("Error setting location for redirect");
             }
             ServerResponse::Error { message } => error!("Error from server: {:?}", message),
-            ServerResponse::Ping { timestamp, .. } => self.ws_send(
-                ServerRequest::Pong {
-                    original_timestamp: *timestamp,
-                    timestamp: wasm_utc_now().timestamp_millis() as f64 / 1_000_000.0,
-                },
-                None,
-            ),
             ServerResponse::Authenticated { profile, .. } => {
                 self.auth_state = AuthState::Authenticated(AuthenticatedState {
-                    installation_id: self
-                        .installation_id()
+                    installation: *self
+                        .installation()
                         .expect("Somehow authenticated without an installation_id"),
                     profile: profile.clone(),
                 });
@@ -361,14 +383,14 @@ impl ApiAgent {
 }
 #[derive(Clone, Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct AuthenticatedState {
-    pub installation_id: Uuid,
+    pub installation: InstallationConfig,
     pub profile: UserProfile,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, Eq, PartialEq)]
 enum AuthState {
     Unauthenticated,
-    PreviouslyAuthenticated(Uuid),
+    PreviouslyAuthenticated(InstallationConfig),
     Authenticated(AuthenticatedState),
 }
 

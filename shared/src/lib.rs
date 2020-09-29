@@ -1,3 +1,4 @@
+use basws_shared::{Version, VersionReq};
 use chrono::Utc;
 use serde_derive::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -5,12 +6,16 @@ use uuid::Uuid;
 pub mod iam;
 pub mod localization;
 pub mod permissions;
-pub mod websockets;
 pub use fluent_templates;
 use permissions::PermissionSet;
-use websockets::WsBatchResponse;
 
-pub const PROTOCOL_VERSION: &str = "0.0.1";
+pub fn ncog_protocol_version() -> Version {
+    Version::parse("0.0.1").unwrap()
+}
+
+pub fn ncog_protocol_version_requirements() -> VersionReq {
+    VersionReq::parse("=0.0.1").unwrap()
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum ServerRequest {
@@ -43,15 +48,6 @@ pub enum ServerResponse {
         message: Option<String>,
     },
     IAM(iam::IAMResponse),
-}
-
-impl ServerResponse {
-    pub fn into_ws_response(self, request_id: i64) -> WsBatchResponse {
-        WsBatchResponse {
-            request_id,
-            results: vec![self],
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]

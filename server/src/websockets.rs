@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use migrations::{pg, sqlx};
 use serde_derive::{Deserialize, Serialize};
 use shared::{
+    ncog_protocol_version_requirements,
     permissions::{Claim, PermissionSet},
     OAuthProvider, ServerRequest, ServerResponse, UserProfile,
 };
@@ -205,7 +206,7 @@ impl ServerLogic for NcogServer {
     }
 
     fn protocol_version_requirements(&self) -> VersionReq {
-        todo!()
+        ncog_protocol_version_requirements()
     }
 
     async fn lookup_or_create_installation(
@@ -213,7 +214,7 @@ impl ServerLogic for NcogServer {
         client: &ConnectedClient<Self>,
         installation_id: Option<Uuid>,
     ) -> anyhow::Result<InstallationConfig> {
-        let installation = database::lookup_or_create_installation(&pg(), installation_id).await?;
+        let installation = database::lookup_or_create_installation(installation_id).await?;
         Ok(InstallationConfig::from_vec(
             installation.id,
             installation.private_key.unwrap(),

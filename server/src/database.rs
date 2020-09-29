@@ -6,7 +6,7 @@ use shared::{
 };
 use uuid::Uuid;
 
-use migrations::sqlx;
+use migrations::{pg, sqlx};
 
 use chrono::{DateTime, Utc};
 use sqlx::executor::RefExecutor;
@@ -52,20 +52,41 @@ where
     }
 }
 
-pub async fn lookup_or_create_installation<'e, E>(
-    executor: E,
+pub async fn lookup_or_create_installation(
     installation_id: Option<Uuid>,
+) -> Result<Installation, sqlx::Error>
+{
+    if let Some(installation_id) = installation_id {
+        match sqlx::query_as!(
+            Installation,
+            "SELECT id, account_id, nonce, private_key FROM installations WHERE id = $1",
+            installation_id
+        )
+        .fetch_one(&pg())
+        .await {
+            Ok(installation) => if installation.private_key.is_some() {
+                return Ok(installation);
+            },
+            Err(sqlx::Error::RowNotFound) => {},
+            Err(err) => return Err(err),
+        }
+    }
+
+    create_installation(&pg()).await
+}
+
+async fn create_installation<'e, E>(
+    executor: E,
 ) -> Result<Installation, sqlx::Error>
 where
     E: 'e + Send + RefExecutor<'e, Database = Postgres>,
 {
+    println!("Creating installation");
     let default_config = InstallationConfig::default();
-    let installation_id = installation_id.unwrap_or(default_config.id);
-
     sqlx::query_as!(
         Installation,
-        "INSERT INTO installations (id, private_key) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET id=$1 RETURNING id, account_id, nonce, private_key",
-        installation_id, Vec::from(default_config.private_key)
+        "INSERT INTO installations (id, private_key) VALUES ($1, $2) RETURNING id, account_id, nonce, private_key",
+        default_config.id, Vec::from(default_config.private_key)
     )
     .fetch_one(executor)
     .await

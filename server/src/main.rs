@@ -1,3 +1,4 @@
+#![type_length_limit = "8273194"]
 use std::convert::Infallible;
 use std::path::Path;
 use warp::{Filter, Reply};
