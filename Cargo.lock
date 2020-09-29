@@ -31,49 +31,57 @@ dependencies = [
 ]
 
 [[package]]
-name = "aes"
+name = "aead"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54eb1d8fe354e5fc611daf4f2ea97dd45a765f4f1e4512306ec183ae2e8f20c9"
+checksum = "7fc95d1bdb8e6666b2b217308eeeb09f2d6728d104be3e31916cc74d15420331"
+dependencies = [
+ "generic-array 0.14.4",
+]
+
+[[package]]
+name = "aes"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd2bc6d3f370b5666245ff421e231cba4353df936e26986d2918e61a8fd6aef6"
 dependencies = [
  "aes-soft",
  "aesni",
- "block-cipher-trait",
+ "block-cipher",
 ]
 
 [[package]]
 name = "aes-gcm"
-version = "0.5.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "834a6bda386024dbb7c8fc51322856c10ffe69559f972261c868485f5759c638"
+checksum = "0301c9e9c443494d970a07885e8cf3e587bae8356a1d5abd0999068413f7205f"
 dependencies = [
- "aead",
+ "aead 0.3.2",
  "aes",
- "block-cipher-trait",
+ "block-cipher",
  "ghash",
  "subtle 2.3.0",
- "zeroize",
 ]
 
 [[package]]
 name = "aes-soft"
-version = "0.3.3"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cfd7e7ae3f9a1fb5c03b389fc6bb9a51400d0c13053f0dca698c832bfd893a0d"
+checksum = "63dd91889c49327ad7ef3b500fd1109dbd3c509a03db0d4a9ce413b79f575cb6"
 dependencies = [
- "block-cipher-trait",
+ "block-cipher",
  "byteorder",
- "opaque-debug 0.2.3",
+ "opaque-debug 0.3.0",
 ]
 
 [[package]]
 name = "aesni"
-version = "0.6.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f70a6b5f971e473091ab7cfb5ffac6cde81666c4556751d8d5620ead8abf100"
+checksum = "0a6fe808308bb07d393e2ea47780043ec47683fcf19cf5efc8ca51c50cc8c68a"
 dependencies = [
- "block-cipher-trait",
- "opaque-debug 0.2.3",
+ "block-cipher",
+ "opaque-debug 0.3.0",
 ]
 
 [[package]]
@@ -348,7 +356,7 @@ checksum = "3441f0f7b02788e948e47f457ca01f1d7e6d92c693bc132c22b087d3141c03ff"
 
 [[package]]
 name = "basws-server"
-version = "0.1.0-dev-4"
+version = "0.1.0-dev-5"
 dependencies = [
  "anyhow",
  "async-channel",
@@ -367,9 +375,10 @@ dependencies = [
 
 [[package]]
 name = "basws-shared"
-version = "0.1.0-dev-4"
+version = "0.1.0-dev-5"
 dependencies = [
  "chrono",
+ "js-sys",
  "rand 0.7.3",
  "semver",
  "serde",
@@ -377,6 +386,24 @@ dependencies = [
  "sha2 0.9.1",
  "thiserror",
  "uuid",
+]
+
+[[package]]
+name = "basws-yew"
+version = "0.1.0-dev-5"
+dependencies = [
+ "aead 0.3.2",
+ "aes-gcm",
+ "anyhow",
+ "base64",
+ "basws-shared",
+ "rand 0.7.3",
+ "serde",
+ "serde_cbor",
+ "serde_json",
+ "thiserror",
+ "url",
+ "yew",
 ]
 
 [[package]]
@@ -428,12 +455,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "block-cipher-trait"
-version = "0.6.2"
+name = "block-cipher"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c924d49bd09e7c06003acda26cd9742e796e34282ec6c1189404dee0c1f4774"
+checksum = "f337a3e6da609650eb74e02bc9fac7b735049f7623ab12f2e4c719316fcc7e80"
 dependencies = [
- "generic-array 0.12.3",
+ "generic-array 0.14.4",
 ]
 
 [[package]]
@@ -1136,9 +1163,9 @@ dependencies = [
 
 [[package]]
 name = "ghash"
-version = "0.2.3"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f0930ed19a7184089ea46d2fedead2f6dc2b674c5db4276b7da336c7cd83252"
+checksum = "d6e27f0689a6e15944bdce7e45425efb87eaa8ab0c6e87f11d0987a9133e2531"
 dependencies = [
  "polyval",
 ]
@@ -2084,9 +2111,9 @@ dependencies = [
 
 [[package]]
 name = "polyval"
-version = "0.3.3"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ec3341498978de3bfd12d1b22f1af1de22818f5473a11e8a6ef997989e3a212"
+checksum = "d9a50142b55ab3ed0e9f68dfb3709f1d90d29da24e91033f28b96330643107dc"
 dependencies = [
  "cfg-if",
  "universal-hash",
@@ -3345,11 +3372,11 @@ checksum = "f7fe0bb3479651439c9112f72b6c505038574c9fbb575ed1bf3b797fa39dd564"
 
 [[package]]
 name = "universal-hash"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df0c900f2f9b4116803415878ff48b63da9edb268668e08cf9292d7503114a01"
+checksum = "8326b2c654932e3e4f9196e69d08fdf7cfd718e1dc6f66b347e6024a0c961402"
 dependencies = [
- "generic-array 0.12.3",
+ "generic-array 0.14.4",
  "subtle 2.3.0",
 ]
 
@@ -3576,11 +3603,10 @@ dependencies = [
 name = "webapp"
 version = "0.1.0"
 dependencies = [
- "aead",
- "aes-gcm",
+ "aead 0.2.0",
  "anyhow",
  "base64",
- "basws-shared",
+ "basws-yew",
  "chrono",
  "js-sys",
  "khonsuweb",
@@ -3594,6 +3620,7 @@ dependencies = [
  "sha2 0.8.2",
  "shared",
  "thiserror",
+ "url",
  "uuid",
  "wasm-bindgen",
  "wasm-logger",
@@ -3805,13 +3832,3 @@ checksum = "49bf2f66f0e61d65d1637523fa1faedd5aa291cf9cb8d8fb200678472279b672"
 dependencies = [
  "nom",
 ]
-
-[[package]]
-name = "zeroize"
-version = "1.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05f33972566adbd2d3588b0491eb94b98b43695c4ef897903470ede4f3f5a28a"
-
-[[patch.unused]]
-name = "basws-client"
-version = "0.1.0-dev-4"

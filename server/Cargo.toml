@@ -27,7 +27,7 @@ migrations = { path = "../migrations" }
 shared = { path = "../shared" }
 async-trait = "0.1"
 mime_guess = "2"
-basws-server = "0.1.0-dev-4"
+basws-server = "0.1.0-dev-5"
 
 [dependencies.slog]
 version = "2"

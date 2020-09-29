@@ -211,7 +211,7 @@ impl ServerLogic for NcogServer {
 
     async fn lookup_or_create_installation(
         &self,
-        client: &ConnectedClient<Self>,
+        _client: &ConnectedClient<Self>,
         installation_id: Option<Uuid>,
     ) -> anyhow::Result<InstallationConfig> {
         let installation = database::lookup_or_create_installation(installation_id).await?;

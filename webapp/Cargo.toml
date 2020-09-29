@@ -23,7 +23,6 @@ js-sys = "0.3"
 thiserror = "1"
 anyhow = "1"
 serde_cbor = "0.11"
-aes-gcm = "0.5"
 aead = "0.2"
 base64 = "0.12"
 rand = { version = "0.7", features = ["wasm-bindgen"] }
@@ -31,7 +30,8 @@ sha2 = "0.8"
 uuid = "0.8"
 wasm-logger = "0.2"
 log = "0.4"
-basws-shared = { version = "0.1.0-dev-4" }
+basws-yew = { version = "0.1.0-dev-5" }
+url = "2"
 
 [dependencies.chrono]
 version = "*"
