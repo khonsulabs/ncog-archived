@@ -138,11 +138,11 @@ async fn network_loop(server_url: &'static str) {
         let (mut tx, mut rx) = socket.into_channel().await;
         let receiver = Network::receiver().await;
         let mut interval = tokio::time::interval(Duration::from_millis(1));
-        Network::request(ServerRequest::Authenticate {
-            installation_id: UserConfig::installation_id().await,
-            version: shared::PROTOCOL_VERSION.to_owned(),
-        })
-        .await;
+        // Network::request(ServerRequest::Authenticate {
+        //     installation_id: UserConfig::installation_id().await,
+        //     version: shared::PROTOCOL_VERSION.to_owned(),
+        // })
+        // .await;
 
         loop {
             if receive_loop(&mut rx).await || send_loop(&receiver, &mut tx).await {
@@ -162,42 +162,42 @@ async fn receive_loop(rx: &mut TokioReceiver<Msg>) -> bool {
                     ServerResponse::Error { message } => {
                         Network::set_login_state(LoginState::Error { message }).await;
                     }
-                    ServerResponse::AdoptInstallationId { installation_id } => {
-                        println!("Received app token {}", installation_id);
-                        UserConfig::set_installation_id(installation_id).await;
-                        Network::set_login_state(LoginState::Connected).await;
-                    }
+                    // ServerResponse::AdoptInstallationId { installation_id } => {
+                    //     println!("Received app token {}", installation_id);
+                    //     UserConfig::set_installation_id(installation_id).await;
+                    //     Network::set_login_state(LoginState::Connected).await;
+                    // }
                     ServerResponse::Authenticated { profile, .. } => {
                         println!("Authenticated as {:?}", profile.screenname);
                         Network::set_login_state(LoginState::Authenticated { profile }).await;
                         todo!("Store permissions");
                     }
-                    ServerResponse::WorldUpdate {
-                        timestamp,
-                        profiles,
-                    } => {
-                        Network::world_updated(
-                            timestamp - average_server_timestamp_delta,
-                            profiles,
-                        )
-                        .await;
-                    }
+                    // ServerResponse::WorldUpdate {
+                    //     timestamp,
+                    //     profiles,
+                    // } => {
+                    //     Network::world_updated(
+                    //         timestamp - average_server_timestamp_delta,
+                    //         profiles,
+                    //     )
+                    //     .await;
+                    // }
                     ServerResponse::AuthenticateAtUrl { url } => {
                         Network::set_authentication_url(url).await;
                     }
-                    ServerResponse::Ping {
-                        timestamp,
-                        average_server_timestamp_delta: delta,
-                        average_roundtrip,
-                    } => {
-                        average_server_timestamp_delta = delta;
-                        Network::ping_updated(average_roundtrip).await;
-                        Network::request(ServerRequest::Pong {
-                            original_timestamp: timestamp,
-                            timestamp: current_timestamp(),
-                        })
-                        .await;
-                    }
+                    // ServerResponse::Ping {
+                    //     timestamp,
+                    //     average_server_timestamp_delta: delta,
+                    //     average_roundtrip,
+                    // } => {
+                    //     average_server_timestamp_delta = delta;
+                    //     Network::ping_updated(average_roundtrip).await;
+                    //     Network::request(ServerRequest::Pong {
+                    //         original_timestamp: timestamp,
+                    //         timestamp: current_timestamp(),
+                    //     })
+                    //     .await;
+                    // }
                     unmatched_message => {
                         println!("Ignoring message {:#?}", unmatched_message);
                     }

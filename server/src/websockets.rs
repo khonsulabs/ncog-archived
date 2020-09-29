@@ -1,316 +1,105 @@
 use super::{database, env, twitch};
-use async_std::sync::RwLock;
 use async_trait::async_trait;
-use futures::{SinkExt, StreamExt};
-use lazy_static::lazy_static;
 use migrations::{pg, sqlx};
 use serde_derive::{Deserialize, Serialize};
 use shared::{
-    current_timestamp,
     permissions::{Claim, PermissionSet},
-    websockets::{WsBatchResponse, WsRequest},
-    Inputs, OAuthProvider, ServerRequest, ServerResponse, UserProfile,
+    OAuthProvider, ServerRequest, ServerResponse, UserProfile,
 };
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-    time::Duration,
-};
-use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use uuid::Uuid;
-use warp::filters::ws::{Message, WebSocket};
 mod iam;
+use basws_server::prelude::*;
 
-#[derive(Default)]
-pub struct NetworkTiming {
-    pub average_roundtrip: Option<f64>,
-    pub average_server_timestamp_delta: Option<f64>,
-}
+//     pub async fn ping(&self) {
+//         let data = self.data.read().await;
+//         let timestamp = current_timestamp();
+//         for client in data.clients.values() {
+//             let client = client.read().await;
+//             client
+//                 .sender
+//                 .send(
+//                     ServerResponse::Ping {
+//                         timestamp,
+//                         average_roundtrip: client
+//                             .network_timing
+//                             .average_roundtrip
+//                             .unwrap_or_default(),
+//                         average_server_timestamp_delta: client
+//                             .network_timing
+//                             .average_server_timestamp_delta
+//                             .unwrap_or_default(),
+//                     }
+//                     .into_ws_response(-1),
+//                 )
+//                 .unwrap_or_default();
+//         }
+//     }
+// }
 
-impl NetworkTiming {
-    pub fn update(&mut self, original_timestamp: f64, timestamp: f64) {
-        let now = current_timestamp();
-        let roundtrip = now - original_timestamp;
+// impl ConnectedAccounts {
+//     pub async fn connect(
+//         &self,
+//         installation_id: Uuid,
+//     ) -> Result<Arc<RwLock<ConnectedAccount>>, anyhow::Error> {
+//         let mut accounts_by_id = self.accounts_by_id.write().await;
 
-        self.average_roundtrip = Some(match self.average_roundtrip {
-            Some(average_roundtrip) => (average_roundtrip * 4.0 + roundtrip) / 5.0,
-            None => roundtrip,
-        });
+//         let profile = database::get_profile_by_installation_id(&pg(), installation_id).await?;
 
-        let timestamp_delta = (now - timestamp) - roundtrip / 2.0;
-        self.average_server_timestamp_delta = Some(match self.average_server_timestamp_delta {
-            Some(average_server_timestamp_delta) => {
-                (average_server_timestamp_delta * 4.0 + timestamp_delta) / 5.0
-            }
-            None => timestamp_delta,
-        });
-    }
-}
+//         // TODO it'd be nice to not do this unless we need to do it, but I don't think it's possible without using a block_on.
+//         let permissions = database::load_permissions_for(&pg(), profile.id).await?;
 
-lazy_static! {
-    pub static ref CONNECTED_CLIENTS: ConnectedClients = ConnectedClients::default();
-    pub static ref CONNECTED_ACCOUNTS: ConnectedAccounts = ConnectedAccounts::default();
-}
+//         Ok(accounts_by_id
+//             .entry(profile.id)
+//             .or_insert_with(|| {
+//                 Arc::new(RwLock::new(ConnectedAccount {
+//                     profile,
+//                     inputs: None,
+//                     permissions,
+//                 }))
+//             })
+//             .clone())
+//     }
 
-pub struct ConnectedClients {
-    data: Arc<RwLock<ConnectedClientData>>,
-}
+//     pub async fn fully_disconnected(&self, account_id: i64) {
+//         info!("Disconnecting account {}", account_id);
+//         let mut accounts_by_id = self.accounts_by_id.write().await;
+//         accounts_by_id.remove(&account_id);
+//     }
 
-pub struct ConnectedClientData {
-    clients: HashMap<Uuid, Arc<RwLock<ConnectedClient>>>,
-    installations_by_account: HashMap<i64, HashSet<Uuid>>,
-    account_by_installation: HashMap<Uuid, i64>,
-}
+//     async fn notify_account_updated(account_id: i64) -> Result<(), anyhow::Error> {
+//         let pg = pg();
+//         let profile = crate::database::get_profile_by_account_id(&pg, account_id).await?;
+//         let permissions = crate::database::load_permissions_for(&pg, account_id).await?;
+//         info!("Got new permissions: {:?}", permissions);
+//         CONNECTED_ACCOUNTS
+//             .update_account_permissions(account_id, permissions.clone())
+//             .await;
+//         CONNECTED_CLIENTS
+//             .send_to_account_id(
+//                 account_id,
+//                 ServerResponse::Authenticated {
+//                     permissions,
+//                     profile,
+//                 },
+//             )
+//             .await;
 
-impl Default for ConnectedClients {
-    fn default() -> Self {
-        Self {
-            data: Arc::new(RwLock::new(ConnectedClientData {
-                clients: HashMap::new(),
-                installations_by_account: HashMap::new(),
-                account_by_installation: HashMap::new(),
-            })),
-        }
-    }
-}
+//         Ok(())
+//     }
 
-impl ConnectedClients {
-    pub async fn connect(&self, installation_id: Uuid, client: &Arc<RwLock<ConnectedClient>>) {
-        let mut data = self.data.write().await;
-        data.clients.insert(installation_id, client.clone());
-        {
-            let mut client = client.write().await;
-            client.installation_id = Some(installation_id);
-        }
-    }
+//     async fn update_account_permissions(&self, account_id: i64, permissions: PermissionSet) {
+//         let accounts_by_id = self.accounts_by_id.read().await;
+//         if let Some(account_handle) = accounts_by_id.get(&account_id) {
+//             let mut account = account_handle.write().await;
+//             account.permissions = permissions;
+//         }
+//     }
 
-    pub async fn associate_account(
-        &self,
-        installation_id: Uuid,
-        account_id: i64,
-    ) -> Result<Arc<RwLock<ConnectedAccount>>, anyhow::Error> {
-        let mut data = self.data.write().await;
-        let account = CONNECTED_ACCOUNTS.connect(installation_id).await?;
-        if let Some(client) = data.clients.get_mut(&installation_id) {
-            let mut client = client.write().await;
-            client.account = Some(account.clone());
-        }
-
-        data.account_by_installation
-            .insert(installation_id, account_id);
-        let installations = data
-            .installations_by_account
-            .entry(account_id)
-            .or_insert_with(HashSet::new);
-        installations.insert(installation_id);
-        Ok(account)
-    }
-
-    pub async fn disconnect(&self, installation_id: Uuid) {
-        info!("Disconnecting installation {}", installation_id);
-        let mut data = self.data.write().await;
-
-        data.clients.remove(&installation_id);
-        let account_id = match data.account_by_installation.get(&installation_id) {
-            Some(account_id) => *account_id,
-            None => return,
-        };
-
-        let remove_account =
-            if let Some(installations) = data.installations_by_account.get_mut(&account_id) {
-                installations.remove(&installation_id);
-                installations.is_empty()
-            } else {
-                false
-            };
-        if remove_account {
-            data.installations_by_account.remove(&account_id);
-            CONNECTED_ACCOUNTS.fully_disconnected(account_id).await;
-        }
-    }
-
-    pub async fn send_to_installation_id(&self, installation_id: Uuid, message: ServerResponse) {
-        let data = self.data.read().await;
-        if let Some(client) = data.clients.get(&installation_id) {
-            let client = client.read().await;
-            client
-                .sender
-                .send(message.into_ws_response(-1))
-                .unwrap_or_default();
-        }
-    }
-
-    pub async fn send_to_account_id(&self, account_id: i64, message: ServerResponse) {
-        let data = self.data.read().await;
-        if let Some(installation_ids) = data.installations_by_account.get(&account_id) {
-            for installation_id in installation_ids.iter() {
-                if let Some(client) = data.clients.get(&installation_id) {
-                    let client = client.read().await;
-                    client
-                        .sender
-                        .send(message.clone().into_ws_response(-1))
-                        .unwrap_or_default();
-                }
-            }
-        }
-    }
-
-    // pub async fn world_updated(&self, update_timestamp: f64) -> Result<(), anyhow::Error> {
-    //     todo!()s
-    //     // let world_update = ServerResponse::WorldUpdate {
-    //     //     timestamp: update_timestamp,
-    //     //     profiles: sqlx::query_as!(
-    //     //         UserProfile,
-    //     //         "SELECT id, username, map, x_offset, last_update_timestamp, horizontal_input from account_list_current($1)",
-    //     //         update_timestamp - 5.0
-    //     //     )
-    //     //     .fetch_all(&pg())
-    //     //     .await?,
-    //     // };
-
-    //     // let clients = self.clients.read().await;
-    //     // for (_, client) in clients.iter() {
-    //     //     let client = client.read().await;
-    //     //     client.sender.send(world_update.clone()).unwrap_or_default();
-    //     // }
-    //     // Ok(())
-    // }
-
-    pub async fn ping(&self) {
-        let data = self.data.read().await;
-        let timestamp = current_timestamp();
-        for client in data.clients.values() {
-            let client = client.read().await;
-            client
-                .sender
-                .send(
-                    ServerResponse::Ping {
-                        timestamp,
-                        average_roundtrip: client
-                            .network_timing
-                            .average_roundtrip
-                            .unwrap_or_default(),
-                        average_server_timestamp_delta: client
-                            .network_timing
-                            .average_server_timestamp_delta
-                            .unwrap_or_default(),
-                    }
-                    .into_ws_response(-1),
-                )
-                .unwrap_or_default();
-        }
-    }
-}
-
-pub struct ConnectedClient {
-    installation_id: Option<Uuid>,
-    sender: UnboundedSender<WsBatchResponse>,
-    account: Option<Arc<RwLock<ConnectedAccount>>>,
-    network_timing: NetworkTiming,
-}
-
-pub struct ConnectedAccounts {
-    accounts_by_id: Arc<RwLock<HashMap<i64, Arc<RwLock<ConnectedAccount>>>>>,
-}
-
-impl Default for ConnectedAccounts {
-    fn default() -> Self {
-        Self {
-            accounts_by_id: Arc::new(RwLock::new(HashMap::new())),
-        }
-    }
-}
-
-impl ConnectedAccounts {
-    pub async fn connect(
-        &self,
-        installation_id: Uuid,
-    ) -> Result<Arc<RwLock<ConnectedAccount>>, anyhow::Error> {
-        let mut accounts_by_id = self.accounts_by_id.write().await;
-
-        let profile = database::get_profile_by_installation_id(&pg(), installation_id).await?;
-
-        // TODO it'd be nice to not do this unless we need to do it, but I don't think it's possible without using a block_on.
-        let permissions = database::load_permissions_for(&pg(), profile.id).await?;
-
-        Ok(accounts_by_id
-            .entry(profile.id)
-            .or_insert_with(|| {
-                Arc::new(RwLock::new(ConnectedAccount {
-                    profile,
-                    inputs: None,
-                    permissions,
-                }))
-            })
-            .clone())
-    }
-
-    pub async fn fully_disconnected(&self, account_id: i64) {
-        info!("Disconnecting account {}", account_id);
-        let mut accounts_by_id = self.accounts_by_id.write().await;
-        accounts_by_id.remove(&account_id);
-    }
-
-    pub async fn role_updated(&self, role_id: i64) -> Result<(), anyhow::Error> {
-        info!("Updating role: {}", role_id);
-        let accounts_to_refresh = {
-            let accounts_by_id = self.accounts_by_id.read().await;
-            let mut accounts_to_refresh = Vec::new();
-            for account_handle in accounts_by_id.values() {
-                let account = account_handle.read().await;
-                if account.permissions.role_ids.contains(&role_id) {
-                    accounts_to_refresh.push(account.profile.id);
-                }
-            }
-            accounts_to_refresh
-        };
-
-        for account_id in accounts_to_refresh {
-            tokio::spawn(async move {
-                info!("Updating account: {}", account_id);
-                Self::notify_account_updated(account_id)
-                    .await
-                    .unwrap_or_default()
-            });
-        }
-
-        Ok(())
-    }
-
-    async fn notify_account_updated(account_id: i64) -> Result<(), anyhow::Error> {
-        let pg = pg();
-        let profile = crate::database::get_profile_by_account_id(&pg, account_id).await?;
-        let permissions = crate::database::load_permissions_for(&pg, account_id).await?;
-        info!("Got new permissions: {:?}", permissions);
-        CONNECTED_ACCOUNTS
-            .update_account_permissions(account_id, permissions.clone())
-            .await;
-        CONNECTED_CLIENTS
-            .send_to_account_id(
-                account_id,
-                ServerResponse::Authenticated {
-                    permissions,
-                    profile,
-                },
-            )
-            .await;
-
-        Ok(())
-    }
-
-    async fn update_account_permissions(&self, account_id: i64, permissions: PermissionSet) {
-        let accounts_by_id = self.accounts_by_id.read().await;
-        if let Some(account_handle) = accounts_by_id.get(&account_id) {
-            let mut account = account_handle.write().await;
-            account.permissions = permissions;
-        }
-    }
-
-    // pub async fn all(&self) -> Vec<Arc<RwLock<ConnectedAccount>>> {
-    //     let accounts_by_id = self.accounts_by_id.read().await;
-    //     accounts_by_id.values().map(|v| v.clone()).collect()
-    // }
-}
+//     // pub async fn all(&self) -> Vec<Arc<RwLock<ConnectedAccount>>> {
+//     //     let accounts_by_id = self.accounts_by_id.read().await;
+//     //     accounts_by_id.values().map(|v| v.clone()).collect()
+//     // }
+// }
 
 #[async_trait]
 pub trait ConnectedAccountHandle {
@@ -322,10 +111,9 @@ fn permission_denied(claim: &Claim) -> Result<(), anyhow::Error> {
 }
 
 #[async_trait]
-impl ConnectedAccountHandle for Arc<RwLock<ConnectedClient>> {
+impl ConnectedAccountHandle for ConnectedClient<NcogServer> {
     async fn permission_allowed(&self, claim: &Claim) -> Result<(), anyhow::Error> {
-        let client = self.read().await;
-        if let Some(account) = &client.account {
+        if let Some(account) = self.account().await {
             return account.permission_allowed(claim).await;
         }
 
@@ -334,7 +122,7 @@ impl ConnectedAccountHandle for Arc<RwLock<ConnectedClient>> {
 }
 
 #[async_trait]
-impl ConnectedAccountHandle for Arc<RwLock<ConnectedAccount>> {
+impl ConnectedAccountHandle for Handle<ConnectedAccount> {
     async fn permission_allowed(&self, claim: &Claim) -> Result<(), anyhow::Error> {
         let account = self.read().await;
         if account.permissions.allowed(&claim) {
@@ -345,249 +133,134 @@ impl ConnectedAccountHandle for Arc<RwLock<ConnectedAccount>> {
     }
 }
 
+#[derive(Debug)]
 pub struct ConnectedAccount {
     pub profile: UserProfile,
     pub permissions: PermissionSet,
-    pub inputs: Option<Inputs>,
 }
 
 impl ConnectedAccount {
-    // pub async fn set_x_offset(
-    //     &mut self,
-    //     x_offset: f32,
-    //     timestamp: f64,
-    // ) -> Result<(), anyhow::Error> {
-    //     // TODO THE AVERAGE VELOCITY CANNOT EXCEED THE MAXIMUM IN CODE
-    //     // self.profile.x_offset = x_offset;
-    //     // self.profile.horizontal_input = self
-    //     //     .inputs
-    //     //     .as_ref()
-    //     //     .map(|inputs| inputs.horizontal_movement)
-    //     //     .unwrap_or_default();
-    //     // let _ = sqlx::query!(
-    //     //     "SELECT * FROM account_update_inputs($1, $2, $3, $4)",
-    //     //     self.profile.id,
-    //     //     self.profile.x_offset,
-    //     //     timestamp,
-    //     //     self.profile.horizontal_input
-    //     // )
-    //     // .fetch_one(&pg())
-    //     // .await?;
-
-    //     // Ok(())
-    //     todo!()
-    // }
+    pub async fn lookup(installation_id: Uuid) -> anyhow::Result<Self> {
+        let profile = database::get_profile_by_installation_id(&pg(), installation_id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("no profile found"))?;
+        let permissions = database::load_permissions_for(&pg(), profile.id).await?;
+        Ok(Self {
+            profile,
+            permissions,
+        })
+    }
 }
 
-pub async fn initialize() {
-    tokio::spawn(async move {
-        let mut interval = tokio::time::interval(Duration::from_millis(100));
-        loop {
-            interval.tick().await;
-            CONNECTED_CLIENTS.ping().await;
-        }
-    });
+impl Identifiable for ConnectedAccount {
+    type Id = i64;
+    fn id(&self) -> Self::Id {
+        self.profile.id
+    }
+}
+pub struct NcogServer;
+
+pub fn initialize() -> Server<NcogServer> {
+    Server::new(NcogServer)
 }
 
-pub async fn main(websocket: WebSocket) {
-    let (mut tx, mut rx) = websocket.split();
-    let (sender, mut transmission_receiver) = unbounded_channel();
+#[async_trait]
+impl ServerLogic for NcogServer {
+    type Request = ServerRequest;
+    type Response = ServerResponse;
+    type Client = ();
+    type Account = ConnectedAccount;
+    type AccountId = i64;
 
-    tokio::spawn(async move {
-        while let Some(response) = transmission_receiver.recv().await {
-            tx.send(Message::binary(bincode::serialize(&response).unwrap()))
-                .await
-                .unwrap_or_default()
-        }
-    });
-
-    let client = Arc::new(RwLock::new(ConnectedClient {
-        account: None,
-        installation_id: None,
-        network_timing: NetworkTiming::default(),
-        sender: sender.clone(),
-    }));
-    while let Some(result) = rx.next().await {
-        match result {
-            Ok(message) => match bincode::deserialize::<WsRequest>(message.as_bytes()) {
-                Ok(request) => {
-                    let request_id = request.id;
-                    if let Err(err) =
-                        handle_websocket_request(&client, request, sender.clone()).await
-                    {
-                        sender
-                            .send(
-                                ServerResponse::Error {
-                                    message: Some(err.to_string()),
-                                }
-                                .into_ws_response(request_id),
-                            )
-                            .unwrap_or_default();
+    async fn handle_request(
+        &self,
+        client: &ConnectedClient<Self>,
+        request: Self::Request,
+        _server: &Server<Self>,
+    ) -> anyhow::Result<RequestHandling<Self::Response>> {
+        match request {
+            ServerRequest::AuthenticationUrl(provider) => match provider {
+                OAuthProvider::Twitch => {
+                    if let Some(installation) = client.installation().await {
+                        Ok(RequestHandling::Respond(
+                            ServerResponse::AuthenticateAtUrl {
+                                url: twitch::authorization_url(installation.id),
+                            },
+                        ))
+                    } else {
+                        anyhow::bail!("Requested authentication URL without being connected")
                     }
-                }
-                Err(err) => {
-                    error!("Bincode error: {}", err);
-                    break;
                 }
             },
-            Err(err) => {
-                error!("Error on websocket: {}", err);
-                break;
-            }
+            ServerRequest::IAM(iam_request) => iam::handle_request(client, iam_request).await,
         }
     }
 
-    let installation_id = {
-        let client_data = client.read().await;
-        client_data.installation_id
-    };
-
-    if let Some(installation_id) = installation_id {
-        CONNECTED_CLIENTS.disconnect(installation_id).await;
+    async fn lookup_account_from_installation_id(
+        &self,
+        installation_id: Uuid,
+    ) -> anyhow::Result<Option<Handle<Self::Account>>> {
+        let account = ConnectedAccount::lookup(installation_id).await?;
+        Ok(Some(Handle::new(account)))
     }
-}
 
-async fn handle_websocket_request(
-    client_handle: &Arc<RwLock<ConnectedClient>>,
-    request: WsRequest,
-    responder: UnboundedSender<WsBatchResponse>,
-) -> Result<(), anyhow::Error> {
-    match request.request {
-        // ServerRequest::Update {
-        //     new_inputs,
-        //     x_offset,
-        //     timestamp,
-        // } => {
-        //     let client = client_handle.read().await;
-        //     let corrected_server_timestamp = timestamp
-        //         + client
-        //             .network_timing
-        //             .average_server_timestamp_delta
-        //             .unwrap_or_default();
-        //     let now = current_timestamp();
+    fn protocol_version_requirements(&self) -> VersionReq {
+        todo!()
+    }
 
-        //     if let Some(account) = &client.account {
-        //         let mut account = account.write().await;
-        //         account.inputs = new_inputs;
-        //         let latency_corrected_x_offset =
-        //             x_offset + WALK_SPEED * (now - corrected_server_timestamp) as f32;
-        //         account
-        //             .set_x_offset(latency_corrected_x_offset, now)
-        //             .await?;
-        //     }
-        // }
-        ServerRequest::Authenticate {
-            installation_id,
-            version,
-        } => {
-            if version != shared::PROTOCOL_VERSION {
-                responder
-                    .send(
-                        ServerResponse::Error {
-                            message: Some("An update is available".to_owned()),
-                        }
-                        .into_ws_response(request.id),
-                    )
-                    .unwrap_or_default();
+    async fn lookup_or_create_installation(
+        &self,
+        client: &ConnectedClient<Self>,
+        installation_id: Option<Uuid>,
+    ) -> anyhow::Result<InstallationConfig> {
+        let installation = database::lookup_or_create_installation(&pg(), installation_id).await?;
+        Ok(InstallationConfig::from_vec(
+            installation.id,
+            installation.private_key.unwrap(),
+        )?)
+    }
+
+    async fn client_reconnected(
+        &self,
+        client: &ConnectedClient<Self>,
+    ) -> anyhow::Result<RequestHandling<Self::Response>> {
+        if let Some(account) = client.account().await {
+            let account = account.read().await;
+
+            Ok(RequestHandling::Respond(ServerResponse::Authenticated {
+                profile: account.profile.clone(),
+                permissions: account.permissions.clone(),
+            }))
+        } else {
+            Ok(RequestHandling::Respond(ServerResponse::Unauthenticated))
+        }
+    }
+
+    async fn new_client_connected(
+        &self,
+        _client: &ConnectedClient<Self>,
+    ) -> anyhow::Result<RequestHandling<Self::Response>> {
+        Ok(RequestHandling::Respond(ServerResponse::Unauthenticated))
+    }
+
+    async fn account_associated(&self, client: &ConnectedClient<Self>) -> anyhow::Result<()> {
+        if let Some(installation) = client.installation().await {
+            if let Some(account) = client.account().await {
+                let account_id = {
+                    let account = account.read().await;
+                    account.id()
+                };
+                database::set_installation_account_id(&pg(), installation.id, Some(account_id))
+                    .await?;
                 return Ok(());
             }
-
-            let installation_id = match installation_id {
-                Some(installation_id) => installation_id,
-                None => Uuid::new_v4(),
-            };
-
-            info!("Looking up installation {:?}", installation_id);
-            let installation = database::lookup_installation(&pg(), installation_id).await?;
-
-            info!("Recording connection");
-            CONNECTED_CLIENTS
-                .connect(installation.id, &client_handle)
-                .await;
-
-            info!("Looking up account");
-            let logged_in = if let Some(account_id) = installation.account_id {
-                if let Ok(profile) =
-                    database::get_profile_by_installation_id(&pg(), installation.id).await
-                {
-                    let account = CONNECTED_CLIENTS
-                        .associate_account(installation.id, account_id)
-                        .await?;
-                    let account = account.read().await;
-                    if !account
-                        .permissions
-                        .allowed(&Claim::new("ncog", None, None, "connect"))
-                    {
-                        responder
-                            .send(
-                                ServerResponse::Error {
-                                    message: Some(
-                                        "You have been banned from connecting.".to_owned(),
-                                    ),
-                                }
-                                .into_ws_response(request.id),
-                            )
-                            .unwrap_or_default();
-                        return Ok(());
-                    }
-
-                    responder
-                        .send(
-                            ServerResponse::Authenticated {
-                                profile,
-                                permissions: account.permissions.clone(),
-                            }
-                            .into_ws_response(request.id),
-                        )
-                        .unwrap_or_default();
-                    true
-                } else {
-                    false
-                }
-            } else {
-                false
-            };
-
-            if !logged_in {
-                // The user is not logged in, send the adopt installation ID as an indicator that we're not authenticated
-                responder
-                    .send(
-                        ServerResponse::AdoptInstallationId {
-                            installation_id: installation.id,
-                        }
-                        .into_ws_response(request.id),
-                    )
-                    .unwrap_or_default();
-            }
         }
-        ServerRequest::AuthenticationUrl(provider) => match provider {
-            OAuthProvider::Twitch => {
-                let client = client_handle.read().await;
-                if let Some(installation_id) = client.installation_id {
-                    responder
-                        .send(
-                            ServerResponse::AuthenticateAtUrl {
-                                url: twitch::authorization_url(installation_id),
-                            }
-                            .into_ws_response(request.id),
-                        )
-                        .unwrap_or_default();
-                }
-            }
-        },
-        ServerRequest::Pong {
-            original_timestamp,
-            timestamp,
-        } => {
-            let mut client = client_handle.write().await;
-            client.network_timing.update(original_timestamp, timestamp);
-        }
-        ServerRequest::IAM(iam_request) => {
-            iam::handle_request(client_handle, iam_request, responder, request.id).await?;
-        }
+        anyhow::bail!("account_associated called with either no installation or account")
     }
 
-    Ok(())
+    async fn handle_websocket_error(&self, _err: warp::Error) -> ErrorHandling {
+        ErrorHandling::Disconnect
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -693,13 +366,8 @@ pub async fn login_twitch(installation_id: Uuid, code: String) -> Result<(), any
                     .await?
                     .id
             };
-            sqlx::query!(
-                "UPDATE installations SET account_id = $1, nonce = NULL WHERE id = $2",
-                account_id,
-                installation_id
-            )
-            .execute(&mut tx)
-            .await?;
+            database::set_installation_account_id(&mut tx, installation_id, Some(account_id))
+                .await?;
             account_id
         };
 

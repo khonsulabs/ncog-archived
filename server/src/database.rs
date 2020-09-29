@@ -1,3 +1,4 @@
+use basws_server::prelude::InstallationConfig;
 use shared::{
     iam::{PermissionStatement, Role, RoleSummary, User},
     permissions::{PermissionSet, Statement},
@@ -14,46 +15,57 @@ use sqlx::{postgres::Postgres, prelude::*};
 pub async fn get_profile_by_installation_id<'e, E>(
     executor: E,
     installation_id: Uuid,
-) -> Result<UserProfile, sqlx::Error>
+) -> Result<Option<UserProfile>, sqlx::Error>
 where
     E: 'e + Send + RefExecutor<'e, Database = Postgres>,
 {
-    sqlx::query_as!(
+    match sqlx::query_as!(
         UserProfile,
         "SELECT accounts.id, screenname FROM accounts INNER JOIN installations ON installations.account_id = accounts.id WHERE installations.id = $1",
         installation_id,
     )
     .fetch_one(executor)
-    .await
+    .await {
+        Ok(result) => Ok(Some(result)),
+        Err(sqlx::Error::RowNotFound) => Ok(None),
+        Err(err) => Err(err)
+    }
 }
 
 pub async fn get_profile_by_account_id<'e, E>(
     executor: E,
     account_id: i64,
-) -> Result<UserProfile, sqlx::Error>
+) -> Result<Option<UserProfile>, sqlx::Error>
 where
     E: 'e + Send + RefExecutor<'e, Database = Postgres>,
 {
-    sqlx::query_as!(
+    match sqlx::query_as!(
         UserProfile,
         "SELECT accounts.id, screenname FROM accounts WHERE accounts.id = $1",
         account_id,
     )
     .fetch_one(executor)
-    .await
+    .await {
+        Ok(result) => Ok(Some(result)),
+        Err(sqlx::Error::RowNotFound) => Ok(None),
+        Err(err) => Err(err)
+    }
 }
 
-pub async fn lookup_installation<'e, E>(
+pub async fn lookup_or_create_installation<'e, E>(
     executor: E,
-    installation_id: Uuid,
+    installation_id: Option<Uuid>,
 ) -> Result<Installation, sqlx::Error>
 where
     E: 'e + Send + RefExecutor<'e, Database = Postgres>,
 {
+    let default_config = InstallationConfig::default();
+    let installation_id = installation_id.unwrap_or(default_config.id);
+
     sqlx::query_as!(
         Installation,
-        "INSERT INTO installations (id) VALUES ($1) ON CONFLICT (id) DO UPDATE SET id=$1 RETURNING id, account_id, nonce",
-        installation_id
+        "INSERT INTO installations (id, private_key) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET id=$1 RETURNING id, account_id, nonce, private_key",
+        installation_id, Vec::from(default_config.private_key)
     )
     .fetch_one(executor)
     .await
@@ -71,6 +83,24 @@ where
         "UPDATE installations SET nonce=$2 WHERE id = $1",
         installation_id,
         nonce
+    )
+    .execute(executor)
+    .await?;
+    Ok(())
+}
+
+pub async fn set_installation_account_id<'e, E>(
+    executor: E,
+    installation_id: Uuid,
+    account_id: Option<i64>,
+) -> Result<(), sqlx::Error>
+where
+    E: Send + Executor<Database = Postgres>,
+{
+    sqlx::query!(
+        "UPDATE installations SET account_id = $1, nonce = NULL WHERE id = $2",
+        account_id,
+        installation_id
     )
     .execute(executor)
     .await?;
