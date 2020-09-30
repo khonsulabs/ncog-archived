@@ -46,12 +46,12 @@ jobs:
 
           cargo run --bin migrator --release
 
-          cd webapp
+          cd ncog-web
           sed -i s/CACHEBUSTER/`uuidgen`/g static/index.html
           sed -i s/CACHEBUSTER/`uuidgen`/g main.js
           cargo make build -p release
           cd ..
-          cargo build --package server --release
+          cargo build --package ncog-server --release
 
       - name: Run tests
         run: cargo test --release --verbose
@@ -86,8 +86,8 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.ECR_SECRET_KEY }}
           AWS_DEFAULT_REGION: us-east-1
         run: |
-          aws s3 sync webapp/static/ s3://ncog-releasesbucket-hvnlnyp4xejx
-          aws s3 cp webapp/static/pkg/webapp_bg.wasm s3://ncog-releasesbucket-hvnlnyp4xejx/pkg/webapp_bg.wasm --content-type "application/wasm"
+          aws s3 sync ncog-web/static/ s3://ncog-releasesbucket-hvnlnyp4xejx
+          aws s3 cp ncog-web/static/pkg/ncog_web_bg.wasm s3://ncog-releasesbucket-hvnlnyp4xejx/pkg/ncog_web_bg.wasm --content-type "application/wasm"
           aws cloudfront create-invalidation --distribution-id E2RBPV8J4SLHOW --paths "/*"
 
       - name: Deploy API

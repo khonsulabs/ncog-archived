@@ -1,238 +1,150 @@
-use crate::config::UserConfig;
-use async_std::sync::RwLock;
-use crossbeam::channel::{unbounded, Receiver, Sender, TryRecvError};
-use lazy_static::lazy_static;
-use shared::{current_timestamp, ServerRequest, ServerResponse, UserProfile};
-use std::{sync::Arc, time::Duration};
-use tokio::sync::mpsc::{
-    error::TryRecvError as TokioTryRecvError, Receiver as TokioReceiver, Sender as TokioSender,
+use basws_client::prelude::*;
+use ncog_shared::{
+    ncog_protocol_version, permissions::PermissionSet, NcogRequest, NcogResponse, UserProfile,
 };
-use yarws::{Client, Msg};
 
-lazy_static! {
-    static ref NETWORK: Arc<RwLock<Network>> = Arc::new(RwLock::new(Network::new()));
+pub type NcogClient<T> = Client<Ncog<T>>;
+
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("protocol error")]
+    Protocol(#[from] basws_client::Error),
+    #[error("browser error")]
+    WebBrowser(#[from] std::io::Error),
+}
+
+#[async_trait]
+pub trait NcogClientLogic: Send + Sync + Sized {
+    async fn handle_error(&self, error: Error, client: NcogClient<Self>) -> anyhow::Result<()>;
+    async fn stored_installation_config(&self) -> Option<InstallationConfig>;
+    async fn store_installation_config(&self, config: InstallationConfig) -> anyhow::Result<()>;
+    async fn handle_response(
+        &self,
+        response: NcogResponse,
+        original_request_id: Option<u64>,
+        client: NcogClient<Self>,
+    ) -> anyhow::Result<()>;
+}
+
+pub struct Ncog<T> {
+    logic: T,
+    auth_state: Handle<AuthState>,
+}
+
+#[async_trait]
+impl<T> ClientLogic for Ncog<T>
+where
+    T: NcogClientLogic,
+{
+    type Request = NcogRequest;
+    type Response = NcogResponse;
+
+    #[cfg(debug_assertions)]
+    fn server_url(&self) -> Url {
+        Url::parse("ws://localhost:7878/v1/ws").unwrap()
+    }
+
+    #[cfg(not(debug_assertions))]
+    fn server_url(&self) -> Url {
+        Url::parse("wss://api.ncog.id/v1/ws").unwrap()
+    }
+
+    fn protocol_version(&self) -> Version {
+        ncog_protocol_version()
+    }
+
+    async fn state_changed(&self, state: &LoginState, client: Client<Self>) -> anyhow::Result<()> {
+        match state {
+            LoginState::Connected { installation_id } => {}
+            LoginState::Disconnected => {}
+            LoginState::Handshaking { config } => {}
+            LoginState::Error { message } => {}
+        }
+        Ok(())
+    }
+
+    async fn stored_installation_config(&self) -> Option<InstallationConfig> {
+        self.logic.stored_installation_config().await
+    }
+
+    async fn store_installation_config(&self, config: InstallationConfig) -> anyhow::Result<()> {
+        self.logic.store_installation_config(config).await
+    }
+
+    async fn response_received(
+        &self,
+        response: Self::Response,
+        original_request_id: Option<u64>,
+        client: Client<Self>,
+    ) -> anyhow::Result<()> {
+        match response {
+            NcogResponse::Error { message } => {
+                let mut auth_state = self.auth_state.write().await;
+                *auth_state = AuthState::Error { message };
+            }
+            NcogResponse::Authenticated {
+                profile,
+                permissions,
+            } => {
+                let mut auth_state = self.auth_state.write().await;
+                println!("Authenticated as {:?}", profile.screenname);
+                *auth_state = AuthState::Authenticated {
+                    profile,
+                    permissions,
+                };
+            }
+            NcogResponse::AuthenticateAtUrl { url } => {
+                if let Err(err) = webbrowser::open(&url) {
+                    self.logic.handle_error(Error::from(err), client).await?;
+                }
+            }
+            unhandled => {
+                self.logic
+                    .handle_response(unhandled, original_request_id, client)
+                    .await?
+            }
+        }
+        Ok(())
+    }
+
+    async fn handle_error(
+        &self,
+        error: basws_client::Error,
+        client: Client<Self>,
+    ) -> anyhow::Result<()> {
+        self.logic
+            .handle_error(Error::Protocol(error), client)
+            .await
+    }
+}
+
+impl<T> Ncog<T>
+where
+    T: NcogClientLogic + 'static,
+{
+    pub fn new(logic: T) -> Self {
+        Self {
+            logic,
+            auth_state: Handle::new(AuthState::LoggedOut),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
-pub enum LoginState {
+pub enum AuthState {
     LoggedOut,
     Connected,
-    Authenticated { profile: UserProfile },
-    Error { message: Option<String> },
+    Authenticated {
+        profile: UserProfile,
+        permissions: PermissionSet,
+    },
+    Error {
+        message: Option<String>,
+    },
 }
 
 #[derive(Clone, Debug)]
 pub enum NetworkEvent {
     LoginStateChanged,
     AuthenticateAtUrl(String),
-}
-
-pub struct Network {
-    login_state: LoginState,
-    sender: Sender<ServerRequest>,
-    receiver: Receiver<ServerRequest>,
-    event_sender: Sender<NetworkEvent>,
-    event_receiver: Receiver<NetworkEvent>,
-    roundtrip: f64,
-    world_timestamp: f64,
-    profiles: Option<Vec<UserProfile>>,
-}
-
-impl Network {
-    fn new() -> Self {
-        let (sender, receiver) = unbounded();
-        let (event_sender, event_receiver) = unbounded();
-        Self {
-            login_state: LoginState::LoggedOut,
-            sender,
-            receiver,
-            event_receiver,
-            event_sender,
-            roundtrip: 0.0,
-            world_timestamp: 0.0,
-            profiles: None,
-        }
-    }
-
-    pub async fn spawn(server_url: &'static str) {
-        tokio::spawn(network_loop(server_url));
-    }
-
-    async fn set_login_state(state: LoginState) {
-        let mut network = NETWORK.write().await;
-        network.login_state = state;
-        network
-            .event_sender
-            .send(NetworkEvent::LoginStateChanged)
-            .unwrap();
-    }
-
-    pub async fn login_state() -> LoginState {
-        let network = NETWORK.read().await;
-        network.login_state.clone()
-    }
-
-    pub async fn request(request: ServerRequest) {
-        println!("Sending request: {:?}", request);
-        let network = NETWORK.read().await;
-        network.sender.send(request).unwrap_or_default();
-    }
-
-    pub async fn event_receiver() -> Receiver<NetworkEvent> {
-        let network = NETWORK.read().await;
-        network.event_receiver.clone()
-    }
-
-    async fn receiver() -> Receiver<ServerRequest> {
-        let network = NETWORK.read().await;
-        network.receiver.clone()
-    }
-
-    async fn world_updated(timestamp: f64, profiles: Vec<UserProfile>) {
-        let mut network = NETWORK.write().await;
-        network.world_timestamp = timestamp;
-        network.profiles = Some(profiles);
-    }
-
-    async fn ping_updated(new_roundtrip: f64) {
-        let mut network = NETWORK.write().await;
-        network.roundtrip = new_roundtrip;
-    }
-
-    pub async fn ping() -> f64 {
-        let network = NETWORK.read().await;
-        network.roundtrip
-    }
-
-    pub async fn last_world_update() -> Option<(f64, Vec<UserProfile>)> {
-        let mut network = NETWORK.write().await;
-        let mut profiles = None;
-        std::mem::swap(&mut profiles, &mut network.profiles);
-
-        profiles.map(|profiles| (network.world_timestamp, profiles))
-    }
-
-    async fn set_authentication_url(url: String) {
-        let network = NETWORK.read().await;
-        network
-            .event_sender
-            .send(NetworkEvent::AuthenticateAtUrl(url))
-            .unwrap();
-    }
-}
-
-async fn network_loop(server_url: &'static str) {
-    loop {
-        let socket = match Client::new(&format!("{}/api/ws", server_url))
-            .connect()
-            .await
-        {
-            Ok(socket) => socket,
-            Err(err) => {
-                println!("Error connecting to socket. {}", err);
-                tokio::time::delay_for(Duration::from_millis(100)).await;
-                Network::set_login_state(LoginState::Error { message: None }).await;
-                continue;
-            }
-        };
-        let (mut tx, mut rx) = socket.into_channel().await;
-        let receiver = Network::receiver().await;
-        let mut interval = tokio::time::interval(Duration::from_millis(1));
-        // Network::request(ServerRequest::Authenticate {
-        //     installation_id: UserConfig::installation_id().await,
-        //     version: shared::PROTOCOL_VERSION.to_owned(),
-        // })
-        // .await;
-
-        loop {
-            if receive_loop(&mut rx).await || send_loop(&receiver, &mut tx).await {
-                break;
-            }
-            interval.tick().await;
-        }
-    }
-}
-
-async fn receive_loop(rx: &mut TokioReceiver<Msg>) -> bool {
-    let mut average_server_timestamp_delta = 0f64;
-    loop {
-        match rx.try_recv() {
-            Ok(Msg::Binary(bytes)) => match bincode::deserialize::<ServerResponse>(&bytes) {
-                Ok(response) => match response {
-                    ServerResponse::Error { message } => {
-                        Network::set_login_state(LoginState::Error { message }).await;
-                    }
-                    // ServerResponse::AdoptInstallationId { installation_id } => {
-                    //     println!("Received app token {}", installation_id);
-                    //     UserConfig::set_installation_id(installation_id).await;
-                    //     Network::set_login_state(LoginState::Connected).await;
-                    // }
-                    ServerResponse::Authenticated { profile, .. } => {
-                        println!("Authenticated as {:?}", profile.screenname);
-                        Network::set_login_state(LoginState::Authenticated { profile }).await;
-                        todo!("Store permissions");
-                    }
-                    // ServerResponse::WorldUpdate {
-                    //     timestamp,
-                    //     profiles,
-                    // } => {
-                    //     Network::world_updated(
-                    //         timestamp - average_server_timestamp_delta,
-                    //         profiles,
-                    //     )
-                    //     .await;
-                    // }
-                    ServerResponse::AuthenticateAtUrl { url } => {
-                        Network::set_authentication_url(url).await;
-                    }
-                    // ServerResponse::Ping {
-                    //     timestamp,
-                    //     average_server_timestamp_delta: delta,
-                    //     average_roundtrip,
-                    // } => {
-                    //     average_server_timestamp_delta = delta;
-                    //     Network::ping_updated(average_roundtrip).await;
-                    //     Network::request(ServerRequest::Pong {
-                    //         original_timestamp: timestamp,
-                    //         timestamp: current_timestamp(),
-                    //     })
-                    //     .await;
-                    // }
-                    unmatched_message => {
-                        println!("Ignoring message {:#?}", unmatched_message);
-                    }
-                },
-                Err(_) => println!("Error deserializing message."),
-            },
-            Err(err) => match err {
-                TokioTryRecvError::Closed => {
-                    println!("Socket Disconnected");
-                    return true;
-                }
-                _ => return false,
-            },
-
-            _ => {}
-        }
-    }
-}
-
-async fn send_loop(receiver: &Receiver<ServerRequest>, tx: &mut TokioSender<Msg>) -> bool {
-    loop {
-        match receiver.try_recv() {
-            Ok(request) => {
-                if let Err(err) = tx
-                    .send(Msg::Binary(bincode::serialize(&request).unwrap()))
-                    .await
-                {
-                    println!("Error sending message: {}", err);
-                    return true;
-                }
-            }
-            Err(err) => match err {
-                TryRecvError::Disconnected => return true,
-                TryRecvError::Empty => return false,
-            },
-        }
-    }
 }
