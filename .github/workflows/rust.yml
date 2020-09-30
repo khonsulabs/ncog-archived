@@ -44,17 +44,29 @@ jobs:
         run: |
           echo "DATABASE_URL=postgres://postgres:postgres@postgres:$POSTGRES_PORT/postgres" >> .env
 
+          cd ncog-migrations
           cargo run --bin migrator --release
 
-          cd ncog-web
+          cd ../ncog-web
           sed -i s/CACHEBUSTER/`uuidgen`/g static/index.html
           sed -i s/CACHEBUSTER/`uuidgen`/g main.js
           cargo make build -p release
-          cd ..
-          cargo build --package ncog-server --release
+
+          cd ../ncog-server
+          cargo build --release
 
       - name: Run tests
-        run: cargo test --release --verbose
+        run: |
+          cd ncog-shared
+          cargo test --release --verbose
+          cd ../ncog-migrations
+          cargo test --release --verbose
+          cd ../ncog-server
+          cargo test --release --verbose
+          cd ../ncog-web
+          cargo test --release --verbose
+          cd ../ncog-client
+          cargo test --release --verbose
         env:
           NCOG_CLIENT_ENCRYPTION_KEY: ${{ secrets.NCOG_CLIENT_ENCRYPTION_KEY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.GAC_ACCESS_KEY_ID }}

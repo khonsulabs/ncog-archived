@@ -1,7 +1,11 @@
-/target
+target/
 .env
 .vscode/launch.json
 .vscode/tasks.json
 *.code-workspace
 webapp/static/pkg/
 webapp/static/styles.css*
+khonsuweb/Cargo.lock
+ncog-client/Cargo.lock
+ncog-migrations/Cargo.lock
+ncog-shared/Cargo.lock

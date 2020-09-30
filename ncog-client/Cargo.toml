@@ -16,7 +16,6 @@ dirs = "3"
 toml = "0.5"
 serde = "1"
 serde_derive = "1"
-bincode = "1.3"
 ncog-shared = { path = "../ncog-shared" }
 tokio = { version = "0.2", features = ["full"] }
 webbrowser = "0.5"
