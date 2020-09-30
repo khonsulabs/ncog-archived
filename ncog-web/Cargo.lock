@@ -110,9 +110,9 @@ checksum = "3441f0f7b02788e948e47f457ca01f1d7e6d92c693bc132c22b087d3141c03ff"
 
 [[package]]
 name = "basws-shared"
-version = "0.1.0-dev-5"
+version = "0.1.0-dev-6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31466b1d0f8ac3f5c4b70cad5bc6cd2afa1ed78a89a571f1e4aa2801dc48f265"
+checksum = "93911e40fb3d1c112c53989d3ded9091db448013525a0e433c5c9c60613ec95d"
 dependencies = [
  "chrono",
  "js-sys",
@@ -127,9 +127,9 @@ dependencies = [
 
 [[package]]
 name = "basws-yew"
-version = "0.1.0-dev-5"
+version = "0.1.0-dev-6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67d9514b268689567a7e7b1f5d4a9b90b8dd69a3c36ef40a23719fc29361960b"
+checksum = "b5d5ed22e5fa4e83ca56eb5e2d8a96d0015178d73810c5bde0b300334d2f53d9"
 dependencies = [
  "aead 0.3.2",
  "aes-gcm",
