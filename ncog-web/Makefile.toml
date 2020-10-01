@@ -44,7 +44,7 @@ args = [
     "-w",
     "../khonsuweb",
     "-w",
-    "../shared",
+    "../ncog-shared",
     "-w",
     "../ncog-client",
     "-x",

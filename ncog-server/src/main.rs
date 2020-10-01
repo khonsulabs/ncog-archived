@@ -39,7 +39,7 @@ fn api_server_base_url() -> warp::http::uri::Builder {
 }
 
 #[cfg(debug_assertions)]
-const STATIC_FOLDER_PATH: &str = "../webapp/static";
+const STATIC_FOLDER_PATH: &str = "../ncog-web/static";
 #[cfg(not(debug_assertions))]
 const STATIC_FOLDER_PATH: &str = "static";
 

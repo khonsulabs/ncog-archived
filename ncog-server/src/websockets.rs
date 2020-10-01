@@ -201,7 +201,7 @@ struct TwitchTokenResponse {
 struct TwitchUserInfo {
     pub id: String,
     pub login: String,
-    // pub display_name: Option<String>,
+    pub display_name: Option<String>,
     // pub type: Option<String>,
     // pub broadcaster_type: String,
     // pub description: Option<String>,
@@ -249,34 +249,55 @@ pub async fn login_twitch(installation_id: Uuid, code: String) -> Result<(), any
         .first()
         .ok_or_else(|| anyhow::anyhow!("Expected a user response, but got no users"))?;
 
+    let username = user
+        .display_name
+        .clone()
+        .unwrap_or_else(|| user.login.clone());
     let pg = pg();
     {
         let mut tx = pg.begin().await?;
 
         // Create an account if it doesn't exist yet for this installation
-        let account_id = if let Some(account_id) = sqlx::query!(
-            "SELECT account_id FROM installations WHERE id = $1",
-            installation_id
-        )
-        .fetch_one(&mut tx)
-        .await?
-        .account_id
+        let account_id = if let Some(account) =
+            database::get_profile_by_installation_id(&mut tx, installation_id).await?
         {
-            account_id
+            if account.screenname.is_none() {
+                // If this generates a conflict, ignore it.
+                let _ = sqlx::query!(
+                    "UPDATE accounts SET screenname = $1 WHERE id = $2",
+                    username,
+                    account.id
+                )
+                .execute(&mut tx)
+                .await?;
+            }
+            account.id
         } else {
             let account_id = if let Ok(row) = sqlx::query!(
-                "SELECT account_id FROM twitch_profiles WHERE id = $1",
+                "SELECT account_id, screenname FROM twitch_profiles INNER JOIN accounts ON accounts.id = account_id WHERE twitch_profiles.id = $1",
                 user.id
             )
             .fetch_one(&mut tx)
             .await
             {
+                if row.screenname.is_none() {
+                    let _ = sqlx::query!(
+                        "UPDATE accounts SET screenname = $1 WHERE id = $2",
+                        username,
+                        row.account_id
+                    )
+                    .execute(&mut tx)
+                    .await?;
+                }
                 row.account_id
             } else {
-                sqlx::query!("INSERT INTO accounts DEFAULT VALUES RETURNING id")
-                    .fetch_one(&mut tx)
-                    .await?
-                    .id
+                sqlx::query!(
+                    "INSERT INTO accounts (screenname) VALUES ($1) RETURNING id",
+                    username
+                )
+                .fetch_one(&mut tx)
+                .await?
+                .id
             };
             database::set_installation_account_id(&mut tx, installation_id, Some(account_id))
                 .await?;
@@ -287,7 +308,7 @@ pub async fn login_twitch(installation_id: Uuid, code: String) -> Result<(), any
         sqlx::query!("INSERT INTO twitch_profiles (id, account_id, username) VALUES ($1, $2, $3) ON CONFLICT (id) DO UPDATE SET account_id = $2, username = $3 ",
             user.id,
             account_id,
-            user.login,
+            username,
         ).execute(&mut tx).await?;
 
         // Create an oauth_token
