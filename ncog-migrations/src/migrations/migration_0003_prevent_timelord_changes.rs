@@ -2,7 +2,7 @@ use super::TIMELORD_ROLE_ID;
 use sqlx_simple_migrator::Migration;
 
 pub fn migration() -> Migration {
-    Migration::new(&format!("migrations{}{}", std::path::MAIN_SEPARATOR, std::file!()))
+    Migration::new("0003")
         .with_up(&format!(
             "INSERT INTO role_permission_statements (service, resource_type, resource_id, action, allow) values ('iam', 'roles', {}, 'update', false)",
             TIMELORD_ROLE_ID
