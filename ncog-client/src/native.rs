@@ -24,6 +24,10 @@ pub trait NcogClientLogic: Send + Sync + Sized {
         original_request_id: Option<u64>,
         client: NcogClient<Self>,
     ) -> anyhow::Result<()>;
+
+    fn connect_to_local_websocket(&self) -> bool {
+        false
+    }
 }
 
 pub struct Ncog<T> {
@@ -39,14 +43,12 @@ where
     type Request = NcogRequest;
     type Response = NcogResponse;
 
-    #[cfg(debug_assertions)]
     fn server_url(&self) -> Url {
-        Url::parse("ws://localhost:7878/v1/ws").unwrap()
-    }
-
-    #[cfg(not(debug_assertions))]
-    fn server_url(&self) -> Url {
-        Url::parse("wss://api.ncog.id/v1/ws").unwrap()
+        if self.logic.connect_to_local_websocket() {
+            Url::parse("ws://localhost:7878/v1/ws").unwrap()
+        } else {
+            Url::parse("wss://api.ncog.id/v1/ws").unwrap()
+        }
     }
 
     fn protocol_version(&self) -> Version {
