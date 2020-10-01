@@ -53,7 +53,8 @@ pub enum NcogResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
 pub struct UserProfile {
     pub id: i64,
-    pub screenname: Option<String>,
+    pub login: Option<String>,
+    pub display_name: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

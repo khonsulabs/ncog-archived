@@ -344,7 +344,7 @@ impl App {
         if let Some(user) = &self.user {
             html! {
                 <div class="navbar-item">
-                    { user.profile.screenname.clone().unwrap_or_default() }
+                    { user.profile.display_name.clone().unwrap_or_default() }
                     <button class="button" onclick=self.link.callback(|_| Message::LogOut)>
                         <strong>{ localize("log-out") }</strong>
                     </button>

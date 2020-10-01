@@ -3,6 +3,7 @@ mod migration_0002_reset_accounts;
 mod migration_0003_prevent_timelord_changes;
 mod migration_0004_twitch;
 mod migration_0005_basws;
+mod migration_0006_collations;
 use crate::connection::pg;
 use sqlx_simple_migrator::{Migration, MigrationError};
 
@@ -18,6 +19,7 @@ pub fn migrations() -> Vec<Migration> {
         migration_0003_prevent_timelord_changes::migration(),
         migration_0004_twitch::migration(),
         migration_0005_basws::migration(),
+        migration_0006_collations::migration(),
     ]
 }
 

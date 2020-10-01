@@ -21,7 +21,7 @@ where
 {
     match sqlx::query_as!(
         UserProfile,
-        "SELECT accounts.id, screenname FROM accounts INNER JOIN installations ON installations.account_id = accounts.id WHERE installations.id = $1",
+        "SELECT accounts.id, login, display_name FROM accounts INNER JOIN installations ON installations.account_id = accounts.id WHERE installations.id = $1",
         installation_id,
     )
     .fetch_one(executor)
@@ -41,7 +41,7 @@ where
 {
     match sqlx::query_as!(
         UserProfile,
-        "SELECT accounts.id, screenname FROM accounts WHERE accounts.id = $1",
+        "SELECT accounts.id, login, display_name FROM accounts WHERE accounts.id = $1",
         account_id,
     )
     .fetch_one(executor)
