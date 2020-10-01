@@ -25,7 +25,7 @@ ncog-migrations = { path = "../ncog-migrations" }
 ncog-shared = { path = "../ncog-shared" }
 async-trait = "0.1"
 mime_guess = "2"
-basws-server = "0.1.0-dev-6"
+basws-server = "0.1.0-dev-7"
 
 [dependencies.slog]
 version = "2"

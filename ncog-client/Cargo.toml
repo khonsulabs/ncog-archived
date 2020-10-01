@@ -21,6 +21,6 @@ tokio = { version = "0.2", features = ["full"] }
 webbrowser = "0.5"
 async-std = "1"
 lazy_static = "1"
-basws-client = { version = "0.1.0-dev-6", features = ["tls"] }
+basws-client = { version = "0.1.0-dev-7", features = ["tls"] }
 anyhow = "1"
 thiserror = "1"

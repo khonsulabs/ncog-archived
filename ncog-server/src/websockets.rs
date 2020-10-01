@@ -169,6 +169,10 @@ impl ServerLogic for NcogServer {
     async fn handle_websocket_error(&self, _err: warp::Error) -> ErrorHandling {
         ErrorHandling::Disconnect
     }
+
+    async fn client_disconnected(&self, client: &ConnectedClient<Self>) -> anyhow::Result<()> {
+        Ok(())
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
