@@ -2,7 +2,7 @@ use super::{JONS_ACCOUNT_ID, JONS_ITCHIO_ID, TIMELORD_ROLE_ID};
 use sqlx_simple_migrator::Migration;
 
 pub fn migration() -> Migration {
-    Migration::new(std::file!())
+    Migration::new(&format!("migrations{}{}", std::path::MAIN_SEPARATOR, std::file!()))
         .with_up(
             r#"
         CREATE TABLE accounts (
