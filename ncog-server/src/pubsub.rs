@@ -1,5 +1,4 @@
 use std::collections::HashSet;
-
 use crate::{database, websockets::ConnectedAccount, websockets::NcogServer};
 use basws_server::{Handle, Server};
 use ncog_migrations::{pg, sqlx};

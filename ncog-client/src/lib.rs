@@ -1,4 +1,3 @@
-mod config;
 mod native;
 
 pub use native::{AuthState, Error, Ncog, NcogClient, NcogClientLogic};

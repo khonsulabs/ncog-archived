@@ -56,11 +56,7 @@ impl EditingId {
     }
 
     pub fn is_new(&self) -> bool {
-        if let EditingId::New = self {
-            true
-        } else {
-            false
-        }
+        matches!(self, EditingId::New)
     }
 
     pub fn existing_id(&self) -> Option<i64> {

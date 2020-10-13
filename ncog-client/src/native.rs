@@ -11,10 +11,12 @@ pub enum Error {
     Protocol(#[from] basws_client::Error),
     #[error("browser error")]
     WebBrowser(#[from] std::io::Error),
+    #[error("error, message: {0:?}")]
+    Generic(Option<String>),
 }
 
 #[async_trait]
-pub trait NcogClientLogic: Send + Sync + Sized {
+pub trait NcogClientLogic: Send + Sync + Sized + 'static {
     async fn handle_error(&self, error: Error, client: NcogClient<Self>) -> anyhow::Result<()>;
     async fn stored_installation_config(&self) -> Option<InstallationConfig>;
     async fn store_installation_config(&self, config: InstallationConfig) -> anyhow::Result<()>;
@@ -27,6 +29,20 @@ pub trait NcogClientLogic: Send + Sync + Sized {
 
     fn connect_to_local_websocket(&self) -> bool {
         false
+    }
+
+    async fn state_changed(
+        &self,
+        client: NcogClient<Self>,
+        auth_state: AuthState,
+    ) -> anyhow::Result<()>;
+
+    async fn authenticated(&self, _client: NcogClient<Self>) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    async fn disconnected(&self, _client: NcogClient<Self>) -> anyhow::Result<()> {
+        Ok(())
     }
 }
 
@@ -57,12 +73,19 @@ where
 
     async fn state_changed(&self, state: &LoginState, client: Client<Self>) -> anyhow::Result<()> {
         match state {
-            LoginState::Connected { installation_id } => {}
-            LoginState::Disconnected => {}
-            LoginState::Handshaking { config } => {}
-            LoginState::Error { message } => {}
+            LoginState::Connected { .. } => self.set_auth_state(AuthState::Connected, client).await,
+            LoginState::Disconnected => self.set_auth_state(AuthState::LoggedOut, client).await,
+            LoginState::Handshaking { .. } => Ok(()),
+            LoginState::Error { message } => {
+                self.set_auth_state(
+                    AuthState::Error {
+                        message: message.clone(),
+                    },
+                    client,
+                )
+                .await
+            }
         }
-        Ok(())
     }
 
     async fn stored_installation_config(&self) -> Option<InstallationConfig> {
@@ -81,32 +104,36 @@ where
     ) -> anyhow::Result<()> {
         match response {
             NcogResponse::Error { message } => {
-                let mut auth_state = self.auth_state.write().await;
-                *auth_state = AuthState::Error { message };
+                self.logic
+                    .handle_error(Error::Generic(message), client)
+                    .await
             }
             NcogResponse::Authenticated {
                 profile,
                 permissions,
             } => {
-                let mut auth_state = self.auth_state.write().await;
-                println!("Authenticated as {:?}", profile.screenname);
-                *auth_state = AuthState::Authenticated {
-                    profile,
-                    permissions,
-                };
+                self.set_auth_state(
+                    AuthState::Authenticated {
+                        profile,
+                        permissions,
+                    },
+                    client,
+                )
+                .await
             }
             NcogResponse::AuthenticateAtUrl { url } => {
                 if let Err(err) = webbrowser::open(&url) {
-                    self.logic.handle_error(Error::from(err), client).await?;
+                    self.logic.handle_error(Error::from(err), client).await
+                } else {
+                    Ok(())
                 }
             }
             unhandled => {
                 self.logic
                     .handle_response(unhandled, original_request_id, client)
-                    .await?
+                    .await
             }
         }
-        Ok(())
     }
 
     async fn handle_error(
@@ -122,13 +149,30 @@ where
 
 impl<T> Ncog<T>
 where
-    T: NcogClientLogic + 'static,
+    T: NcogClientLogic,
 {
     pub fn new(logic: T) -> Self {
         Self {
             logic,
             auth_state: Handle::new(AuthState::LoggedOut),
         }
+    }
+
+    async fn set_auth_state(
+        &self,
+        new_state: AuthState,
+        client: NcogClient<T>,
+    ) -> anyhow::Result<()> {
+        {
+            let mut auth_state = self.auth_state.write().await;
+            *auth_state = new_state.clone();
+        }
+        self.logic.state_changed(client, new_state).await
+    }
+
+    pub async fn auth_state(&self) -> AuthState {
+        let auth_state = self.auth_state.read().await;
+        auth_state.clone()
     }
 }
 
@@ -143,10 +187,4 @@ pub enum AuthState {
     Error {
         message: Option<String>,
     },
-}
-
-#[derive(Clone, Debug)]
-pub enum NetworkEvent {
-    LoginStateChanged,
-    AuthenticateAtUrl(String),
 }
