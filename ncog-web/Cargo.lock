@@ -857,7 +857,6 @@ dependencies = [
  "fluent-templates",
  "include_dir",
  "serde",
- "serde_derive",
  "unic-langid",
  "uuid",
 ]

@@ -14,8 +14,7 @@ async-handle = "0.1"
 uuid = "0.8"
 dirs = "3"
 toml = "0.5"
-serde = "1"
-serde_derive = "1"
+serde = { version = "1", features = ["derive"] }
 ncog-shared = { path = "../ncog-shared" }
 tokio = { version = "0.2", features = ["full"] }
 webbrowser = "0.5"

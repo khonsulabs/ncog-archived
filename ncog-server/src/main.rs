@@ -3,7 +3,7 @@ use std::convert::Infallible;
 use std::path::Path;
 use warp::{Filter, Reply};
 
-mod database;
+pub mod database;
 mod pubsub;
 mod twitch;
 // mod randomnames;

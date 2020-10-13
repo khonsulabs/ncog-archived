@@ -1,6 +1,6 @@
 use basws_shared::{Version, VersionReq};
 use chrono::Utc;
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 pub mod iam;
