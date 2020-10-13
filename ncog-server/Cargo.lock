@@ -2150,8 +2150,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx-simple-migrator"
-version = "0.1.0"
-source = "git+https://github.com/khonsulabs/sqlx-simple-migrator.git#23a505888b219de60859e76a20b755da8abc3bf2"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4b2ef217284d410b7220baee9a40c957aace5318fc33c1e73c4c76f8b9d6504c"
 dependencies = [
  "sqlx",
  "thiserror",

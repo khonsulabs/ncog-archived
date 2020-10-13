@@ -13,7 +13,7 @@ name = "migrator"
 path = "src/main.rs"
 
 [dependencies]
-sqlx-simple-migrator = { git = "https://github.com/khonsulabs/sqlx-simple-migrator.git" }
+sqlx-simple-migrator = { version = "0.0.1" }
 tokio = { version = "*", features = ["macros", "blocking"] }
 lazy_static = "1"
 futures = "0.3"
