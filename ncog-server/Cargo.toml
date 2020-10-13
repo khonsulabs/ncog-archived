@@ -43,5 +43,5 @@ version = "2"
 features = ["nested-values"]
 
 [patch.crates-io]
-basws-server = { path = "../../basws/basws-server", version = "0.1.0-dev-7" }
-basws-shared = { path = "../../basws/basws-shared", version = "0.1.0-dev-7" }
+# basws-server = { path = "../../basws/basws-server", version = "0.1.0-dev-7" }
+# basws-shared = { path = "../../basws/basws-shared", version = "0.1.0-dev-7" }
