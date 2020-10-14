@@ -28,7 +28,7 @@ pub trait NcogClientLogic: Send + Sync + Sized + 'static {
     ) -> anyhow::Result<()>;
 
     fn connect_to_local_websocket(&self) -> bool {
-        false
+        cfg!(debug_assertions)
     }
 
     async fn state_changed(
@@ -47,7 +47,7 @@ pub trait NcogClientLogic: Send + Sync + Sized + 'static {
 }
 
 pub struct Ncog<T> {
-    logic: T,
+    pub logic: T,
     auth_state: Handle<AuthState>,
 }
 

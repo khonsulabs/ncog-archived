@@ -25,22 +25,11 @@ ncog-shared = { path = "../ncog-shared" }
 async-trait = "0.1"
 mime_guess = "2"
 basws-server = "0.1.0-dev-7"
-jsonwebtoken = "7"
-
-[dependencies.slog]
-version = "2"
-features = ["nested-values"]
-
-[dependencies.slog-async]
-version = "2"
-features = ["nested-values"]
-
-[dependencies.slog-scope]
-version = "4"
-
-[dependencies.slog-json]
-version = "2"
-features = ["nested-values"]
+tracing = "0.1"
+tracing-futures = { version = "0.2", default-features = false, features = [
+    "futures-03"
+] }
+tracing-subscriber = "0.2"
 
 [patch.crates-io]
 # basws-server = { path = "../../basws/basws-server", version = "0.1.0-dev-7" }

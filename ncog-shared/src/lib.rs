@@ -2,11 +2,13 @@ use basws_shared::{Version, VersionReq};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-
 pub mod iam;
+pub mod jwk;
 pub mod localization;
 pub mod permissions;
 pub use fluent_templates;
+pub use jsonwebtoken;
+use jwk::JwtKey;
 use permissions::PermissionSet;
 
 pub fn ncog_protocol_version() -> Version {
@@ -21,6 +23,8 @@ pub fn ncog_protocol_version_requirements() -> VersionReq {
 pub enum NcogRequest {
     AuthenticationUrl(OAuthProvider),
     IAM(iam::IAMRequest),
+    ListPublicJwtKeys,
+    RequestIdentityVerificationToken { nonce: [u8; 32], audience: String },
 }
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum OAuthProvider {
@@ -35,7 +39,26 @@ pub struct Inputs {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct IdentityVerificationClaims {
+    #[serde(rename = "iss")]
+    pub issuer: String,
+    #[serde(rename = "sub")]
+    pub subject: String,
+    #[serde(rename = "aud")]
+    pub audience: String,
+    #[serde(rename = "exp")]
+    pub expiration_time: u64,
+    #[serde(rename = "iat")]
+    pub issuance_time: u64,
+    pub nonce: [u8; 32],
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum NcogResponse {
+    JwtPublicKeys(Vec<JwtKey>),
+    IdentityVerificationToken {
+        token: String,
+    },
     AuthenticateAtUrl {
         url: String,
     },

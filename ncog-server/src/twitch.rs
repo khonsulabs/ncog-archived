@@ -1,9 +1,9 @@
 use crate::{api_server_base_url, database, env, webserver_base_url};
 use chrono::{NaiveDateTime, Utc};
 use ncog_migrations::{pg, sqlx};
+use ncog_shared::jwk::JwtKey;
 use serde::{Deserialize, Serialize};
 use std::convert::Infallible;
-use std::str::FromStr;
 use url::Url;
 use uuid::Uuid;
 use warp::{Filter, Rejection};
@@ -90,22 +90,6 @@ pub struct JwtKeys {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct JwtKey {
-    #[serde(rename = "alg")]
-    pub algorithm: String,
-    #[serde(rename = "kid")]
-    pub key_id: String,
-    #[serde(rename = "kty")]
-    pub key_type: String,
-    #[serde(rename = "e")]
-    pub rsa_e: String,
-    #[serde(rename = "n")]
-    pub rsa_n: String,
-    #[serde(rename = "use")]
-    pub public_use: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
 pub struct JwtClaims {
     #[serde(rename = "iss")]
     pub issuer: Option<String>,
@@ -142,20 +126,12 @@ pub async fn login_twitch(installation_id: Uuid, code: String) -> Result<(), any
         .await?
         .json()
         .await?;
-    let (algorithm, jwt_key) = jwt_keys
+    let jwt_key = jwt_keys
         .keys
         .into_iter()
-        .filter_map(|key| {
-            jsonwebtoken::Algorithm::from_str(&key.algorithm)
-                .map(|algorithm| (algorithm, key))
-                .ok()
-        })
-        .find(|(_, key)| key.key_type == "RSA")
+        .find(|key| key.key_type == "RSA")
         .expect("Twitch has no RS256 keys");
-    let jwt_key = jsonwebtoken::DecodingKey::from_rsa_components(&jwt_key.rsa_n, &jwt_key.rsa_e);
-
-    let validation = jsonwebtoken::Validation::new(algorithm);
-    let token = jsonwebtoken::decode::<JwtClaims>(&tokens.id_token, &jwt_key, &validation)?;
+    let token = jwt_key.parse_token::<JwtClaims>(&tokens.id_token)?;
 
     let expiration_time = NaiveDateTime::from_timestamp(
         token

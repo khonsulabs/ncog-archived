@@ -1,6 +1,9 @@
 #![type_length_limit = "8273194"]
+#[macro_use]
+extern crate tracing;
 use std::convert::Infallible;
 use std::path::Path;
+use tracing_subscriber::prelude::*;
 use warp::{Filter, Reply};
 
 pub mod database;
@@ -8,9 +11,6 @@ mod pubsub;
 mod twitch;
 // mod randomnames;
 mod websockets;
-
-#[macro_use]
-extern crate slog_scope;
 
 #[cfg(debug_assertions)]
 fn webserver_base_url() -> warp::http::uri::Builder {
@@ -46,7 +46,7 @@ const STATIC_FOLDER_PATH: &str = "static";
 #[tokio::main]
 async fn main() {
     dotenv::dotenv().expect("Error initializing environment");
-    let _log_guard = initialize_logging();
+    initialize_logging();
     info!("server starting up");
 
     let base_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_owned());
@@ -83,9 +83,19 @@ async fn main() {
 
     let custom_logger = warp::log::custom(|info| {
         if info.status().is_server_error() {
-            error!("Request Served"; "path" => info.path(), "method" => info.method().as_str(), "status" => info.status().as_str());
+            error!(
+                path = info.path(),
+                method = info.method().as_str(),
+                status = info.status().as_str(),
+                "Request Served"
+            );
         } else {
-            info!("Request Served"; "path" => info.path(), "method" => info.method().as_str(), "status" => info.status().as_u16());
+            info!(
+                path = info.path(),
+                method = info.method().as_str(),
+                status = info.status().as_u16(),
+                "Request Served"
+            );
         }
     });
 
@@ -123,13 +133,14 @@ fn env(var: &str) -> String {
     std::env::var(var).unwrap()
 }
 
-use slog::{o, Drain};
-pub fn initialize_logging() -> slog_scope::GlobalLoggerGuard {
-    let json = slog_json::Json::new(std::io::stdout())
-        .add_default_keys()
-        .build()
-        .fuse();
-    let async_json = slog_async::Async::new(json).build().fuse();
-    let log = slog::Logger::root(async_json, o!());
-    slog_scope::set_global_logger(log)
+pub fn initialize_logging() {
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::filter::EnvFilter::default())
+        .with(
+            tracing_subscriber::fmt::layer()
+                .with_target(false)
+                .with_span_events(tracing_subscriber::fmt::format::FmtSpan::CLOSE),
+        )
+        .try_init()
+        .unwrap()
 }

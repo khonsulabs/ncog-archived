@@ -1,7 +1,6 @@
 target/
 .env
-.vscode/launch.json
-.vscode/tasks.json
+.vscode
 *.code-workspace
 webapp/static/pkg/
 webapp/static/styles.css*

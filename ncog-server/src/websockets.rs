@@ -1,10 +1,13 @@
 use super::{database, twitch};
 use async_trait::async_trait;
+use chrono::{Duration, Utc};
 use ncog_migrations::pg;
 use ncog_shared::{
+    jsonwebtoken::{self, EncodingKey},
+    jwk::JwtKey,
     ncog_protocol_version_requirements,
     permissions::{Claim, PermissionSet},
-    NcogRequest, NcogResponse, OAuthProvider, UserProfile,
+    IdentityVerificationClaims, NcogRequest, NcogResponse, OAuthProvider, UserProfile,
 };
 use uuid::Uuid;
 mod iam;
@@ -100,6 +103,40 @@ impl ServerLogic for NcogServer {
                 }
             },
             NcogRequest::IAM(iam_request) => iam::handle_request(client, iam_request).await,
+            NcogRequest::ListPublicJwtKeys => {
+                Ok(RequestHandling::Respond(NcogResponse::JwtPublicKeys(vec![
+                                JwtKey {
+                                    key_id: "sig-1602646606".to_string(),
+                                    key_type: "RSA".to_string(),
+                                    public_use: "sig".to_string(),
+                                    rsa_e: "AQAB".to_string(),
+                                    rsa_n: "uJx3D72SGsVZWny06jHms1o0TE8NMn2xDuBODnFzZbTxp0M_KXfPRZbW0fTVm3NRmaZ9c1MgQI0TyZ-zNw832dkNuHUaIXzRFWD2OuuRWmpHwfjMN1o6RZ5phfzJcbd1Qf0AmZLsAAIWSlPvWrow2GOIizqLcVokHx0dWkeMDQrWnLIQmcYKG5P18HpJPg_51X7A301ejavo91CZfWmKdHPN8If6ZB1koMJ8CAqPbfAtkapmrHZ6AA7m2fKNsVukKHzeqlYpEFcVEjWFIjZvtl8zz6y2ZXpsW7whu7MP816Jn0pOmaPmll41U7jbx703x6hiobozeK_QNaipCquFhQ".to_string(),
+                                    algorithm: "RS256".to_string(),
+                                }])))
+            }
+            NcogRequest::RequestIdentityVerificationToken { nonce, audience } => {
+                if let Some(account) = client.account().await {
+                    let account = account.read().await;
+                    let encoding_key = EncodingKey::from_rsa_pem(std::env!("JWK_RSA_PRIVATE_KEY_PEM").as_bytes())?;
+                    let issuance_time = Utc::now();
+                    let expiration_time = issuance_time.checked_add_signed(Duration::minutes(5)).unwrap();
+                    let issuance_time = issuance_time.timestamp() as u64;
+                    let expiration_time = expiration_time.timestamp() as u64;
+                    let subject = account.profile.id.to_string();
+                    let claims = IdentityVerificationClaims {
+                        issuer: "https://ncog.id/v1/ws".to_string(),
+                        subject,
+                        audience,
+                        nonce,
+                        issuance_time,
+                        expiration_time,
+                    };
+                    let token = jsonwebtoken::encode(&jsonwebtoken::Header::new(jsonwebtoken::Algorithm::RS256), &claims, &encoding_key)?;
+                    Ok(RequestHandling::Respond(NcogResponse::IdentityVerificationToken {  token }))
+                } else {
+                    Ok(RequestHandling::Respond(NcogResponse::Error { message: Some("cannot request identity verification without being authenticated".to_string())}))
+                }
+            }
         }
     }
 
