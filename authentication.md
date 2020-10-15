@@ -1,7 +1,5 @@
 # Authentication with ncog
 
-This document's goal is to describe the flow in more detail than most people need to be aware of.
-
 ## Game Client Login
 
 To initiate a login, request a login URL with `NcogRequest::AuthenticationUrl(OAuthProvider::Twitch)`. The server will respond with `NcogResponse::AuthenticateAtUrl`, and will automatically try to open the browser for you. Upon successful login, the game client will receive a state change event with `AuthState::Authenticated`.
@@ -20,6 +18,6 @@ If a server needs to know if it can trust a client saying that it's a particular
 
 ## Want traditional OAuth/OpenID Connect?
 
-For Khonsu Labs' vision of ease of use of the game client, this flow was designed for minimal friction. There is no need to redirect from the browser back to the game client, because the login success message is delivered over an already established websocket connection.
+For Khonsu Labs' vision of ease of use of the game client, this flow was designed for minimal friction. There is no need to redirect from the browser back to the game client, because the login success message is delivered over an already established websocket connection. Even if the websocket is disconnected, Ncog will remember and automatically notify the client it's authenticated on the next connection.
 
 That being said, if anyone is using Ncog but wants a traditional OAuth/OpenID Connect flow, please file an issue!
