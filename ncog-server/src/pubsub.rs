@@ -1,9 +1,9 @@
-use std::collections::HashSet;
 use crate::{database, websockets::ConnectedAccount, websockets::NcogServer};
 use basws_server::{Handle, Server};
 use ncog_migrations::{pg, sqlx};
 use ncog_shared::NcogResponse;
 use sqlx::{executor::Executor, postgres::PgListener};
+use std::collections::HashSet;
 use uuid::Uuid;
 
 pub async fn pg_notify_loop(websockets: Server<NcogServer>) -> Result<(), anyhow::Error> {
@@ -22,20 +22,13 @@ pub async fn pg_notify_loop(websockets: Server<NcogServer>) -> Result<(), anyhow
             // The payload is the installation_id that logged in.
             let installation_id = Uuid::parse_str(notification.payload())?;
             if let Ok(account) = ConnectedAccount::lookup(installation_id).await {
-                let profile = account.profile.clone();
-                let permissions = account.permissions.clone();
+                let user = account.user.clone();
                 websockets
                     .associate_installation_with_account(installation_id, Handle::new(account))
                     .await?;
 
                 websockets
-                    .send_to_installation_id(
-                        installation_id,
-                        NcogResponse::Authenticated {
-                            profile,
-                            permissions,
-                        },
-                    )
+                    .send_to_installation_id(installation_id, NcogResponse::Authenticated(user))
                     .await;
             }
         } else if notification.channel() == "role_updated" {
@@ -44,19 +37,16 @@ pub async fn pg_notify_loop(websockets: Server<NcogServer>) -> Result<(), anyhow
             for client in websockets.connected_clients().await {
                 if let Some(account) = client.account().await {
                     let mut account = account.write().await;
-                    if !refreshed_accounts.contains(&account.profile.id)
-                        && account.permissions.role_ids.contains(&role_id)
+                    if !refreshed_accounts.contains(&account.user.profile.id)
+                        && account.user.permissions.role_ids.contains(&role_id)
                     {
-                        refreshed_accounts.insert(account.profile.id);
-                        account.permissions =
-                            database::load_permissions_for(&pg(), account.profile.id).await?;
+                        refreshed_accounts.insert(account.user.profile.id);
+                        account.user.permissions =
+                            database::load_permissions_for(&pg(), account.user.profile.id).await?;
                         websockets
                             .send_to_account_id(
-                                account.profile.id,
-                                NcogResponse::Authenticated {
-                                    profile: account.profile.clone(),
-                                    permissions: account.permissions.clone(),
-                                },
+                                account.user.profile.id,
+                                NcogResponse::Authenticated(account.user.clone()),
                             )
                             .await;
                     }

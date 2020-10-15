@@ -7,7 +7,8 @@ use ncog_shared::{
     jwk::JwtKey,
     ncog_protocol_version_requirements,
     permissions::{Claim, PermissionSet},
-    IdentityVerificationClaims, NcogRequest, NcogResponse, OAuthProvider, UserProfile,
+    AuthenticatedUser, IdentityVerificationClaims, NcogRequest, NcogResponse, OAuthProvider,
+    UserProfile,
 };
 use uuid::Uuid;
 mod iam;
@@ -37,7 +38,7 @@ impl ConnectedAccountHandle for ConnectedClient<NcogServer> {
 impl ConnectedAccountHandle for Handle<ConnectedAccount> {
     async fn permission_allowed(&self, claim: &Claim) -> Result<(), anyhow::Error> {
         let account = self.read().await;
-        if account.permissions.allowed(&claim) {
+        if account.user.permissions.allowed(&claim) {
             Ok(())
         } else {
             permission_denied(claim)
@@ -47,8 +48,7 @@ impl ConnectedAccountHandle for Handle<ConnectedAccount> {
 
 #[derive(Debug)]
 pub struct ConnectedAccount {
-    pub profile: UserProfile,
-    pub permissions: PermissionSet,
+    pub user: AuthenticatedUser,
 }
 
 impl ConnectedAccount {
@@ -58,8 +58,10 @@ impl ConnectedAccount {
             .ok_or_else(|| anyhow::anyhow!("no profile found"))?;
         let permissions = database::load_permissions_for(&pg(), profile.id).await?;
         Ok(Self {
-            profile,
-            permissions,
+            user: AuthenticatedUser {
+                profile,
+                permissions,
+            },
         })
     }
 }
@@ -67,7 +69,7 @@ impl ConnectedAccount {
 impl Identifiable for ConnectedAccount {
     type Id = i64;
     fn id(&self) -> Self::Id {
-        self.profile.id
+        self.user.profile.id
     }
 }
 pub struct NcogServer;
@@ -122,7 +124,7 @@ impl ServerLogic for NcogServer {
                     let expiration_time = issuance_time.checked_add_signed(Duration::minutes(5)).unwrap();
                     let issuance_time = issuance_time.timestamp() as u64;
                     let expiration_time = expiration_time.timestamp() as u64;
-                    let subject = account.profile.id.to_string();
+                    let subject = account.user.profile.id.to_string();
                     let claims = IdentityVerificationClaims {
                         issuer: "https://ncog.id/v1/ws".to_string(),
                         subject,
@@ -130,8 +132,8 @@ impl ServerLogic for NcogServer {
                         nonce,
                         issuance_time,
                         expiration_time,
-                        ncog_profile: account.profile.clone(),
-                        ncog_permissions: account.permissions.clone().into(),
+                        ncog_profile: account.user.profile.clone(),
+                        ncog_permissions: account.user.permissions.clone().into(),
                     };
                     let token = jsonwebtoken::encode(&jsonwebtoken::Header::new(jsonwebtoken::Algorithm::RS256), &claims, &encoding_key)?;
                     Ok(RequestHandling::Respond(NcogResponse::IdentityVerificationToken {  token }))
@@ -173,10 +175,9 @@ impl ServerLogic for NcogServer {
         if let Some(account) = client.account().await {
             let account = account.read().await;
 
-            Ok(RequestHandling::Respond(NcogResponse::Authenticated {
-                profile: account.profile.clone(),
-                permissions: account.permissions.clone(),
-            }))
+            Ok(RequestHandling::Respond(NcogResponse::Authenticated(
+                account.user.clone(),
+            )))
         } else {
             Ok(RequestHandling::Respond(NcogResponse::Unauthenticated))
         }

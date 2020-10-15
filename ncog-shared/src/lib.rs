@@ -56,22 +56,19 @@ pub struct IdentityVerificationClaims {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct AuthenticatedUser {
+    pub profile: UserProfile,
+    pub permissions: PermissionSet,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum NcogResponse {
     JwtPublicKeys(Vec<JwtKey>),
-    IdentityVerificationToken {
-        token: String,
-    },
-    AuthenticateAtUrl {
-        url: String,
-    },
-    Authenticated {
-        profile: UserProfile,
-        permissions: PermissionSet,
-    },
+    IdentityVerificationToken { token: String },
+    AuthenticateAtUrl { url: String },
+    Authenticated(AuthenticatedUser),
     Unauthenticated,
-    Error {
-        message: Option<String>,
-    },
+    Error { message: Option<String> },
     IAM(iam::IAMResponse),
 }
 

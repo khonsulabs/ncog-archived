@@ -1,7 +1,5 @@
 use basws_client::prelude::*;
-use ncog_shared::{
-    ncog_protocol_version, permissions::PermissionSet, NcogRequest, NcogResponse, UserProfile,
-};
+use ncog_shared::{ncog_protocol_version, AuthenticatedUser, NcogRequest, NcogResponse};
 
 pub type NcogClient<T> = Client<Ncog<T>>;
 
@@ -108,18 +106,9 @@ where
                     .handle_error(Error::Generic(message), client)
                     .await
             }
-            NcogResponse::Authenticated {
-                profile,
-                permissions,
-            } => {
-                self.set_auth_state(
-                    AuthState::Authenticated {
-                        profile,
-                        permissions,
-                    },
-                    client,
-                )
-                .await
+            NcogResponse::Authenticated(user) => {
+                self.set_auth_state(AuthState::Authenticated(user), client)
+                    .await
             }
             NcogResponse::AuthenticateAtUrl { url } => {
                 if let Err(err) = webbrowser::open(&url) {
@@ -180,11 +169,6 @@ where
 pub enum AuthState {
     LoggedOut,
     Connected,
-    Authenticated {
-        profile: UserProfile,
-        permissions: PermissionSet,
-    },
-    Error {
-        message: Option<String>,
-    },
+    Authenticated(AuthenticatedUser),
+    Error { message: Option<String> },
 }
