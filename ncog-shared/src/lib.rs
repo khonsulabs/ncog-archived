@@ -9,7 +9,7 @@ pub mod permissions;
 pub use fluent_templates;
 pub use jsonwebtoken;
 use jwk::JwtKey;
-use permissions::PermissionSet;
+use permissions::{JsonPermissionSet, PermissionSet};
 
 pub fn ncog_protocol_version() -> Version {
     Version::parse("0.0.1").unwrap()
@@ -51,6 +51,8 @@ pub struct IdentityVerificationClaims {
     #[serde(rename = "iat")]
     pub issuance_time: u64,
     pub nonce: [u8; 32],
+    pub ncog_profile: UserProfile,
+    pub ncog_permissions: JsonPermissionSet,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

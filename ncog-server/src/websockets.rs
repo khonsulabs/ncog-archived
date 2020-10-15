@@ -130,6 +130,8 @@ impl ServerLogic for NcogServer {
                         nonce,
                         issuance_time,
                         expiration_time,
+                        ncog_profile: account.profile.clone(),
+                        ncog_permissions: account.permissions.clone().into(),
                     };
                     let token = jsonwebtoken::encode(&jsonwebtoken::Header::new(jsonwebtoken::Algorithm::RS256), &claims, &encoding_key)?;
                     Ok(RequestHandling::Respond(NcogResponse::IdentityVerificationToken {  token }))

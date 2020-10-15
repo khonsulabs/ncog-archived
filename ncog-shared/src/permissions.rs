@@ -65,6 +65,143 @@ pub struct PermissionSet {
     pub role_ids: HashSet<i64>,
 }
 
+#[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct JsonPermissionSet {
+    service_permissions: HashMap<String, JsonResourceTypePermissions>,
+    role_ids: Vec<i64>,
+}
+
+type JsonActionPermissions = HashMap<String, bool>;
+type JsonResourcePermissions = HashMap<String, JsonActionPermissions>;
+type JsonResourceTypePermissions = HashMap<String, JsonResourcePermissions>;
+
+impl From<JsonPermissionSet> for PermissionSet {
+    fn from(input: JsonPermissionSet) -> Self {
+        let mut service_permissions = HashMap::new();
+
+        for (service, in_service_permission) in input.service_permissions {
+            service_permissions.insert(
+                if service.is_empty() {
+                    None
+                } else {
+                    Some(service)
+                },
+                ServicePermission::from(in_service_permission),
+            );
+        }
+
+        Self {
+            service_permissions,
+            role_ids: input.role_ids.into_iter().collect(),
+        }
+    }
+}
+
+impl From<JsonResourceTypePermissions> for ServicePermission {
+    fn from(input: JsonResourceTypePermissions) -> Self {
+        let mut resource_type_permissions = HashMap::new();
+
+        for (resource_type, in_service_permission) in input {
+            resource_type_permissions.insert(
+                if resource_type.is_empty() {
+                    None
+                } else {
+                    Some(resource_type)
+                },
+                ResourceTypePermission::from(in_service_permission),
+            );
+        }
+
+        Self {
+            resource_type_permissions,
+        }
+    }
+}
+
+impl From<JsonResourcePermissions> for ResourceTypePermission {
+    fn from(input: JsonResourcePermissions) -> Self {
+        let mut resource_permissions = HashMap::new();
+
+        for (resource, in_service_permission) in input {
+            resource_permissions.insert(
+                if resource.is_empty() {
+                    None
+                } else {
+                    Some(resource.parse().unwrap_or_default())
+                },
+                ResourcePermission::from(in_service_permission),
+            );
+        }
+
+        Self {
+            resource_permissions,
+        }
+    }
+}
+
+impl From<JsonActionPermissions> for ResourcePermission {
+    fn from(input: JsonActionPermissions) -> Self {
+        let mut action_permissions = HashMap::new();
+
+        for (service, in_service_permission) in input {
+            action_permissions.insert(
+                if service.is_empty() {
+                    None
+                } else {
+                    Some(service)
+                },
+                in_service_permission,
+            );
+        }
+
+        Self { action_permissions }
+    }
+}
+
+impl From<PermissionSet> for JsonPermissionSet {
+    fn from(permission_set: PermissionSet) -> Self {
+        let mut service_permissions = HashMap::new();
+        for (service, service_permission) in permission_set.service_permissions {
+            let mut resource_type_permissions = HashMap::new();
+
+            for (resource_type, resource_type_permission) in
+                service_permission.resource_type_permissions.iter()
+            {
+                let mut resource_permissions = HashMap::new();
+
+                for (resource, resource_permission) in
+                    resource_type_permission.resource_permissions.iter()
+                {
+                    let mut action_permissions = HashMap::new();
+                    for (action, allowed) in resource_permission.action_permissions.iter() {
+                        action_permissions.insert(action.clone().unwrap_or_default(), *allowed);
+                    }
+
+                    resource_permissions.insert(
+                        resource.map(|id| id.to_string()).unwrap_or_default(),
+                        action_permissions,
+                    );
+                }
+
+                resource_type_permissions.insert(
+                    resource_type.clone().unwrap_or_default(),
+                    resource_permissions,
+                );
+            }
+
+            service_permissions.insert(
+                service.clone().unwrap_or_default(),
+                resource_type_permissions,
+            );
+        }
+
+        JsonPermissionSet {
+            service_permissions,
+            role_ids: permission_set.role_ids.into_iter().collect(),
+        }
+    }
+}
+
 impl From<Vec<Statement>> for PermissionSet {
     fn from(statements: Vec<Statement>) -> Self {
         let mut set = PermissionSet::default();
@@ -318,5 +455,13 @@ mod tests {
             Some(i64::MAX),
             "nonexistant-action"
         )));
+    }
+
+    #[test]
+    fn json_conversion() {
+        let set = test_permissions();
+        let json = JsonPermissionSet::from(set.clone());
+        let back = PermissionSet::from(json);
+        assert_eq!(set, back);
     }
 }
