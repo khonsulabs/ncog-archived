@@ -72,7 +72,7 @@ jobs:
           NCOG_CLIENT_ENCRYPTION_KEY: ${{ secrets.NCOG_CLIENT_ENCRYPTION_KEY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.GAC_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.GAC_SECRET_KEY }}
-          NCOG_CLIENT_ENCRYPTION_KEY: ${{ secrets.NCOG_CLIENT_ENCRYPTION_KEY }}
+          JWK_RSA_PRIVATE_KEY_PEM: ${{ secrets.JWK_RSA_PRIVATE_KEY_PEM }}
           SCCACHE_BUCKET: khonsulabs-gac
       - name: sccache stats
         run: sccache --show-stats
