@@ -172,3 +172,9 @@ pub enum AuthState {
     Authenticated(AuthenticatedUser),
     Error { message: Option<String> },
 }
+
+impl Default for AuthState {
+    fn default() -> Self {
+        AuthState::LoggedOut
+    }
+}
