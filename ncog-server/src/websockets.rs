@@ -6,9 +6,8 @@ use ncog_shared::{
     jsonwebtoken::{self, EncodingKey},
     jwk::JwtKey,
     ncog_protocol_version_requirements,
-    permissions::{Claim, PermissionSet},
+    permissions::Claim,
     AuthenticatedUser, IdentityVerificationClaims, NcogRequest, NcogResponse, OAuthProvider,
-    UserProfile,
 };
 use uuid::Uuid;
 mod iam;

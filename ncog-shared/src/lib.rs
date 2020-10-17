@@ -1,5 +1,5 @@
 use basws_shared::{Version, VersionReq};
-use chrono::Utc;
+use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 pub mod iam;
@@ -55,6 +55,35 @@ pub struct IdentityVerificationClaims {
     pub ncog_permissions: JsonPermissionSet,
 }
 
+impl IdentityVerificationClaims {
+    pub fn expiration_time(&self) -> DateTime<Utc> {
+        DateTime::from_utc(
+            NaiveDateTime::from_timestamp(self.expiration_time as i64, 0),
+            Utc,
+        )
+    }
+
+    pub fn issuance_time(&self) -> DateTime<Utc> {
+        DateTime::from_utc(
+            NaiveDateTime::from_timestamp(self.expiration_time as i64, 0),
+            Utc,
+        )
+    }
+
+    pub fn timestamps_valid(&self) -> bool {
+        let now = current_datetime();
+        if self.expiration_time() < now {
+            return false;
+        }
+
+        if self.issuance_time() > now {
+            return false;
+        }
+
+        true
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct AuthenticatedUser {
     pub profile: UserProfile,
@@ -95,8 +124,13 @@ pub enum NpcModel {
 
 pub const WALK_SPEED: f32 = 32.0;
 
+pub fn current_datetime() -> DateTime<Utc> {
+    // TODO make this work properly on wasm
+    Utc::now()
+}
+
 pub fn current_timestamp() -> f64 {
-    Utc::now().timestamp_nanos() as f64 / 1_000_000_000.0
+    current_datetime().timestamp_nanos() as f64 / 1_000_000_000.0
 }
 
 #[derive(Default)]
