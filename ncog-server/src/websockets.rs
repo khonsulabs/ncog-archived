@@ -147,8 +147,10 @@ impl ServerLogic for NcogServer {
         &self,
         installation_id: Uuid,
     ) -> anyhow::Result<Option<Handle<Self::Account>>> {
-        let account = ConnectedAccount::lookup(installation_id).await?;
-        Ok(Some(Handle::new(account)))
+        Ok(ConnectedAccount::lookup(installation_id)
+            .await
+            .ok()
+            .map(Handle::new))
     }
 
     fn protocol_version_requirements(&self) -> VersionReq {
