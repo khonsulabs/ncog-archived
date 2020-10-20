@@ -50,8 +50,8 @@ impl ClientLogic for NcogApiAgent {
                     .expect("Error setting location for redirect");
             }
             NcogResponse::Error { message } => error!("Error from server: {:?}", message),
-            NcogResponse::Authenticated { profile, .. } => {
-                self.profile = Some(profile);
+            NcogResponse::Authenticated(user) => {
+                self.profile = Some(user.profile);
 
                 let window = web_sys::window().expect("Need a window");
                 if let Ok(path) = window.location().pathname() {

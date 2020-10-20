@@ -194,14 +194,11 @@ impl Component for App {
                     true
                 }
                 AgentResponse::Response(response) => match response {
-                    NcogResponse::Authenticated {
-                        profile,
-                        permissions,
-                    } => {
-                        info!("Current Permissions: {:#?}", permissions);
+                    NcogResponse::Authenticated(user) => {
+                        info!("Current Permissions: {:#?}", user.permissions);
                         self.user = Some(Arc::new(LoggedInUser {
-                            profile,
-                            permissions,
+                            profile: user.profile,
+                            permissions: user.permissions,
                         }));
                         true
                     }
