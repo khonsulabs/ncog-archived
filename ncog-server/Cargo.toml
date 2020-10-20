@@ -24,7 +24,7 @@ ncog-migrations = { path = "../ncog-migrations" }
 ncog-shared = { path = "../ncog-shared" }
 async-trait = "0.1"
 mime_guess = "2"
-basws-server = "0.1.0-dev-7"
+basws-server = "0.1.0-dev-8"
 tracing = "0.1"
 tracing-futures = { version = "0.2", default-features = false, features = [
     "futures-03"
@@ -32,5 +32,5 @@ tracing-futures = { version = "0.2", default-features = false, features = [
 tracing-subscriber = "0.2"
 
 [patch.crates-io]
-# basws-server = { path = "../../basws/basws-server", version = "0.1.0-dev-7" }
-# basws-shared = { path = "../../basws/basws-shared", version = "0.1.0-dev-7" }
+# basws-server = { path = "../../basws/basws-server", version = "0.1.0-dev-8" }
+# basws-shared = { path = "../../basws/basws-shared", version = "0.1.0-dev-8" }
