@@ -59,7 +59,7 @@ Resources:
       EngineVersion: "9.6"
       MasterUsername: ncog
       MasterUserPassword: "{{resolve:ssm-secure:ncog-rds-password:1}}"
-      MultiAZ: true
+      MultiAZ: false
       Port: 5432
       StorageEncrypted: true
       StorageType: gp2
