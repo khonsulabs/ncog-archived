@@ -178,3 +178,9 @@ impl Default for AuthState {
         AuthState::LoggedOut
     }
 }
+
+impl AuthState {
+    pub fn is_connected(&self) -> bool {
+        matches!(self, AuthState::Connected) || matches!(self, AuthState::Authenticated(_))
+    }
+}
