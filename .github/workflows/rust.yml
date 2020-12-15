@@ -74,8 +74,6 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.GAC_SECRET_KEY }}
           JWK_RSA_PRIVATE_KEY_PEM: ${{ secrets.JWK_RSA_PRIVATE_KEY_PEM }}
           SCCACHE_BUCKET: khonsulabs-gac
-      - name: sccache stats
-        run: sccache --show-stats
 
       - name: Configure Production
         if: github.ref == 'refs/heads/production'
